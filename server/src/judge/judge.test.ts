@@ -220,6 +220,32 @@ describe("login walls", () => {
     expect(report.login.offerSignIn).toBe(true);
   });
 
+  it("uses a cart's stated total when the agent left the final price empty", () => {
+    const report = judge("croma", "checkout", (run) => {
+      if (!run.result) return;
+      run.result["final_price"] = null;
+      const pages = run.result["steps"] as { price_shown: number | null; note: string }[];
+      for (const page of pages) {
+        if (page.note.includes("Total")) page.note = "Order Summary: Price ₹549, Total ₹549.";
+      }
+    });
+
+    expect(report.bill.total).toBe(549);
+    expect(report.bill.increase).toBe(0);
+    expect(report.login.hidesFees).toBe(false);
+  });
+
+  it("does not treat a cart's item price as a total when no total was stated", () => {
+    const report = judge("croma", "checkout", (run) => {
+      if (!run.result) return;
+      run.result["final_price"] = null;
+      const pages = run.result["steps"] as { note: string }[];
+      for (const page of pages) page.note = "Cart shows the item.";
+    });
+
+    expect(report.bill.total).toBeNull();
+  });
+
   it("labels Croma's honest total as price before sign-in and finds no drip so far", () => {
     const report = judge("croma");
     const drip = pattern(report, "drip_pricing");

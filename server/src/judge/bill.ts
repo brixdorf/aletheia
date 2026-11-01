@@ -97,6 +97,18 @@ function lastOrderTotal(evidence: Evidence, firstPrice: number | null): number |
   return null;
 }
 
+/** The agent can leave final_price empty on a one-line cart, though the page states its total. */
+function statedOnOrderPage(evidence: Evidence, total: number | null): boolean {
+  if (total === null) return false;
+  return evidence.pages.some(
+    (page) =>
+      isOrderPage(page) &&
+      page.price === total &&
+      /\btotal\b/i.test(page.note ?? "") &&
+      mentionsMoney(page.note, total),
+  );
+}
+
 interface TotalInputs {
   flow: Flow;
   evidence: Evidence;
@@ -117,6 +129,7 @@ function chooseTotal({ flow, evidence, firstPrice, computedPaise, hasCharges }: 
     return claimedIsPrice && evidence.billItemised && onOrderPage ? claimed : null;
   }
   if (claimedIsPrice && (hasCharges || claimed === pageTotal)) return claimed;
+  if (claimed === null && !hasCharges && statedOnOrderPage(evidence, pageTotal)) return pageTotal;
   if (
     hasCharges &&
     pageTotal !== null &&
