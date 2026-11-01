@@ -27,8 +27,8 @@
       "name": "web",
       "version": "0.0.0",
       "dependencies": {
-        "@fontsource-variable/public-sans": "^5.3.0",
-        "@fontsource/barlow-condensed": "^5.3.0",
+        "@fontsource-variable/schibsted-grotesk": "^5.3.0",
+        "@fontsource/ibm-plex-mono": "^5.3.0",
         "@fontsource/stardos-stencil": "^5.3.0",
         "react": "^19.3.1",
         "react-dom": "^19.3.1",
@@ -58,9 +58,9 @@
 
     "@blazediff/core": ["@blazediff/core@1.10.0", "", {}, "sha512-AOQff0zgR7cGsZL+4E7hVkmujoPUpm0J9xzWGWZj5wCjd3gmxESXAPfKyuzs93VdpQNFhHlBhfOjrcZ+XTERtQ=="],
 
-    "@fontsource-variable/public-sans": ["@fontsource-variable/public-sans@5.3.0", "", {}, "sha512-AVfkmAt50BMXWpOO21FAntiJFKGX6xTc2dSL8dxtDteONe9IuRXJWGbs0EbG955vAMCq23ENeuopuW87cGWDSQ=="],
+    "@fontsource-variable/schibsted-grotesk": ["@fontsource-variable/schibsted-grotesk@5.3.0", "", {}, "sha512-ndS6H/KICWANchlHF3q4UdZD+xrZ3Ji0rUobIuXlgvDUzDfqZDsVuXPXZb636nJZMHE9zZ9Fmwgqazm8hMB50Q=="],
 
-    "@fontsource/barlow-condensed": ["@fontsource/barlow-condensed@5.3.0", "", {}, "sha512-RA7MmIx0v3eQ6Gcf74qLVLOwLB0GpPOzx+eU9iG/AmCnSJGcIWYeU8y6CEMGZ210MGwGg5CZhzLkkvyZdTTk1g=="],
+    "@fontsource/ibm-plex-mono": ["@fontsource/ibm-plex-mono@5.3.0", "", {}, "sha512-eTgnZjZEGk1QtD3ZstF+Vclo2HLAni8YMy34/DxllwZvyz1lR/1RF/xTiAquOBO7MvqBx8D2Ig2WCPMVfdZu7Q=="],
 
     "@fontsource/stardos-stencil": ["@fontsource/stardos-stencil@5.3.0", "", {}, "sha512-A4r02iepIa6UJwdm4GgEZYEKovHqb64ZPhUudfs3h4rE2iS7HWOI1Gf7SsWiLjbct09B+RTpjM/d5X595odndQ=="],
 

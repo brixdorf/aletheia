@@ -1,31 +1,129 @@
 @import "tailwindcss";
 @import "@fontsource/stardos-stencil/700.css";
-@import "@fontsource/barlow-condensed/700.css";
-@import "@fontsource-variable/public-sans/wght.css";
+@import "@fontsource-variable/schibsted-grotesk/wght.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
 
 @theme {
-  --color-bone: #e2dcc9;
-  --color-ink: #0a0a0a;
-  --color-orange: #ee7a2e;
-  /* Darker than the deck's #2D7E73 so bone body text clears 4.5:1. */
-  --color-teal: #256b61;
+  --color-paper: #f5f0e6;
+  --color-sheet: #fcfaf4;
+  --color-ink: #1b1916;
+  --color-muted: #5c574d;
+  --color-rule: #d9d2c3;
+  /* Borders of controls, which need 3:1 against the paper. Never used for text. */
+  --color-edge: #8a8375;
+  --color-signal: #c2380e;
+  --color-signal-wash: #fbe9df;
+  --color-signal-deep: #a32e0a;
+  --color-live: #1f6b60;
+  --color-live-wash: #e3efea;
+  --color-clear: #47665a;
 
   --font-stencil: "Stardos Stencil", serif;
-  --font-label: "Barlow Condensed", sans-serif;
-  --font-body: "Public Sans Variable", sans-serif;
+  --font-sans: "Schibsted Grotesk Variable", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  --animate-stamp: stamp 280ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+
+  @keyframes stamp {
+    from {
+      opacity: 0;
+      transform: rotate(var(--stamp-tilt)) scale(1.35);
+    }
+    to {
+      opacity: 1;
+      transform: rotate(var(--stamp-tilt)) scale(1);
+    }
+  }
 }
 
 @layer base {
-  body {
-    @apply bg-bone font-body text-ink;
+  html {
+    scrollbar-gutter: stable;
   }
 
-  a[href] {
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+
+  a[href],
+  button:not(:disabled),
+  summary,
+  select,
+  label[for],
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
     cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
   }
 
   :focus-visible {
     outline: 3px solid var(--color-ink);
-    outline-offset: 3px;
+    outline-offset: 2px;
+  }
+
+  dialog::backdrop {
+    background: rgb(27 25 22 / 0.6);
+  }
+}
+
+@layer components {
+  .button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-sm border-2 border-ink bg-sheet px-4 py-2 font-medium transition-colors hover:bg-rule active:translate-y-px disabled:border-edge disabled:bg-transparent disabled:text-muted;
+  }
+
+  .button-primary {
+    @apply border-ink bg-ink text-sheet hover:border-muted hover:bg-muted disabled:bg-transparent;
+  }
+
+  .button-quiet {
+    @apply border-edge bg-transparent hover:bg-sheet;
+  }
+
+  .button-danger {
+    @apply border-signal bg-transparent text-signal-deep hover:bg-signal-wash;
+  }
+
+  .field {
+    @apply w-full rounded-sm border-2 border-edge bg-sheet px-3 py-2 text-base placeholder:text-muted;
+  }
+
+  .link {
+    @apply underline decoration-edge underline-offset-4 hover:decoration-ink active:text-muted;
+  }
+
+  .mono {
+    @apply font-mono tabular-nums;
+  }
+
+  /* The stencil belongs to the wordmark and these stamps. A slight tilt reads as pressed by hand. */
+  .stamp {
+    --stamp-tilt: -1.5deg;
+    @apply inline-block rounded-[3px] border-2 px-2 pt-[0.2em] pb-[0.1em] font-stencil leading-none tracking-[0.04em] whitespace-nowrap uppercase;
+    transform: rotate(var(--stamp-tilt));
+  }
+
+  .stamp-found {
+    @apply border-signal text-signal;
+  }
+
+  .stamp-not-found {
+    @apply border-clear text-clear;
+  }
+
+  .stamp-not-checked {
+    @apply border-dashed border-muted text-muted;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The one decorative motion in the product: a confirmed pattern lands once. */
+  .stamp-press {
+    @apply animate-stamp;
+    animation-delay: var(--stamp-delay, 0ms);
   }
 }
