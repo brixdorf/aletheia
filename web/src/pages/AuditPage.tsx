@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+import { AuditToasts } from "../components/AuditToasts.tsx";
 import { ComparisonTable } from "../components/ComparisonTable.tsx";
 import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
 import { LiveSite } from "../components/LiveSite.tsx";
@@ -8,14 +9,18 @@ import { Failed, Link, Loading, Notice, usePageTitle } from "../components/ui.ts
 import type { ReportScope } from "../lib/api.ts";
 import { deleteAudit, getSharedAudit, shareAudit } from "../lib/api.ts";
 import { buildComparison } from "../lib/compare.ts";
-import { dateTime } from "../lib/format.ts";
+import { dateTime, duration } from "../lib/format.ts";
 import { auditIsLive } from "../lib/live.ts";
-import type { AuditPublic, AuditView } from "../lib/types.ts";
+import { siteName } from "../lib/sites.ts";
+import type { AuditPublic, AuditView, SiteView } from "../lib/types.ts";
 import { useAudit } from "../lib/useAudit.ts";
 import { useLoad } from "../lib/useLoad.ts";
 import { navigate } from "../lib/useRoute.ts";
 
-function ShareControl({ audit }: { audit: AuditView }) {
+/** Long enough for the 13 cells of the live strip to fill in before the report takes over. */
+const REVEAL_MS = 2200;
+
+function useShare(audit: AuditView) {
   const [link, setLink] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -34,41 +39,46 @@ function ShareControl({ audit }: { audit: AuditView }) {
     }
   }
 
-  return (
-    <div className="flex flex-col gap-2">
-      <button type="button" className="button" onClick={() => void share()}>
-        Share this report
-      </button>
-      {link ? (
-        <label className="flex flex-col gap-1 text-sm text-muted">
-          Anyone with this link can read the report
-          <input
-            readOnly
-            value={link}
-            className="field mono text-sm text-ink"
-            onFocus={(event) => event.target.select()}
-          />
-        </label>
-      ) : null}
-      {message ? (
-        <p role="status" className="text-sm text-muted">
-          {message}
-        </p>
-      ) : null}
-    </div>
-  );
+  return { share, link, message };
 }
 
 function OwnerActions({ audit }: { audit: AuditView }) {
   const [confirming, setConfirming] = useState(false);
   const live = auditIsLive(audit);
+  const { share, link, message } = useShare(audit);
 
   return (
-    <div className="flex flex-wrap items-start gap-3">
-      {live ? null : <ShareControl audit={audit} />}
-      <button type="button" className="button button-danger" onClick={() => setConfirming(true)}>
-        {live ? "Stop and delete" : "Delete"}
-      </button>
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        {live ? null : (
+          <button type="button" className="btn btn-soft btn-sm" onClick={() => void share()}>
+            Share read-only link
+          </button>
+        )}
+        <button type="button" className="btn btn-soft btn-sm" onClick={() => setConfirming(true)}>
+          {live ? "Stop and delete" : "Delete"}
+        </button>
+      </div>
+      {link || message ? (
+        <div className="flex w-full flex-col items-end gap-1">
+          {link ? (
+            <label className="flex w-full max-w-md flex-col gap-1 text-[13px] text-mute">
+              Anyone with this link can read the report
+              <input
+                readOnly
+                value={link}
+                className="field num text-sm"
+                onFocus={(event) => event.target.select()}
+              />
+            </label>
+          ) : null}
+          {message ? (
+            <p role="status" className="text-[13px] text-mute">
+              {message}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {confirming ? (
         <ConfirmDialog
           title={live ? "Stop this audit and delete it?" : "Delete this audit?"}
@@ -82,8 +92,63 @@ function OwnerActions({ audit }: { audit: AuditView }) {
           The report, its screenshots and any share link go for good.
         </ConfirmDialog>
       ) : null}
-    </div>
+    </>
   );
+}
+
+function RunPill({ audit }: { audit: AuditPublic }) {
+  if (auditIsLive(audit)) {
+    return (
+      <span className="pill pill-live">
+        <span aria-hidden="true" className="dot" />
+        Running now
+      </span>
+    );
+  }
+  const only = audit.sites.length === 1 ? audit.sites[0] : undefined;
+  if (only?.state !== "done" || !only.startedAt || !only.finishedAt) return null;
+  return (
+    <span className="pill pill-live">
+      <span aria-hidden="true" className="dot" />
+      Finished in {duration(only.startedAt, only.finishedAt)}
+    </span>
+  );
+}
+
+interface SiteSlotProps {
+  site: SiteView;
+  audit: AuditPublic;
+  scope: ReportScope;
+  owned: AuditView | null;
+  arrivedLive: boolean;
+}
+
+/** A report that lands while the page is open first fills the live strip, then takes over. */
+function SiteSlot({ site, audit, scope, owned, arrivedLive }: SiteSlotProps) {
+  const { report } = site;
+  const [revealed, setRevealed] = useState(!arrivedLive);
+  const hold = report !== null && !revealed;
+
+  useEffect(() => {
+    if (!hold) return;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = setTimeout(() => setRevealed(true), still ? 0 : REVEAL_MS);
+    return () => clearTimeout(timer);
+  }, [hold]);
+
+  if (report && revealed) {
+    return (
+      <ReportCard
+        site={site}
+        report={report}
+        task={audit.task}
+        scope={scope}
+        press={arrivedLive}
+        solo={audit.sites.length === 1}
+      />
+    );
+  }
+  return <LiveSite site={site} task={audit.task} auditId={owned ? audit.id : null} />;
 }
 
 function AuditBody({
@@ -96,12 +161,12 @@ function AuditBody({
   owned: AuditView | null;
 }) {
   usePageTitle(audit.task);
-  // Reports already there on opening were confirmed earlier, so only new ones land a stamp.
+  // Reports already there on opening were confirmed earlier, so only new ones fill in.
   const presentAtOpen = useRef(
     new Set(audit.sites.filter((site) => site.report).map((site) => site.id)),
   );
   const comparison = buildComparison([audit]);
-  const live = auditIsLive(audit);
+  const only = audit.sites.length === 1 ? audit.sites[0] : undefined;
 
   // Reports load after the page does, so the browser cannot jump to a site's link by itself.
   const opened = useRef(false);
@@ -115,15 +180,24 @@ function AuditBody({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
-        <div className="min-w-0 flex-1 basis-96">
-          <h1 className="text-3xl font-semibold wrap-anywhere sm:text-4xl">{audit.task}</h1>
-          <p className="mt-1 text-muted">
-            <span className="mono text-sm">{dateTime(audit.createdAt)}</span>
-            {live ? <span className="ml-3 font-medium text-live">Running now</span> : null}
-          </p>
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <Link href="/" className="inline-flex min-h-11 items-center text-mute hover:text-ink">
+            Your audits
+          </Link>
+          <span aria-hidden="true" className="text-mute">
+            /
+          </span>
+          <h1 className="min-w-0 text-[15px] font-semibold tracking-normal wrap-anywhere">
+            {only ? siteName(only.host) : audit.task}
+          </h1>
+          <RunPill audit={audit} />
         </div>
         {owned ? <OwnerActions audit={owned} /> : null}
+        <p className="-mt-3 w-full text-[13px] text-mute">
+          {only ? `${audit.task} · ` : null}
+          <span className="num">{dateTime(audit.createdAt)}</span>
+        </p>
       </header>
 
       {comparison.columns.length >= 2 ? (
@@ -135,20 +209,20 @@ function AuditBody({
         />
       ) : null}
 
-      {audit.sites.map((site) =>
-        site.report ? (
-          <ReportCard
+      <div className="flex flex-col gap-16">
+        {audit.sites.map((site) => (
+          <SiteSlot
             key={site.id}
             site={site}
-            report={site.report}
-            task={audit.task}
+            audit={audit}
             scope={scope}
-            press={!presentAtOpen.current.has(site.id)}
+            owned={owned}
+            arrivedLive={!presentAtOpen.current.has(site.id)}
           />
-        ) : (
-          <LiveSite key={site.id} site={site} task={audit.task} auditId={owned ? audit.id : null} />
-        ),
-      )}
+        ))}
+      </div>
+
+      <AuditToasts audit={audit} />
     </div>
   );
 }
@@ -164,7 +238,7 @@ export function AuditPage({ id }: { id: string }) {
           title="This audit is gone"
           level="h1"
           action={
-            <Link className="button" href="/">
+            <Link className="btn btn-soft" href="/">
               Back to your audits
             </Link>
           }
@@ -178,7 +252,7 @@ export function AuditPage({ id }: { id: string }) {
   return (
     <>
       {reconnecting ? (
-        <p role="status" className="mb-4 text-muted">
+        <p role="status" className="mb-4 text-mute">
           Reconnecting to the live view. The agent keeps working.
         </p>
       ) : null}

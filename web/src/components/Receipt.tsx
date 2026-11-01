@@ -1,80 +1,105 @@
-import { money } from "../lib/format.ts";
+import { moneyParts } from "../lib/format.ts";
 import { billLines, paidLabel } from "../lib/report.ts";
+import { billPill, totalLine } from "../lib/story.ts";
 import type { SiteReport } from "../lib/types.ts";
+import { Money, Pill } from "./ui.tsx";
 
-function signed(sign: "base" | "plus" | "minus", text: string): string {
-  if (sign === "plus") return `+ ${text}`;
-  return sign === "minus" ? `- ${text}` : text;
+function exact(amount: number, currency: string | null): string {
+  const { main, minor } = moneyParts(amount, currency);
+  return `${main}${minor}`;
 }
 
+/** The bill card that sits in the pastel panel. The card runs off the panel's bottom edge. */
 export function Receipt({ report }: { report: SiteReport }) {
-  const { bill, priceLabel } = report;
+  const { bill, priceLabel, item } = report;
   const lines = billLines(bill);
+  const said = totalLine(report);
 
   if (lines.length === 0) {
     return (
-      <div className="rounded-sm border border-rule bg-paper p-4">
-        <h3 className="font-semibold">The bill</h3>
-        <p className="mt-1 text-muted">The agent never reached a price on this site.</p>
+      <div className="card flex-1 rounded-b-none px-6 py-8 text-center">
+        <h3 className="text-lg">The bill</h3>
+        <p className="mt-1 text-mute">The agent never reached a price on this site.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-sm border border-rule bg-paper p-4">
-      <h3 className="font-semibold">The bill</h3>
-      <ul className="mt-3 flex flex-col gap-2">
+    <div className="card flex-1 rounded-b-none border-b-0 px-4 pt-6 pb-5 sm:px-[26px] sm:pt-[26px] sm:pb-[22px]">
+      <div className="text-center">
+        <h3 className="sr-only">The bill</h3>
+        <div className="mb-2 flex justify-center">
+          <Pill {...billPill(report)} className="whitespace-normal" />
+        </div>
+        {bill.total === null ? (
+          <p className="text-mute">The run ended before a total appeared.</p>
+        ) : (
+          <>
+            <p className="text-[40px]/none font-semibold tracking-[-0.03em] text-ink sm:text-5xl/none">
+              <Money amount={bill.total} currency={bill.currency} />
+            </p>
+            <p className="mt-1.5 text-[13px] text-mute">
+              {said.lead}
+              {said.said ? (
+                <>
+                  {` ${said.said} `}
+                  <b className="num font-semibold text-ink">{said.shown}</b>.
+                </>
+              ) : null}
+            </p>
+          </>
+        )}
+      </div>
+
+      <ul className="mt-3">
         {lines.map((line) => (
-          <li key={line.label}>
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="min-w-0">{line.label}</span>
-              <span className="mono shrink-0">
-                {signed(line.sign, money(line.amount, bill.currency))}
-              </span>
-            </div>
-            {line.late || line.tag ? (
-              <p className="text-sm text-signal">
-                {line.tag ? `${line.tag}. ` : null}
-                {line.late ? (
-                  <span className="mono">First showed up at step {line.step}</span>
-                ) : null}
-              </p>
-            ) : line.step !== null ? (
-              <p className="mono text-sm text-muted">Step {line.step}</p>
-            ) : null}
+          <li
+            key={line.label}
+            className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-wash px-3.5 py-[11px]"
+          >
+            <span className="min-w-0">
+              {line.sign === "base" && item ? item : line.label}
+              {line.tag ? (
+                <span className="ml-2 inline-block rounded-full bg-peach px-2 py-0.5 text-[11px] font-semibold text-peach-ink">
+                  {line.tag}
+                </span>
+              ) : null}
+              {line.late ? (
+                <span className="ml-2 inline-block rounded-full bg-peach px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-peach-ink">
+                  step {line.step}
+                </span>
+              ) : null}
+            </span>
+            <span className="num shrink-0">
+              {line.sign === "minus" ? "- " : null}
+              {exact(line.amount, bill.currency)}
+            </span>
           </li>
         ))}
       </ul>
 
-      {bill.total === null ? (
-        <p className="mt-3 border-t-2 border-dashed border-edge pt-3 text-muted">
-          The run ended before a total appeared.
-        </p>
-      ) : (
-        <div className="mt-3 flex items-baseline justify-between gap-4 border-y-2 border-dashed border-edge py-2 font-semibold">
+      {bill.total === null ? null : (
+        <div className="num mt-3 flex items-center justify-between gap-4 border-t border-line px-1 pt-3.5 font-semibold text-ink">
           <span>{paidLabel(priceLabel)}</span>
-          <span className="mono text-xl">{money(bill.total, bill.currency)}</span>
+          <span>{exact(bill.total, bill.currency)}</span>
         </div>
       )}
 
-      {bill.addsUp === true && bill.total !== null ? (
-        <p className="mt-2 text-sm text-muted">These lines add up to the total exactly.</p>
-      ) : null}
       {bill.addsUp === false && bill.unexplained !== null ? (
-        <p className="mt-2 text-sm text-signal">
-          <span className="mono">{money(bill.unexplained, bill.currency)}</span> of the total is on
+        <p className="mt-2 px-1 text-[13px] text-peach-ink">
+          <span className="num">{exact(bill.unexplained, bill.currency)}</span> of the total is on
           no line of the bill.
         </p>
       ) : null}
 
       {bill.includedCharges.length > 0 ? (
-        <div className="mt-3 text-sm text-muted">
+        <div className="mt-3 px-1 text-[13px] text-mute">
           <p>Already inside the first price:</p>
           <ul>
             {bill.includedCharges.map((charge) => (
               <li key={charge.name} className="flex justify-between gap-4">
                 <span>{charge.name}</span>
-                <span className="mono">{money(charge.amount, bill.currency)}</span>
+                <span className="num">{exact(charge.amount, bill.currency)}</span>
               </li>
             ))}
           </ul>
