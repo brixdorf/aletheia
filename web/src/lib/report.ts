@@ -1,0 +1,198 @@
+import { money } from "./format.ts";
+import type { Bill, PatternFinding, SiteReport, SiteView } from "./types.ts";
+
+const TOTAL_PATTERNS = 13;
+
+export type Headline =
+  | {
+      kind: "price";
+      shownLabel: string;
+      shown: string;
+      paidLabel: string;
+      paid: string;
+      gap: string;
+    }
+  | { kind: "finding"; title: string; detail: string }
+  | { kind: "open" | "clear"; title: string; detail: string };
+
+const PAID_LABEL: Record<SiteReport["priceLabel"], string> = {
+  final: "You pay",
+  price_before_sign_in: "Before sign-in",
+  last_seen: "Last price seen",
+  none: "You pay",
+};
+
+function roundToPaise(amount: number): number {
+  return Math.round(amount * 100) / 100;
+}
+
+function billStory({ bill, priceLabel }: SiteReport): Headline | null {
+  const { firstPrice, total, increase, currency } = bill;
+  if (firstPrice === null || total === null || increase === null || increase <= 0) return null;
+  return {
+    kind: "price",
+    shownLabel: "Shown",
+    shown: money(firstPrice, currency),
+    paidLabel: PAID_LABEL[priceLabel],
+    paid: money(total, currency),
+    gap: `${money(increase, currency)} more`,
+  };
+}
+
+function renewalStory({ subscription, bill }: SiteReport): Headline | null {
+  if (!subscription) return null;
+  const { introPrice, introPeriod, priceAfterIntro } = subscription;
+  if (introPrice === null || priceAfterIntro === null || priceAfterIntro <= introPrice) return null;
+  return {
+    kind: "price",
+    shownLabel: introPeriod ? `Shown for ${introPeriod}` : "Shown",
+    shown: money(introPrice, bill.currency),
+    paidLabel: "Then you pay",
+    paid: money(priceAfterIntro, bill.currency),
+    gap: `${money(roundToPaise(priceAfterIntro - introPrice), bill.currency)} more`,
+  };
+}
+
+function proofRank({ proof }: PatternFinding): number {
+  return proof === "verified" ? 0 : 1;
+}
+
+const STATUS_RANK: Record<PatternFinding["status"], number> = {
+  found: 0,
+  not_checked: 1,
+  not_found: 2,
+};
+
+/** Found first, because that is the question the report answers. Clean rows go last. */
+export function orderedPatterns({ patterns }: SiteReport): PatternFinding[] {
+  return patterns.toSorted(
+    (a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || proofRank(a) - proofRank(b),
+  );
+}
+
+export function counts({ patterns }: SiteReport) {
+  const of = (status: PatternFinding["status"]) =>
+    patterns.filter((entry) => entry.status === status).length;
+  return { found: of("found"), notChecked: of("not_checked"), notFound: of("not_found") };
+}
+
+export function headline(report: SiteReport): Headline {
+  const story = billStory(report) ?? renewalStory(report);
+  if (story) return story;
+
+  const strongest = orderedPatterns(report)[0];
+  if (strongest?.status === "found") {
+    return {
+      kind: "finding",
+      title: strongest.label,
+      detail: strongest.note || (strongest.quote ?? ""),
+    };
+  }
+
+  const { notChecked } = counts(report);
+  if (notChecked > 0) {
+    return {
+      kind: "open",
+      title: `${notChecked} of ${TOTAL_PATTERNS} not checked`,
+      detail: stopSummary(report),
+    };
+  }
+  return {
+    kind: "clear",
+    title: `None of the ${TOTAL_PATTERNS} found`,
+    detail: "The agent reached every page these patterns live on and saw none of them.",
+  };
+}
+
+export interface BillLine {
+  label: string;
+  amount: number;
+  sign: "base" | "plus" | "minus";
+  step: number | null;
+  /** True when the line showed up after the first price did. */
+  late: boolean;
+  tag: string | null;
+}
+
+const FIRST_PRICE_LABEL: Record<NonNullable<Bill["firstPriceSource"]>, string> = {
+  product_page: "Price on the product page",
+  cart: "Price first seen in the cart",
+  agent: "Price the agent reported",
+};
+
+export function billLines(bill: Bill): BillLine[] {
+  const base = bill.itemsTotal ?? bill.firstPrice;
+  if (base === null) return [];
+
+  const after = (step: number | null) =>
+    step !== null && bill.firstPriceStep !== null && step > bill.firstPriceStep;
+  const line = (
+    { name, amount, firstSeenAtStep }: Bill["charges"][number],
+    sign: "plus" | "minus",
+    tag: string | null = null,
+  ): BillLine => ({
+    label: name,
+    amount,
+    sign,
+    step: firstSeenAtStep,
+    late: after(firstSeenAtStep),
+    tag,
+  });
+
+  const showsItems = bill.itemsTotal !== null && bill.itemsTotal !== bill.firstPrice;
+  return [
+    {
+      label: showsItems
+        ? "Items in the cart"
+        : FIRST_PRICE_LABEL[bill.firstPriceSource ?? "product_page"],
+      amount: base,
+      sign: "base",
+      step: bill.firstPriceStep,
+      late: false,
+      tag: null,
+    },
+    ...bill.charges.map((charge) => line(charge, "plus")),
+    ...bill.extras.map((extra) => line(extra, "plus", "Added without asking")),
+    ...bill.discounts.map((discount) => line(discount, "minus")),
+  ];
+}
+
+export function proofLabel({ proof, quoteCheck }: PatternFinding): string {
+  if (proof === "verified") return "Verified by arithmetic";
+  if (quoteCheck === "matched") return "Seen, with proof. The quote matches the page text.";
+  if (quoteCheck === "not_matched") {
+    return "Seen, with proof. The quote was not found in the captured page text, so check the screenshot.";
+  }
+  return "Seen, with proof";
+}
+
+export function stopSummary({ stop, login }: SiteReport): string {
+  switch (stop.at) {
+    case "payment_page":
+      return "Reached the payment page and stopped there, before paying.";
+    case "login_wall":
+      return login.hidesFees
+        ? "The site hides its fees behind a login, so the real price is unknown."
+        : "Stopped at a login. The address or payment step can still add fees.";
+    case "contact_required":
+      return "Stopped where the site asks for contact details, which Aletheia never enters.";
+    case "blocked":
+      return "The site blocked the agent, so this is a partial look.";
+    case "error":
+      return "The run hit an error before it finished.";
+    case "incomplete":
+      return "The run ended before it reached the payment page.";
+  }
+}
+
+export function signInOffer({ login }: SiteReport): string | null {
+  return login.offerSignIn ? "Sign in for the full price" : null;
+}
+
+export function logoutNote(logout: SiteView["logout"]): string | null {
+  if (logout === "logged_out") return "Logged out of the site. The saved sign-in is deleted.";
+  if (logout === "not_confirmed") {
+    return "We could not confirm the logout. The saved sign-in is deleted, but please log out of the site yourself to be sure.";
+  }
+  return null;
+}
