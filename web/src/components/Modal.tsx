@@ -49,7 +49,7 @@ export function Modal({
       className="modal"
     >
       <div
-        className={`rise w-[calc(100vw-1.5rem)] rounded-card bg-white p-5 text-text shadow-card sm:p-6 ${className}`}
+        className={`rise w-full rounded-card bg-white p-5 text-text shadow-card sm:p-6 ${className}`}
       >
         <div className="flex items-center justify-between">
           {back ? (

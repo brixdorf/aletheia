@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+
+import { Modal } from "./Modal.tsx";
 
 interface ConfirmDialogProps {
   title: string;
@@ -9,7 +11,6 @@ interface ConfirmDialogProps {
   onClose: () => void;
 }
 
-/** Native modal: focus trap and Escape come from the browser. */
 export function ConfirmDialog({
   title,
   children,
@@ -17,13 +18,8 @@ export function ConfirmDialog({
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
-  const dialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    dialog.current?.showModal();
-  }, []);
 
   async function confirm() {
     setBusy(true);
@@ -37,34 +33,36 @@ export function ConfirmDialog({
   }
 
   return (
-    <dialog
-      ref={dialog}
-      onClose={onClose}
-      aria-labelledby="confirm-title"
-      className="m-auto w-[calc(100vw-2rem)] max-w-md rounded-sm border-2 border-ink bg-sheet p-6 text-ink"
+    <Modal
+      labelledBy="confirm-title"
+      onDismiss={onClose}
+      dismissLabel="Keep it and close"
+      footer="This cannot be undone."
     >
-      <h2 id="confirm-title" className="text-xl font-semibold">
-        {title}
-      </h2>
-      <div className="mt-2 text-muted">{children}</div>
+      <div className="mt-2 text-center">
+        <h2 id="confirm-title" className="text-xl tracking-[-0.02em]">
+          {title}
+        </h2>
+        <div className="mt-2 wrap-anywhere text-body">{children}</div>
+      </div>
       {error ? (
-        <p role="alert" className="mt-3 text-signal-deep">
+        <p role="alert" className="mt-3 text-center text-peach-ink">
           {error}
         </p>
       ) : null}
-      <div className="mt-6 flex flex-wrap justify-end gap-3">
-        <button type="button" className="button button-quiet" onClick={onClose}>
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        <button type="button" className="btn btn-soft" onClick={onClose}>
           Keep it
         </button>
         <button
           type="button"
-          className="button button-danger"
+          className="btn btn-dark"
           disabled={busy}
           onClick={() => void confirm()}
         >
           {confirmLabel}
         </button>
       </div>
-    </dialog>
+    </Modal>
   );
 }

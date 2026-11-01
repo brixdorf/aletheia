@@ -1,4 +1,4 @@
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { ChangeEvent, KeyboardEvent, MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -10,9 +10,69 @@ import {
   startSignIn,
 } from "../lib/api.ts";
 import { InputRelay, keyToInput, toRemotePoint } from "../lib/remoteInput.ts";
+import { siteName } from "../lib/sites.ts";
 import type { ScreenFrame, SignInView } from "../lib/types.ts";
+import { Modal } from "./Modal.tsx";
 
 const SCROLL_STEP = 400;
+const CODE_LENGTH = 6;
+
+interface CodeBoxesProps {
+  name: string;
+  onText: (text: string) => void;
+  onKey: (event: KeyboardEvent<HTMLInputElement>) => void;
+}
+
+/**
+ * Sends each character on at once and keeps only a count, so a one-time code is never held here.
+ * The site's own page shows the digits.
+ */
+function CodeBoxes({ name, onText, onKey }: CodeBoxesProps) {
+  const [entered, setEntered] = useState(0);
+
+  function change(event: ChangeEvent<HTMLInputElement>) {
+    const { value } = event.target;
+    event.target.value = "";
+    if (!value) return;
+    onText(value);
+    setEntered((count) => Math.min(count + value.length, CODE_LENGTH));
+  }
+
+  function key(event: KeyboardEvent<HTMLInputElement>) {
+    onKey(event);
+    if (event.key === "Backspace") setEntered((count) => Math.max(count - 1, 0));
+  }
+
+  return (
+    <label className="flex flex-col items-center gap-2 text-sm text-body">
+      Type the code {name} sent you
+      <span className="relative inline-flex gap-1.5 rounded-xl has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[#2563eb]">
+        {Array.from({ length: CODE_LENGTH }, (_, index) => (
+          <span
+            key={index}
+            aria-hidden="true"
+            className="grid h-11 w-[38px] place-items-center rounded-[10px] border border-line text-lg text-ink"
+          >
+            {index < entered ? "•" : ""}
+          </span>
+        ))}
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          spellCheck={false}
+          onChange={change}
+          onKeyDown={key}
+          aria-describedby="code-count"
+          className="absolute inset-0 opacity-0"
+        />
+      </span>
+      <span id="code-count" className="sr-only">
+        {entered} of {CODE_LENGTH} characters sent
+      </span>
+    </label>
+  );
+}
 
 interface SignInPanelProps {
   url: string;
@@ -23,7 +83,6 @@ interface SignInPanelProps {
 }
 
 export function SignInPanel({ url, host, onReady, onClosed }: SignInPanelProps) {
-  const dialog = useRef<HTMLDialogElement>(null);
   const image = useRef<HTMLImageElement>(null);
   const screen = useRef<HTMLDivElement>(null);
   const doneButton = useRef<HTMLButtonElement>(null);
@@ -36,9 +95,9 @@ export function SignInPanel({ url, host, onReady, onClosed }: SignInPanelProps) 
   const [saving, setSaving] = useState(false);
   const [ended, setEnded] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [typing, setTyping] = useState<"text" | "code">("text");
 
   useEffect(() => {
-    dialog.current?.showModal();
     if (opened.current) return;
     opened.current = true;
 
@@ -133,26 +192,27 @@ export function SignInPanel({ url, host, onReady, onClosed }: SignInPanelProps) 
     onClosed();
   }
 
-  return (
-    <dialog
-      ref={dialog}
-      aria-labelledby="sign-in-title"
-      onCancel={(event) => {
-        event.preventDefault();
-        void close();
-      }}
-      className="m-auto max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-4xl overflow-y-auto rounded-sm border-2 border-ink bg-sheet p-4 text-ink sm:p-6"
-    >
-      <h2 id="sign-in-title" className="text-xl font-semibold wrap-anywhere">
-        Sign in to {host}
-      </h2>
-      <p className="mt-1 max-w-prose text-muted">
-        You sign in yourself, code included. What you type goes straight to the site, and Aletheia
-        keeps none of it. The sign-in lasts for one check. When that ends, we log out of the site
-        and delete it.
-      </p>
+  const name = siteName(host);
 
-      <div className="mt-4 rounded-sm border-2 border-edge bg-paper">
+  return (
+    <Modal
+      labelledBy="sign-in-title"
+      onDismiss={() => void close()}
+      dismissLabel={ended ? "Close" : "Cancel and sign out"}
+      className="max-w-[720px]"
+      footer="Runs in a TinyFish cloud browser. This window closes after about 15 minutes without activity."
+    >
+      <div className="mt-1 text-center">
+        <h2 id="sign-in-title" className="text-xl tracking-[-0.02em] wrap-anywhere">
+          Sign in to {name}
+        </h2>
+        <p className="mx-auto mt-1.5 max-w-[520px] text-body">
+          You sign in yourself, code included. What you type goes straight to the site, and Aletheia
+          keeps none of it. When this one check ends, we log out and delete the sign-in.
+        </p>
+      </div>
+
+      <div className="mt-4 overflow-hidden rounded-[14px] border border-line bg-wash">
         {frame ? (
           <div
             ref={screen}
@@ -179,75 +239,106 @@ export function SignInPanel({ url, host, onReady, onClosed }: SignInPanelProps) 
         ) : (
           <div
             role="status"
-            className="flex aspect-[16/10] items-center justify-center p-4 text-center text-muted"
+            className="flex aspect-[16/10] items-center justify-center gap-3 p-4 text-center text-mute"
           >
+            {ended ? null : <span aria-hidden="true" className="spinner" />}
             {ended ? "The sign-in window is closed." : `Opening ${host} in a private browser.`}
           </div>
         )}
       </div>
 
       {signIn && !ended ? (
-        <div className="mt-3 flex flex-wrap items-end gap-3">
-          <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm text-muted">
-            Type into the page (clears as you type)
-            <input
-              type="text"
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              className="field text-ink"
-              onKeyDown={fieldKey}
-              onChange={(event) => {
-                relay.current?.push({ kind: "text", text: event.target.value });
-                event.target.value = "";
-              }}
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <div
+              role="group"
+              aria-label="What to type"
+              className="flex rounded-full bg-[#f3f4f6] p-1"
+            >
+              {(
+                [
+                  ["text", "Phone or email"],
+                  ["code", "Code"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={typing === value}
+                  onClick={() => setTyping(value)}
+                  className={`min-h-9 rounded-full px-4 text-sm font-medium transition-colors ${
+                    typing === value ? "bg-white text-ink shadow-sm" : "text-mute hover:text-ink"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="btn btn-soft btn-sm"
+              onClick={() => relay.current?.push({ kind: "scroll", dx: 0, dy: -SCROLL_STEP })}
+            >
+              Scroll up
+            </button>
+            <button
+              type="button"
+              className="btn btn-soft btn-sm"
+              onClick={() => relay.current?.push({ kind: "scroll", dx: 0, dy: SCROLL_STEP })}
+            >
+              Scroll down
+            </button>
+          </div>
+
+          {typing === "code" ? (
+            <CodeBoxes
+              name={name}
+              onText={(text) => relay.current?.push({ kind: "text", text })}
+              onKey={fieldKey}
             />
-          </label>
-          <button
-            type="button"
-            className="button button-quiet"
-            onClick={() => relay.current?.push({ kind: "scroll", dx: 0, dy: -SCROLL_STEP })}
-          >
-            Scroll up
-          </button>
-          <button
-            type="button"
-            className="button button-quiet"
-            onClick={() => relay.current?.push({ kind: "scroll", dx: 0, dy: SCROLL_STEP })}
-          >
-            Scroll down
-          </button>
+          ) : (
+            <label className="flex flex-col gap-1 text-sm text-body">
+              Type into the page (clears as you type)
+              <input
+                type="text"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                className="field"
+                onKeyDown={fieldKey}
+                onChange={(event) => {
+                  relay.current?.push({ kind: "text", text: event.target.value });
+                  event.target.value = "";
+                }}
+              />
+            </label>
+          )}
         </div>
       ) : null}
 
       {message ? (
-        <p role="alert" className="mt-3 font-medium text-signal-deep">
+        <p role="alert" className="mt-3 text-center font-medium text-peach-ink">
           {message}
         </p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">
-          This window closes after about 15 minutes without activity.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <button type="button" className="button button-quiet" onClick={() => void close()}>
-            {ended ? "Close" : "Cancel and sign out"}
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <button type="button" className="btn btn-soft" onClick={() => void close()}>
+          {ended ? "Close" : "Cancel and sign out"}
+        </button>
+        {ended ? null : (
+          <button
+            ref={doneButton}
+            type="button"
+            className="btn btn-dark"
+            disabled={!signIn || saving}
+            onClick={() => void done()}
+          >
+            {saving ? "Saving" : "Done, I am signed in"}
           </button>
-          {ended ? null : (
-            <button
-              ref={doneButton}
-              type="button"
-              className="button button-primary"
-              disabled={!signIn || saving}
-              onClick={() => void done()}
-            >
-              {saving ? "Saving" : "Done, I am signed in"}
-            </button>
-          )}
-        </div>
+        )}
       </div>
-    </dialog>
+    </Modal>
   );
 }
