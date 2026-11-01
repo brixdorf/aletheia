@@ -31,6 +31,10 @@ describe("ago", () => {
     expect(ago("2026-10-31T14:32:09Z", now)).toBe("21s");
     expect(ago("2026-10-31T14:29:30Z", now)).toBe("3m");
   });
+
+  it("moves to hours for a run opened long after it stopped", () => {
+    expect(ago("2026-10-31T12:30:30Z", now)).toBe("2h");
+  });
 });
 
 describe("money", () => {

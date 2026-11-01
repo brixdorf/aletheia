@@ -32,7 +32,9 @@ const JUST_NOW_SECONDS = 3;
 export function ago(iso: string, now: number): string {
   const seconds = Math.round((now - Date.parse(iso)) / 1000);
   if (seconds < JUST_NOW_SECONDS) return "now";
-  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m`;
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h`;
 }
 
 export function clock(iso: string): string {

@@ -1,115 +1,117 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { signOut } from "../lib/api.ts";
-import { clock } from "../lib/format.ts";
+import { ago } from "../lib/format.ts";
 import { siteStatus } from "../lib/live.ts";
 import { logoutNote } from "../lib/report.ts";
 import { newAuditHref } from "../lib/route.ts";
 import { recallSignIn } from "../lib/signInMemory.ts";
-import type { SiteView } from "../lib/types.ts";
-import { Link } from "./ui.tsx";
+import { siteName } from "../lib/sites.ts";
+import type { PatternStatus, SiteView } from "../lib/types.ts";
+import { Link, PatternStrip, SiteAvatar } from "./ui.tsx";
 
-function LiveMarker() {
+const NOT_YET: PatternStatus[] = Array.from({ length: 13 }, () => "not_checked");
+const TICK_MS = 1000;
+
+function LivePill() {
   return (
-    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-live">
-      <span aria-hidden="true" className="size-2 rounded-full bg-live" />
-      LIVE
+    <span className="pill pill-live">
+      <span aria-hidden="true" className="dot" />
+      Live
     </span>
   );
 }
 
+function useNow(ticking: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!ticking) return;
+    const timer = setInterval(() => setNow(Date.now()), TICK_MS);
+    return () => clearInterval(timer);
+  }, [ticking]);
+  return now;
+}
+
 function Timeline({ site, active }: { site: SiteView; active: boolean }) {
-  const list = useRef<HTMLOListElement>(null);
+  const now = useNow(active);
   const stepCount = site.steps.length;
 
-  useEffect(() => {
-    list.current?.scrollTo({ top: list.current.scrollHeight });
-  }, [stepCount, site.state]);
-
   if (stepCount === 0 && site.state === "queued") {
-    return <p className="text-muted">Steps show up here once an agent picks this site up.</p>;
+    return <p className="py-3 text-mute">Steps show up here once an agent picks this site up.</p>;
   }
+
+  const newestFirst = site.steps
+    .map((step, index) => ({ ...step, number: index + 1 }))
+    .toReversed();
 
   return (
     <ol
-      ref={list}
       // A long run scrolls inside its card, so keyboard users need to be able to reach it.
       tabIndex={0}
       aria-label={`Steps on ${site.host}`}
-      className="flex max-h-96 flex-col gap-3 overflow-y-auto pr-2"
+      className="flex max-h-[300px] min-h-0 flex-1 flex-col divide-y divide-line overflow-y-auto"
     >
-      {stepCount === 0 ? <li className="text-muted">The agent is opening the site.</li> : null}
-      {site.steps.map((step, index) => {
-        const newest = active && site.state === "running" && index === stepCount - 1;
-        return (
-          <li key={`${step.at}-${index}`} className="grid grid-cols-[2.25rem_1fr] gap-x-2">
-            <span className={`mono ${newest ? "font-semibold text-live" : "text-muted"}`}>
-              {index + 1}
-            </span>
-            <span className={newest ? "font-medium text-live" : ""}>
-              {step.text}
-              <span className="mono block text-sm text-muted">{clock(step.at)}</span>
-            </span>
-          </li>
-        );
-      })}
       {site.state === "writing_up" ? (
-        <li className="grid grid-cols-[2.25rem_1fr] gap-x-2 font-medium text-live">
-          <span aria-hidden="true" className="mono">
+        <li className="flex gap-2.5 py-2.5">
+          <span aria-hidden="true" className="w-5 shrink-0 font-mono text-[13px] text-mute">
             +
           </span>
-          <span>
-            Writing up the report
-            <span className="block text-sm font-normal text-muted">
+          <span className="min-w-0 flex-1">
+            <span className="font-medium text-ink">Writing up the report</span>
+            <span className="block text-[13px] text-mute">
               The agent has finished walking the site. This part can take a few minutes.
             </span>
           </span>
         </li>
       ) : null}
+      {stepCount === 0 ? <li className="py-3 text-mute">The agent is opening the site.</li> : null}
+      {newestFirst.map((step) => {
+        const newest = active && site.state === "running" && step.number === stepCount;
+        return (
+          <li key={`${step.at}-${step.number}`} className="flex items-baseline gap-2.5 py-2.5">
+            <span className="w-5 shrink-0 font-mono text-[13px] text-mute">{step.number}</span>
+            <span className={`min-w-0 flex-1 ${newest ? "font-medium text-ink" : "text-text"}`}>
+              {step.text}
+            </span>
+            <span className="num shrink-0 text-xs text-mute">{ago(step.at, now)}</span>
+          </li>
+        );
+      })}
     </ol>
   );
 }
 
-function LiveBrowser({ site, active }: { site: SiteView; active: boolean }) {
+function LiveBrowser({ site }: { site: SiteView }) {
   const { streamingUrl, host, state } = site;
   const waiting =
     state === "queued"
       ? "The live browser opens when an agent is free."
-      : active
+      : state === "running"
         ? "Connecting to the live browser."
         : "The browser has closed.";
 
   return (
-    <figure
-      className={`min-w-0 rounded-sm border-2 bg-sheet ${active ? "border-live" : "border-rule"}`}
-    >
-      <figcaption
-        className={`flex min-h-9 items-center justify-between gap-3 border-b-2 px-3 py-1.5 ${
-          active ? "border-live bg-live-wash" : "border-rule"
-        }`}
-      >
-        <span className="mono min-w-0 truncate text-sm">{host}</span>
-        {active && streamingUrl ? <LiveMarker /> : null}
-      </figcaption>
+    <figure className="card min-w-0 p-2">
       {streamingUrl ? (
         <iframe
           src={streamingUrl}
           title={`Live browser on ${host}`}
           referrerPolicy="no-referrer"
-          className="aspect-[16/10] w-full bg-paper"
+          className="aspect-[16/10] w-full rounded-[14px] bg-wash"
         />
       ) : (
-        <div className="flex aspect-[16/10] items-center justify-center p-4 text-center text-muted">
+        <div className="flex aspect-[16/10] items-center justify-center rounded-[14px] bg-wash p-4 text-center text-mute">
           {waiting}
         </div>
       )}
-      {streamingUrl ? (
-        <p className="px-3 py-1.5 text-sm">
-          <a className="link" href={streamingUrl} target="_blank" rel="noreferrer">
-            Open the live browser in a new tab
+      <figcaption className="flex min-h-9 items-center justify-between gap-3 px-2.5 pt-2 pb-0.5 text-[13px] text-mute">
+        <span className="min-w-0 truncate">Live browser, {host}</span>
+        {streamingUrl ? (
+          <a className="link shrink-0" href={streamingUrl} target="_blank" rel="noreferrer">
+            Open in a new tab
           </a>
-        </p>
-      ) : null}
+        ) : null}
+      </figcaption>
     </figure>
   );
 }
@@ -131,7 +133,7 @@ function EarlySignOut({ auditId, site }: { auditId: string; site: SiteView }) {
 
   if (state === "done") {
     return (
-      <p role="status" className="text-sm text-muted">
+      <p role="status" className="text-[13px] text-mute">
         Stopping the check and signing out.
       </p>
     );
@@ -140,14 +142,14 @@ function EarlySignOut({ auditId, site }: { auditId: string; site: SiteView }) {
     <div className="flex flex-wrap items-center gap-3">
       <button
         type="button"
-        className="button button-quiet"
+        className="btn btn-soft btn-sm"
         disabled={state === "busy"}
         onClick={() => void stop(signInId)}
       >
         Sign out and stop this check
       </button>
       {state === "failed" ? (
-        <p role="alert" className="text-sm text-signal-deep">
+        <p role="alert" className="text-[13px] text-peach-ink">
           That did not go through. Please try again.
         </p>
       ) : null}
@@ -166,31 +168,46 @@ export function LiveSite({ site, task, auditId }: LiveSiteProps) {
   const status = siteStatus(site);
   const active = status.tone === "live";
   const logout = logoutNote(site.logout);
+  // The run reports no results until it ends, so the strip stays open and then fills in once.
+  const statuses = site.report?.patterns.map(({ status: value }) => value);
 
   return (
-    <article
-      aria-label={`${site.host}, ${status.label}`}
-      className="flex flex-col gap-5 rounded-sm border border-rule bg-sheet p-4 sm:p-6"
-    >
-      <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h2 className="text-2xl font-semibold wrap-anywhere">{site.host}</h2>
-        <p role="status" className={active ? "font-medium text-live" : "text-muted"}>
-          {status.label}
-        </p>
+    <article aria-label={`${site.host}, ${status.label}`} className="rise flex flex-col gap-5">
+      <header className="flex items-center gap-3">
+        <SiteAvatar host={site.host} />
+        <div className="min-w-0">
+          <h2 className="text-2xl wrap-anywhere">{siteName(site.host)}</h2>
+          <p role="status" className="text-mute">
+            {status.label}
+          </p>
+        </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-        <Timeline site={site} active={active} />
-        <LiveBrowser site={site} active={active} />
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <LiveBrowser site={site} />
+
+        <section aria-label="Agent steps" className="card flex flex-col px-[18px] pt-4 pb-3.5">
+          <div className="flex items-center justify-between gap-3 pb-1">
+            <h3 className="text-sm tracking-normal">Agent steps</h3>
+            {active ? <LivePill /> : null}
+          </div>
+          <Timeline site={site} active={active} />
+          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-3">
+            <PatternStrip statuses={statuses ?? NOT_YET} fill={statuses !== undefined} />
+            <span className="text-xs text-mute">
+              {statuses ? "Results are in" : "13 patterns to check"}
+            </span>
+          </div>
+        </section>
       </div>
 
       {site.signedIn && auditId && !site.finishedAt ? (
         <EarlySignOut auditId={auditId} site={site} />
       ) : null}
-      {logout ? <p className="text-sm text-muted">{logout}</p> : null}
+      {logout ? <p className="text-[13px] text-mute">{logout}</p> : null}
       {status.tone === "stopped" && auditId ? (
         <Link
-          className="button w-fit"
+          className="btn btn-soft w-fit"
           href={newAuditHref({ task, url: site.url, signIn: site.signedIn })}
         >
           Run this site again
