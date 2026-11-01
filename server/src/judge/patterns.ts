@@ -10,6 +10,12 @@ export interface PatternContext {
   actions: readonly string[];
 }
 
+/** A context with evidence in hand: rules never run on a run that returned nothing. */
+interface JudgedContext extends PatternContext {
+  evidence: Evidence;
+  bill: Bill;
+}
+
 export interface Draft {
   status: PatternStatus;
   proof: Proof | null;
@@ -24,9 +30,7 @@ interface Definition {
   label: string;
   /** The furthest page this pattern lives on. Before it, the answer is "not checked". */
   needs: Reach;
-  rule: (
-    context: Required<Pick<PatternContext, "evidence" | "bill">> & PatternContext,
-  ) => Draft | null;
+  rule: (context: JudgedContext) => Draft | null;
   /** Patterns the run's own lists settle, so an empty list means "looked, found nothing". */
   listed: boolean;
   /** Arithmetic patterns ignore what the agent claims. */
@@ -76,7 +80,7 @@ function fromAgent(evidence: Evidence, check: PatternCheck, needs: Reach): Draft
   return draft(check.status, check.note ?? "");
 }
 
-function dripPricing({ bill, evidence, stop }: Parameters<Definition["rule"]>[0]): Draft {
+function dripPricing({ bill, evidence, stop }: JudgedContext): Draft {
   if (bill.total === null || bill.firstPrice === null) {
     const hidden = stop === "login_wall";
     return draft(
@@ -114,7 +118,7 @@ function dripPricing({ bill, evidence, stop }: Parameters<Definition["rule"]>[0]
   );
 }
 
-function basketSneaking({ bill }: Parameters<Definition["rule"]>[0]): Draft | null {
+function basketSneaking({ bill }: JudgedContext): Draft | null {
   if (bill.extras.length === 0) return null;
   return draft("found", "Added without asking, and the amount is proven to be in the total.", {
     proof: "verified",
@@ -123,7 +127,7 @@ function basketSneaking({ bill }: Parameters<Definition["rule"]>[0]): Draft | nu
   });
 }
 
-function falseUrgency({ evidence }: Parameters<Definition["rule"]>[0]): Draft | null {
+function falseUrgency({ evidence }: JudgedContext): Draft | null {
   const message = evidence.pressure.find((entry) => URGENCY.test(entry.text));
   return message
     ? seen(
@@ -134,7 +138,7 @@ function falseUrgency({ evidence }: Parameters<Definition["rule"]>[0]): Draft | 
     : null;
 }
 
-function confirmShaming({ evidence }: Parameters<Definition["rule"]>[0]): Draft | null {
+function confirmShaming({ evidence }: JudgedContext): Draft | null {
   const decline = evidence.declineWording.find((text) => SHAMING_DECLINE.test(text));
   if (decline) {
     const step = evidence.checks.confirm_shaming?.seenAtStep ?? null;
@@ -146,7 +150,7 @@ function confirmShaming({ evidence }: Parameters<Definition["rule"]>[0]): Draft 
     : null;
 }
 
-function forcedAction({ evidence }: Parameters<Definition["rule"]>[0]): Draft | null {
+function forcedAction({ evidence }: JudgedContext): Draft | null {
   const consent = evidence.consent.find(
     (entry) => entry.canDeclineSeparately !== true && MARKETING_CONSENT.test(entry.text),
   );
@@ -167,11 +171,7 @@ function forcedAction({ evidence }: Parameters<Definition["rule"]>[0]): Draft | 
   return null;
 }
 
-function subscriptionTrap({
-  evidence,
-  bill,
-  stop,
-}: Parameters<Definition["rule"]>[0]): Draft | null {
+function subscriptionTrap({ evidence, bill, stop }: JudgedContext): Draft | null {
   const fee = evidence.terms.find(
     (term) =>
       term.term === "cancellation_fee" &&
@@ -201,7 +201,7 @@ function subscriptionTrap({
   return null;
 }
 
-function interfaceInterference({ evidence }: Parameters<Definition["rule"]>[0]): Draft | null {
+function interfaceInterference({ evidence }: JudgedContext): Draft | null {
   const chosen = evidence.planOptions.find((option) => option.selectedByDefault);
   if (!chosen?.commitment) return null;
   const hidden = evidence.planOptions.find(
@@ -222,7 +222,7 @@ export function isNoCommitment(commitment: string | null): boolean {
   return commitment === null || /^(none|no\b|n\/a)/i.test(commitment.trim());
 }
 
-function baitAndSwitch({ bill }: Parameters<Definition["rule"]>[0]): Draft | null {
+function baitAndSwitch({ bill }: JudgedContext): Draft | null {
   const { itemsTotal, firstPrice, firstPriceSource } = bill;
   if (itemsTotal === null || firstPrice === null || firstPriceSource !== "product_page") {
     return null;
