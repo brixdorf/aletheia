@@ -1,5 +1,14 @@
 import { money } from "./format.ts";
-import type { Bill, PatternFinding, SiteReport, SiteView } from "./types.ts";
+import type {
+  AuditSummary,
+  Bill,
+  PatternFinding,
+  SiteReport,
+  SiteView,
+  SubscriptionSummary,
+} from "./types.ts";
+
+type Term = SubscriptionSummary["terms"][number];
 
 const TOTAL_PATTERNS = 13;
 
@@ -20,6 +29,38 @@ const PAID_LABEL: Record<SiteReport["priceLabel"], string> = {
   price_before_sign_in: "Before sign-in",
   last_seen: "Last price seen",
   none: "You pay",
+};
+
+export function paidLabel(priceLabel: SiteReport["priceLabel"]): string {
+  return PAID_LABEL[priceLabel];
+}
+
+export function summaryPrice({
+  total,
+  currency,
+  priceLabel,
+}: Pick<AuditSummary["sites"][number], "total" | "currency" | "priceLabel">): string {
+  if (total === null) return "No total";
+  const price = money(total, currency);
+  if (priceLabel === "price_before_sign_in") return `${price} before sign-in`;
+  return priceLabel === "last_seen" ? `${price} last seen` : price;
+}
+
+export const TERM_LABEL: Record<Term["term"], string> = {
+  trial: "Trial",
+  renewal: "Renewal",
+  price_after_intro: "Price after the offer",
+  cancellation: "Cancellation",
+  cancellation_fee: "Cancellation fee",
+};
+
+export const SHOWN_WHERE_LABEL: Record<Term["shownWhere"], string> = {
+  main_page: "On the main page",
+  fine_print: "In the fine print",
+  info_icon: "Behind an info icon",
+  faq: "In a collapsed FAQ",
+  later_page: "Only on a later page",
+  not_shown: "Not shown at all",
 };
 
 function roundToPaise(amount: number): number {
@@ -175,7 +216,7 @@ export function stopSummary({ stop, login }: SiteReport): string {
         ? "The site hides its fees behind a login, so the real price is unknown."
         : "Stopped at a login. The address or payment step can still add fees.";
     case "contact_required":
-      return "Stopped where the site asks for contact details, which Aletheia never enters.";
+      return "Stopped where the site asks for contact details.";
     case "blocked":
       return "The site blocked the agent, so this is a partial look.";
     case "error":

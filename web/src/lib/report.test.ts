@@ -10,6 +10,7 @@ import {
   proofLabel,
   signInOffer,
   stopSummary,
+  summaryPrice,
 } from "./report.ts";
 
 describe("headline", () => {
@@ -279,5 +280,24 @@ describe("logoutNote", () => {
 
   it("says plainly when the logout could not be confirmed", () => {
     expect(logoutNote("not_confirmed")).toContain("could not confirm");
+  });
+});
+
+describe("summaryPrice", () => {
+  const site = { total: 81, currency: "INR", priceLabel: "final" as const };
+
+  it("shows a final price plainly", () => {
+    expect(summaryPrice(site)).toBe("Rs 81");
+  });
+
+  it("carries the same caveat the report does", () => {
+    expect(summaryPrice({ ...site, priceLabel: "price_before_sign_in" })).toBe(
+      "Rs 81 before sign-in",
+    );
+    expect(summaryPrice({ ...site, priceLabel: "last_seen" })).toBe("Rs 81 last seen");
+  });
+
+  it("says nothing was priced rather than showing zero", () => {
+    expect(summaryPrice({ total: null, currency: null, priceLabel: "none" })).toBe("No total");
   });
 });
