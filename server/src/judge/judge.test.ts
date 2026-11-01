@@ -251,6 +251,48 @@ describe("login walls", () => {
     expect(report.missing.join(" ")).toMatch(/Delivery.*29.*not in this total/);
   });
 
+  it("believes the total the cart states over a sum the agent worked out itself", () => {
+    const report = judge("croma", "checkout", (run) => {
+      if (!run.result) return;
+      run.result["final_price"] = 578;
+      run.result["fees"] = [
+        {
+          name: "Standard Delivery",
+          amount: 29,
+          first_seen_at_step: 4,
+          included_in_first_price: false,
+        },
+      ];
+      const pages = run.result["steps"] as { note: string }[];
+      for (const page of pages) {
+        if (page.note.includes("Total")) {
+          page.note =
+            "Order summary: Original Price ₹549.00, Total ₹549.00. Delivery fee ₹29 mentioned.";
+        }
+      }
+    });
+
+    expect(report.bill.total).toBe(549);
+    expect(report.bill.increase).toBe(0);
+    expect(report.bill.notInTotal.map((line) => line.name)).toEqual(["Standard Delivery"]);
+    expect(pattern(report, "drip_pricing").status).toBe("not_found");
+  });
+
+  it("reads the grand total, not the item total, from a cart's note", () => {
+    const report = judge("blinkit-2", "checkout", (run) => {
+      if (!run.result) return;
+      const pages = run.result["steps"] as { note: string | null }[];
+      for (const page of pages) {
+        if (page.note?.includes("Grand total")) {
+          page.note = "Items total ₹24, Delivery charge ₹25, Grand total ₹81.";
+        }
+      }
+    });
+
+    expect(report.bill.total).toBe(81);
+    expect(report.bill.addsUp).toBe(true);
+  });
+
   it("still reports a shortfall that no single line explains", () => {
     const report = judge("croma", "checkout", (run) => {
       if (!run.result) return;

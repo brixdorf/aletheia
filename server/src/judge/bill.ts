@@ -8,6 +8,7 @@ const CHARGE_WORD =
 const DISCOUNT_LINE = /discount|coupon|saving|promo|cashback/i;
 const ORDER_PAGE = /cart|\bbag\b|basket|checkout|order|\bbill\b|verify|review|summary/i;
 const NOT_AN_ORDER = /log ?in|sign[ -]?in|terms|faq|polic/i;
+const STATED_TOTAL = /(?<!items?[ -])\btotal\b[^₹\d]{0,12}(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)/gi;
 const PAISE_TOLERANCE = 1;
 
 function paise(amount: number): number {
@@ -97,16 +98,17 @@ function lastOrderTotal(evidence: Evidence, firstPrice: number | null): number |
   return null;
 }
 
-/** The agent can leave final_price empty on a one-line cart, though the page states its total. */
-function statedOnOrderPage(evidence: Evidence, total: number | null): boolean {
-  if (total === null) return false;
-  return evidence.pages.some(
-    (page) =>
-      isOrderPage(page) &&
-      page.price === total &&
-      /\btotal\b/i.test(page.note ?? "") &&
-      mentionsMoney(page.note, total),
-  );
+/**
+ * What the last order page itself said the total was. The agent can leave final_price empty on a
+ * one-line cart, and can add an optional fee to it by hand, so the page's words come first.
+ */
+function statedTotal(evidence: Evidence): number | null {
+  for (const page of evidence.pages.toReversed()) {
+    if (!isOrderPage(page)) continue;
+    const stated = [...(page.note ?? "").matchAll(STATED_TOTAL)].at(-1)?.[1];
+    if (stated) return Number(stated.replaceAll(",", ""));
+  }
+  return null;
 }
 
 interface TotalInputs {
@@ -114,12 +116,13 @@ interface TotalInputs {
   evidence: Evidence;
   firstPrice: number | null;
   computedPaise: number | null;
-  hasCharges: boolean;
+  charges: readonly Charge[];
 }
 
-function chooseTotal({ flow, evidence, firstPrice, computedPaise, hasCharges }: TotalInputs) {
+function chooseTotal({ flow, evidence, firstPrice, computedPaise, charges }: TotalInputs) {
   if (evidence.pages.length === 0) return null;
 
+  const hasCharges = charges.length > 0;
   const claimed = evidence.finalPrice;
   const claimedIsPrice = claimed !== null && claimed > 0 && claimed >= (firstPrice ?? 0);
   const pageTotal = lastOrderTotal(evidence, firstPrice);
@@ -128,8 +131,13 @@ function chooseTotal({ flow, evidence, firstPrice, computedPaise, hasCharges }: 
     const onOrderPage = evidence.pages.some(isOrderPage);
     return claimedIsPrice && evidence.billItemised && onOrderPage ? claimed : null;
   }
+  const stated = statedTotal(evidence);
+  if (stated !== null && stated >= (firstPrice ?? 0)) {
+    const summedByHand =
+      claimed !== null && offeredOnly(charges, paise(claimed) - paise(stated)).length > 0;
+    if (claimed === null || summedByHand) return stated;
+  }
   if (claimedIsPrice && (hasCharges || claimed === pageTotal)) return claimed;
-  if (claimed === null && !hasCharges && statedOnOrderPage(evidence, pageTotal)) return pageTotal;
   if (
     hasCharges &&
     pageTotal !== null &&
@@ -193,7 +201,7 @@ export function buildBill(flow: Flow, evidence: Evidence): Bill {
     evidence,
     firstPrice: listed,
     computedPaise,
-    hasCharges: chargeList.length > 0,
+    charges: chargeList,
   });
 
   const gapPaise = total === null || computedPaise === null ? 0 : paise(total) - computedPaise;
