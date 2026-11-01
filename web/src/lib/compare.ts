@@ -1,3 +1,5 @@
+import { hiddenCost, type HiddenCost } from "../../../server/src/judge/compare.ts";
+import { money } from "./format.ts";
 import type { AuditPublic, PatternId, PatternStatus, SiteReport } from "./types.ts";
 
 export interface CompareColumn {
@@ -7,6 +9,7 @@ export interface CompareColumn {
   task: string;
   report: SiteReport;
   rank: number | null;
+  hiddenCost: HiddenCost | null;
 }
 
 export interface PatternRow {
@@ -20,6 +23,14 @@ export interface ComparisonView {
   patternRows: PatternRow[];
   ranked: boolean;
   notes: string[];
+}
+
+export function hiddenCostLabel(cost: HiddenCost | null, currency: string | null): string {
+  if (cost === null) return "Unknown";
+  const sign = cost.amount < 0 ? "-" : "+";
+  const parts = [`${sign}${money(Math.abs(cost.amount), currency)}`];
+  if (cost.amount !== 0 && cost.percent !== null) parts.push(`${sign}${Math.abs(cost.percent)}%`);
+  return parts.join(", ") + (cost.final ? "" : " so far");
 }
 
 function patternRows(columns: readonly CompareColumn[]): PatternRow[] {
@@ -52,6 +63,7 @@ export function buildComparison(audits: readonly AuditPublic[]): ComparisonView 
               task: audit.task,
               report: site.report,
               rank: ranked ? (rankOf.get(site.host) ?? null) : null,
+              hiddenCost: hiddenCost(site.report),
             },
           ]
         : [],

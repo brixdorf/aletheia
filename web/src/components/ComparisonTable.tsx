@@ -1,7 +1,6 @@
 import { useState } from "react";
 
-import type { CompareColumn, ComparisonView } from "../lib/compare.ts";
-import { money } from "../lib/format.ts";
+import { hiddenCostLabel, type CompareColumn, type ComparisonView } from "../lib/compare.ts";
 import { counts, stopSummary } from "../lib/report.ts";
 import { siteName } from "../lib/sites.ts";
 import { patternName } from "../lib/story.ts";
@@ -109,6 +108,16 @@ export function ComparisonTable({
             ) : null}
             <tr>
               <th scope="row" className={headCell}>
+                Item
+              </th>
+              {columns.map(({ key, report }) => (
+                <td key={key} className={`${cell} max-w-56`}>
+                  {report.item ?? <span className="text-mute">Not named</span>}
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <th scope="row" className={headCell}>
                 First price shown
               </th>
               {columns.map(({ key, report: { bill } }) => (
@@ -129,14 +138,14 @@ export function ComparisonTable({
             </tr>
             <tr>
               <th scope="row" className={headCell}>
-                Added on the way
+                Hidden cost
               </th>
-              {columns.map(({ key, report: { bill } }) => (
+              {columns.map(({ key, hiddenCost, report: { bill } }) => (
                 <td
                   key={key}
-                  className={`${cell} num ${(bill.increase ?? 0) > 0 ? "font-semibold text-peach-ink" : ""}`}
+                  className={`${cell} num ${(hiddenCost?.amount ?? 0) > 0 ? "font-semibold text-peach-ink" : ""}`}
                 >
-                  {bill.increase === null ? "Unknown" : money(bill.increase, bill.currency)}
+                  {hiddenCostLabel(hiddenCost, bill.currency)}
                 </td>
               ))}
             </tr>

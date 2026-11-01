@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { bill, finding, report } from "../testing/report.ts";
-import { buildComparison } from "./compare.ts";
+import { buildComparison, hiddenCostLabel } from "./compare.ts";
 import type { AuditPublic, SiteView } from "./types.ts";
 
 function site(host: string, reportOverrides: Parameters<typeof report>[0] = {}): SiteView {
@@ -43,8 +43,28 @@ const row = (host: string, rank: number | null, total: number | null) => ({
   destination: null,
   comparable: total !== null,
   rank,
+  item: null,
+  hiddenCost: null,
   found: 0,
   notChecked: 0,
+});
+
+describe("hiddenCostLabel", () => {
+  it("shows the gap in money and as a percentage", () => {
+    expect(hiddenCostLabel({ amount: 57, percent: 238, final: true }, "INR")).toBe("+Rs 57, +238%");
+  });
+
+  it("shows no percentage when nothing was added", () => {
+    expect(hiddenCostLabel({ amount: 0, percent: 0, final: true }, "INR")).toBe("+Rs 0");
+  });
+
+  it("says so far when the run stopped before payment", () => {
+    expect(hiddenCostLabel({ amount: 0, percent: 0, final: false }, "INR")).toBe("+Rs 0 so far");
+  });
+
+  it("says unknown when there is no gap to show", () => {
+    expect(hiddenCostLabel(null, "INR")).toBe("Unknown");
+  });
 });
 
 describe("buildComparison", () => {
@@ -97,6 +117,29 @@ describe("buildComparison", () => {
     const view = buildComparison([audit({ sites: [site("a.test"), unfinished] })]);
     expect(view.columns.map((column) => column.host)).toEqual(["a.test"]);
     expect(view.notes).toContain("slow.test has no report to compare.");
+  });
+
+  it("gives every column its hidden cost, with no winner, even across audits", () => {
+    const view = buildComparison([
+      audit({
+        id: "a1",
+        sites: [
+          site("blinkit.com", {
+            priceLabel: "price_before_sign_in",
+            bill: bill({ firstPrice: 24, total: 81, increase: 57 }),
+          }),
+        ],
+      }),
+      audit({
+        id: "a2",
+        sites: [site("croma.com", { bill: bill({ firstPrice: 549, total: 549, increase: 0 }) })],
+      }),
+    ]);
+
+    expect(view.columns.map((column) => [column.host, column.rank, column.hiddenCost])).toEqual([
+      ["blinkit.com", null, { amount: 57, percent: 238, final: false }],
+      ["croma.com", null, { amount: 0, percent: 0, final: true }],
+    ]);
   });
 
   it("lines up the 13 patterns across columns", () => {
