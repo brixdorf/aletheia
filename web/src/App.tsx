@@ -1,18 +1,14 @@
 import { useEffect, useRef } from "react";
 
 import { Link, Notice, usePageTitle } from "./components/ui.tsx";
-import { newAuditHref } from "./lib/route.ts";
 import { useRoute } from "./lib/useRoute.ts";
 import { AuditPage, SharedPage } from "./pages/AuditPage.tsx";
 import { ComparePage } from "./pages/ComparePage.tsx";
 import { Dashboard } from "./pages/Dashboard.tsx";
 import { NewAudit } from "./pages/NewAudit.tsx";
 
-const ANNOUNCEMENT = newAuditHref({
-  task: "Sign up for Creative Cloud Pro",
-  url: "https://www.adobe.com/in/",
-  signIn: false,
-});
+/** The saved Adobe India report, read-only so it opens for every visitor. */
+const ANNOUNCEMENT = "/shared/q8aPAT7kZTCAZPsqW5iDd6LhNcV5gdNx";
 
 function NotFound() {
   usePageTitle("Page not found");
