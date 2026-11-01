@@ -34,6 +34,7 @@ const EMPTY_BILL: Bill = {
   firstPriceSource: null,
   itemsTotal: null,
   charges: [],
+  notInTotal: [],
   includedCharges: [],
   discounts: [],
   extras: [],
@@ -99,6 +100,9 @@ function describeMissing(
   }
   for (const fee of evidence.fees) {
     if (fee.amount === null) missing.push(`"${fee.name}" was listed with no amount.`);
+  }
+  for (const line of bill.notInTotal) {
+    missing.push(`${line.name} of ${line.amount} was offered but is not in this total yet.`);
   }
   return missing;
 }

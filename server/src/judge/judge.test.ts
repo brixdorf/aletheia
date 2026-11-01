@@ -235,6 +235,36 @@ describe("login walls", () => {
     expect(report.login.hidesFees).toBe(false);
   });
 
+  it("keeps a delivery choice that is not in the total off the bill and says so", () => {
+    const report = judge("croma", "checkout", (run) => {
+      if (!run.result) return;
+      run.result["fees"] = [
+        { name: "Delivery", amount: 29, first_seen_at_step: 4, included_in_first_price: false },
+      ];
+    });
+
+    expect(report.bill.total).toBe(549);
+    expect(report.bill.charges).toEqual([]);
+    expect(report.bill.notInTotal).toEqual([{ name: "Delivery", amount: 29, firstSeenAtStep: 4 }]);
+    expect(report.bill.addsUp).toBe(true);
+    expect(report.bill.unexplained).toBeNull();
+    expect(report.missing.join(" ")).toMatch(/Delivery.*29.*not in this total/);
+  });
+
+  it("still reports a shortfall that no single line explains", () => {
+    const report = judge("croma", "checkout", (run) => {
+      if (!run.result) return;
+      run.result["fees"] = [
+        { name: "Delivery", amount: 29, first_seen_at_step: 4, included_in_first_price: false },
+        { name: "Handling", amount: 5, first_seen_at_step: 4, included_in_first_price: false },
+      ];
+      run.result["final_price"] = 570;
+    });
+
+    expect(report.bill.notInTotal).toEqual([]);
+    expect(report.bill.addsUp).toBe(false);
+  });
+
   it("does not treat a cart's item price as a total when no total was stated", () => {
     const report = judge("croma", "checkout", (run) => {
       if (!run.result) return;

@@ -161,6 +161,14 @@ function provenExtras(evidence: Evidence, charges: readonly Charge[], gapPaise: 
   });
 }
 
+/** A total below its own lines means a line was only offered, such as a delivery choice. */
+function offeredOnly(charges: readonly Charge[], overPaise: number): Charge[] {
+  if (overPaise <= PAISE_TOLERANCE) return [];
+  if (sumPaise(charges) === overPaise) return [...charges];
+  const line = charges.find((charge) => paise(charge.amount) === overPaise);
+  return line ? [line] : [];
+}
+
 export function buildBill(flow: Flow, evidence: Evidence): Bill {
   const first = findFirstPrice(evidence);
   const listed = first.price;
@@ -189,8 +197,10 @@ export function buildBill(flow: Flow, evidence: Evidence): Bill {
   });
 
   const gapPaise = total === null || computedPaise === null ? 0 : paise(total) - computedPaise;
+  const notInTotal = offeredOnly(chargeList, -gapPaise);
+  const billedCharges = chargeList.filter((charge) => !notInTotal.includes(charge));
   const extras = gapPaise > 0 ? provenExtras(evidence, chargeList, gapPaise) : [];
-  const unexplainedPaise = gapPaise - sumPaise(extras);
+  const unexplainedPaise = gapPaise - sumPaise(extras) + sumPaise(notInTotal);
   const addsUp =
     total === null || computedPaise === null ? null : Math.abs(unexplainedPaise) <= PAISE_TOLERANCE;
 
@@ -202,7 +212,8 @@ export function buildBill(flow: Flow, evidence: Evidence): Bill {
     firstPriceStep: first.step,
     firstPriceSource: first.source,
     itemsTotal,
-    charges: chargeList,
+    charges: billedCharges,
+    notInTotal,
     includedCharges: included.map(toCharge),
     discounts: discountList,
     extras,

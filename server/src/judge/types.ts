@@ -77,6 +77,8 @@ export interface Bill {
   firstPriceSource: FirstPriceSource | null;
   itemsTotal: number | null;
   charges: Charge[];
+  /** Lines the site offered that the total does not contain yet, such as a delivery choice. */
+  notInTotal: Charge[];
   /** Fees the site says the first price already contains, such as GST. */
   includedCharges: Charge[];
   discounts: Charge[];
