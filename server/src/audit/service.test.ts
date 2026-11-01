@@ -26,6 +26,7 @@ function clientFor(run: RunRecord, overrides: Partial<AuditClient> = {}): AuditC
     },
     getRun: () => Promise.resolve(run),
     cancelRun: () => Promise.resolve(),
+    getStepHtml: () => Promise.resolve(""),
     ...overrides,
   };
 }
@@ -85,6 +86,48 @@ describe("AuditService", () => {
     expect(site?.steps.map((step) => step.text)).toContain("Open the cart");
     expect(site?.report?.bill.total).toBe(81);
     expect(site?.report?.host).toBe("shop.test");
+  });
+
+  it("checks agent quotes against the page text captured in the run", async () => {
+    const run = loadRun("adobe-subscription");
+    run.steps[0] = { ...(run.steps[0] as RunRecord["steps"][number]), html: "url" };
+    const getStepHtml = vi.fn(() =>
+      Promise.resolve(
+        "<p>Fee applies of half your remaining annual commitment if you cancel after Nov 14</p>",
+      ),
+    );
+    const audits = service(clientFor(run, { getStepHtml }));
+
+    const { id } = await audits.create({
+      visitorId: "visitor",
+      task: "subscribe to the plan",
+      sites: [{ url: SITE }],
+    });
+    const audit = await finished(audits, id);
+    const trap = audit.sites[0]?.report?.patterns.find((entry) => entry.id === "subscription_trap");
+
+    expect(getStepHtml).toHaveBeenCalledOnce();
+    expect(trap?.quoteCheck).toBe("matched");
+    expect(JSON.stringify(audit)).not.toContain("<p>");
+  });
+
+  it("still reports when the page text cannot be fetched", async () => {
+    const run = loadRun("adobe-subscription");
+    run.steps[0] = { ...(run.steps[0] as RunRecord["steps"][number]), html: "url" };
+    const audits = service(
+      clientFor(run, { getStepHtml: () => Promise.reject(new Error("gone")) }),
+    );
+
+    const { id } = await audits.create({
+      visitorId: "visitor",
+      task: "subscribe to the plan",
+      sites: [{ url: SITE }],
+    });
+    const audit = await finished(audits, id);
+    const trap = audit.sites[0]?.report?.patterns.find((entry) => entry.id === "subscription_trap");
+
+    expect(trap?.status).toBe("found");
+    expect(trap?.quoteCheck).toBe("unavailable");
   });
 
   it("runs one agent per site, each told to stay on its site", async () => {

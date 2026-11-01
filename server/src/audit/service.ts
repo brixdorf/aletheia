@@ -11,10 +11,13 @@ import type { AuditStore } from "../store/auditStore.ts";
 import type { DomainMemory } from "../store/domainMemory.ts";
 import { budgetSeconds, buildGoal, detectFlow } from "./goals.ts";
 import { OUTPUT_SCHEMA } from "./outputSchema.ts";
+import { collectPageText } from "./pageCapture.ts";
 import { scrubPersonal } from "./scrub.ts";
 import type { Audit, SiteRun } from "./types.ts";
 
-export type AuditClient = DriveClient;
+export interface AuditClient extends DriveClient {
+  getStepHtml(runId: string, stepId: string): Promise<string>;
+}
 
 export interface AuditSignIns {
   claim(visitorId: string, signInId: string): string;
@@ -295,6 +298,7 @@ export class AuditService {
       url: site.url,
       run: stopped,
       signedIn: site.signInId !== null,
+      pageText: await collectPageText(this.#deps.client, run),
     });
     site.report = scrubPersonal(report);
     site.steps = scrubPersonal(site.steps);

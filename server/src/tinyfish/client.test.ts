@@ -108,6 +108,7 @@ describe("TinyFishClient", () => {
       browser_profile: "stealth",
       proxy_config: { enabled: true, country_code: "IN" },
       agent_config: { max_duration_seconds: 300 },
+      capture_config: { html: true },
     });
   });
 
@@ -180,6 +181,18 @@ describe("TinyFishClient", () => {
 
     expect(seen[0]?.path).toBe("/v1/runs/run-1/steps/step-1/screenshot");
     expect([...image]).toEqual([0xff, 0xd8, 0xff]);
+  });
+
+  it("fetches the page html saved at a step", async () => {
+    handler = (_req, res) => {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end("<p>Bill</p>");
+    };
+
+    const html = await client().getStepHtml("run-1", "step-1");
+
+    expect(seen[0]?.path).toBe("/v1/runs/run-1/steps/step-1/html");
+    expect(html).toBe("<p>Bill</p>");
   });
 
   it("creates and deletes a profile", async () => {

@@ -6,6 +6,7 @@ const stepRecordSchema = z.object({
   status: z.string(),
   action: z.string().nullable(),
   screenshot: z.string().nullable(),
+  html: z.string().nullish(),
   duration: z.string().nullable().optional(),
 });
 

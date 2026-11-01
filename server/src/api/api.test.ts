@@ -53,6 +53,7 @@ describe("api", () => {
       getRun: () => Promise.resolve(run),
       cancelRun: () => Promise.resolve(),
       getScreenshot,
+      getStepHtml: () => Promise.resolve(""),
       createProfile: () => Promise.resolve("prof_1"),
       deleteProfile: () => Promise.resolve(),
       startSetup: () =>

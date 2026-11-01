@@ -2,6 +2,7 @@ import type { RunRecord } from "../tinyfish/types.ts";
 import { buildBill } from "./bill.ts";
 import type { Evidence } from "./evidence.ts";
 import { parseEvidence } from "./evidence.ts";
+import { checkQuote } from "./pageText.ts";
 import { judgePattern, PATTERNS } from "./patterns.ts";
 import { scanSafety } from "./safety.ts";
 import { locateScreenshots } from "./screenshots.ts";
@@ -22,6 +23,8 @@ export interface JudgeInput {
   url: string;
   run: RunRecord;
   signedIn?: boolean;
+  /** Text of every page captured during the run, from `htmlToText`. Null if none was. */
+  pageText?: string | null;
 }
 
 const EMPTY_BILL: Bill = {
@@ -40,6 +43,9 @@ const EMPTY_BILL: Bill = {
   increase: null,
   multiple: null,
 };
+
+const QUOTE_NOT_CONFIRMED =
+  "This wording was not found in the saved page text, so rely on the screenshot.";
 
 const STOP_WORDS = /\b(add|one|the|to|cart|bag|basket|click|select|item|first)\b/gi;
 
@@ -101,7 +107,13 @@ function hostOf(url: string): string {
   return new URL(url).hostname.replace(/^www\./, "");
 }
 
-export function judgeRun({ flow, url, run, signedIn = false }: JudgeInput): SiteReport {
+export function judgeRun({
+  flow,
+  url,
+  run,
+  signedIn = false,
+  pageText = null,
+}: JudgeInput): SiteReport {
   const actions = run.steps.map((step) => step.action ?? "");
   const parsed = parseEvidence(run.result);
   const evidence = parsed && dropOwnAdds(parsed, actions);
@@ -116,10 +128,13 @@ export function judgeRun({ flow, url, run, signedIn = false }: JudgeInput): Site
   const context = { evidence, bill, stop, reach, actions };
   const patterns: PatternFinding[] = PATTERNS.map((definition) => {
     const draft = judgePattern(definition, context);
+    const quoteCheck = draft.quote === null ? null : checkQuote(draft.quote, pageText);
     return {
       id: definition.id,
       label: definition.label,
       ...draft,
+      quoteCheck,
+      note: quoteCheck === "not_matched" ? `${draft.note} ${QUOTE_NOT_CONFIRMED}` : draft.note,
       soFar: draft.status === "not_found" && stop !== "payment_page",
       screenshot: screenshotFor(draft.step),
     };

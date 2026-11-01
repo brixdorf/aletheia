@@ -34,6 +34,9 @@ export type PatternStatus = "found" | "not_found" | "not_checked";
 /** `verified` means our arithmetic proved it; `seen` means a quote and step back it up. */
 export type Proof = "verified" | "seen";
 
+/** Whether a quote was found in the page text captured during the run. */
+export type QuoteCheck = "matched" | "not_matched" | "unavailable";
+
 export interface Amount {
   label: string;
   amount: number;
@@ -53,6 +56,7 @@ export interface PatternFinding {
   soFar: boolean;
   step: number | null;
   quote: string | null;
+  quoteCheck: QuoteCheck | null;
   amounts: Amount[];
   screenshot: Screenshot | null;
   note: string;

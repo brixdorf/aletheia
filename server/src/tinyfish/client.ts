@@ -65,6 +65,8 @@ export class TinyFishClient {
         browser_profile: "stealth",
         proxy_config: { enabled: true, country_code: "IN" },
         agent_config: { max_duration_seconds: request.maxDurationSeconds },
+        // The page text is what lets a quote be checked rather than taken on trust.
+        capture_config: { html: true },
         ...(request.outputSchema ? { output_schema: request.outputSchema } : {}),
         ...(request.profileId ? { use_profile: true, profile_id: request.profileId } : {}),
       },
@@ -105,6 +107,12 @@ export class TinyFishClient {
     const path = `/v1/runs/${encodeURIComponent(runId)}/steps/${encodeURIComponent(stepId)}/screenshot`;
     const response = await this.#request("GET", path);
     return new Uint8Array(await response.arrayBuffer());
+  }
+
+  async getStepHtml(runId: string, stepId: string): Promise<string> {
+    const path = `/v1/runs/${encodeURIComponent(runId)}/steps/${encodeURIComponent(stepId)}/html`;
+    const response = await this.#request("GET", path);
+    return response.text();
   }
 
   async createProfile(name: string): Promise<string> {
