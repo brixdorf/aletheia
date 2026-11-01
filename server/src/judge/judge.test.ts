@@ -127,6 +127,78 @@ describe("drip pricing on checkouts", () => {
   });
 });
 
+describe("the live Blinkit run of 1 Nov, checked against its screenshots", () => {
+  const report = judge("blinkit-3");
+
+  it("has the bill the cart showed", () => {
+    expect(report.item).toBe("Country Delight Buffalo Fresh Milk");
+    expect(report.bill.currency).toBe("INR");
+    expect(report.bill.firstPrice).toBe(52);
+    expect(report.bill.total).toBe(79);
+    expect(report.bill.increase).toBe(27);
+    expect(report.bill.addsUp).toBe(true);
+    expect(report.bill.charges.map(({ name, amount }) => [name, amount])).toEqual([
+      ["Delivery charge", 25],
+      ["Handling charge", 2],
+    ]);
+  });
+
+  it("finds drip pricing with proof and stops honestly at the login wall", () => {
+    const drip = pattern(report, "drip_pricing");
+
+    expect(drip.status).toBe("found");
+    expect(drip.proof).toBe("verified");
+    expect(drip.step).toBe(3);
+    expect(drip.screenshot?.action).toBe("Get full cart and bill details");
+    expect(report.stop.at).toBe("login_wall");
+    expect(report.priceLabel).toBe("price_before_sign_in");
+    expect(report.login.offerSignIn).toBe(true);
+  });
+
+  it("says the payment page was out of reach, and does not blame the bill", () => {
+    const saas = pattern(report, "saas_billing");
+
+    expect(saas.status).toBe("not_checked");
+    expect(saas.note).toMatch(/payment page/i);
+    expect(saas.note).not.toMatch(/bill/i);
+  });
+
+  it("flags that the agent changed its browser to get past a block", () => {
+    expect(report.flags.map((flag) => flag.kind)).toEqual(["browser_changed"]);
+  });
+
+  it("gives every page its own working screenshot", () => {
+    const shots = report.pages.map((page) => page.screenshot?.stepId);
+
+    expect(new Set(shots).size).toBe(4);
+  });
+});
+
+describe("currency", () => {
+  it.each([
+    ["\u20B9", "INR"],
+    ["INR", "INR"],
+    ["INR (\u20B9)", "INR"],
+    ["Rs", "INR"],
+    ["$", "USD"],
+    ["USD", "USD"],
+  ])("reads %s as %s", (written, code) => {
+    const report = judge("blinkit-3", "checkout", (run) => {
+      if (run.result) run.result["currency"] = written;
+    });
+
+    expect(report.bill.currency).toBe(code);
+  });
+
+  it("does not guess at a currency it cannot read", () => {
+    const report = judge("blinkit-3", "checkout", (run) => {
+      if (run.result) run.result["currency"] = "credits";
+    });
+
+    expect(report.bill.currency).toBeNull();
+  });
+});
+
 describe("login walls", () => {
   it("never gives a clean report when the site hides its fees", () => {
     const report = judge("zomato");

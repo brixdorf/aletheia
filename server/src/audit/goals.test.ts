@@ -112,6 +112,10 @@ describe("buildGoal", () => {
     expect(text).toMatch(/plan_options/);
   });
 
+  it("asks for the currency as a code", () => {
+    expect(goal()).toMatch(/three-letter code/i);
+  });
+
   it("names no site in the rules", () => {
     const text = `${goal()} ${goal({ flow: "subscription" })}`;
 

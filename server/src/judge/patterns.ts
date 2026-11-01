@@ -352,11 +352,13 @@ export const PATTERNS: readonly Definition[] = [
 
 function unreachedNote(context: PatternContext, needs: Reach): string {
   if (context.reach === "none") return "The run returned no pages to judge.";
-  if (context.stop === "login_wall") {
-    return "The site asked for sign-in before this point, so its price and bill stayed out of view.";
+  if (needs === "payment") {
+    return context.stop === "login_wall"
+      ? "Sign-in stopped the run before the payment page."
+      : "The payment page was not reached.";
   }
-  return needs === "payment"
-    ? "The payment page was not reached."
+  return context.stop === "login_wall"
+    ? "The site asked for sign-in before this point, so its price and bill stayed out of view."
     : "The run stopped before the page where this appears.";
 }
 

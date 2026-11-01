@@ -208,8 +208,19 @@ function stopPoint(raw: z.infer<typeof resultSchema>): StopPoint {
   return raw.stopped_at ? "incomplete" : legacyStop(raw);
 }
 
+const CURRENCY_SYMBOLS: readonly (readonly [RegExp, string])[] = [
+  [/\u20B9|^rs\.?$/i, "INR"],
+  [/\$/, "USD"],
+  [/\u20AC/, "EUR"],
+  [/\u00A3/, "GBP"],
+];
+
+/** Agents write the code on some runs and the symbol on others. */
 function currencyCode(value: string | null | undefined): string | null {
-  return value?.match(/[A-Z]{3}/)?.[0] ?? null;
+  if (!value) return null;
+  const code = value.match(/\b[A-Z]{3}\b/)?.[0];
+  if (code) return code;
+  return CURRENCY_SYMBOLS.find(([symbol]) => symbol.test(value.trim()))?.[1] ?? null;
 }
 
 export function parseEvidence(result: Record<string, unknown> | null): Evidence | null {
