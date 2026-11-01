@@ -1,62 +1,125 @@
-export function App() {
+import { useEffect, useRef } from "react";
+
+import { Link, Notice, usePageTitle } from "./components/ui.tsx";
+import { useRoute } from "./lib/useRoute.ts";
+import { AuditPage, SharedPage } from "./pages/AuditPage.tsx";
+import { ComparePage } from "./pages/ComparePage.tsx";
+import { Dashboard } from "./pages/Dashboard.tsx";
+import { NewAudit } from "./pages/NewAudit.tsx";
+
+function NotFound() {
+  usePageTitle("Page not found");
   return (
-    <div className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-6 px-4 py-6 sm:px-8 sm:py-10">
-      <header className="flex flex-col gap-4">
-        <h1 className="font-stencil text-[clamp(3.25rem,18.5vw,15rem)] leading-[0.82] tracking-[-0.015em] uppercase">
-          Aletheia
-        </h1>
-        <p className="max-w-3xl text-xl leading-snug sm:text-2xl">
-          Which banned dark patterns does this site use? Aletheia checks, and shows the proof.
-        </p>
+    <Notice
+      title="There is nothing at this address"
+      level="h1"
+      action={
+        <Link className="button" href="/">
+          Back to your audits
+        </Link>
+      }
+    >
+      The link may be old, or the audit may have been deleted.
+    </Notice>
+  );
+}
+
+function Page() {
+  const { href, route } = useRoute();
+  switch (route.name) {
+    case "dashboard":
+      return <Dashboard />;
+    case "new":
+      return <NewAudit key={href} prefill={route} />;
+    case "audit":
+      return <AuditPage key={route.id} id={route.id} />;
+    case "shared":
+      return <SharedPage key={route.token} token={route.token} />;
+    case "compare":
+      return <ComparePage key={href} ids={route.ids} />;
+    case "not_found":
+      return <NotFound />;
+  }
+}
+
+export function App() {
+  const { href, route } = useRoute();
+  const main = useRef<HTMLElement>(null);
+  const firstPage = useRef(true);
+
+  useEffect(() => {
+    if (firstPage.current) {
+      firstPage.current = false;
+      return;
+    }
+    // A client-side page change does not move focus, so screen readers would stay on the old link.
+    main.current?.focus({ preventScroll: true });
+  }, [href]);
+
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-10 focus:bg-sheet focus:p-2"
+      >
+        Skip to the content
+      </a>
+      <header className="border-b border-rule">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-3 sm:px-8">
+          <Link
+            href="/"
+            aria-label="Aletheia, your audits"
+            className="-ml-1 inline-flex min-h-11 items-center px-1 font-stencil text-3xl tracking-tight uppercase hover:text-muted"
+          >
+            Aletheia
+          </Link>
+          <nav aria-label="Main">
+            <ul className="flex items-center gap-5">
+              <li>
+                <Link
+                  href="/"
+                  className="link inline-flex min-h-11 items-center"
+                  aria-current={route.name === "dashboard" ? "page" : undefined}
+                >
+                  Your audits
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/new"
+                  className="link inline-flex min-h-11 items-center"
+                  aria-current={route.name === "new" ? "page" : undefined}
+                >
+                  New audit
+                </Link>
+              </li>
+            </ul>
+          </nav>
+        </div>
       </header>
 
-      <main className="grid flex-1 gap-6 lg:grid-cols-[3fr_2fr]">
-        <section
-          aria-labelledby="banned-heading"
-          className="flex flex-col gap-6 rounded-[26px] bg-orange px-6 py-8 sm:px-8"
-        >
-          <p
-            aria-hidden="true"
-            className="font-stencil text-[clamp(9rem,20vw,14rem)] leading-[0.85] tracking-[-0.02em]"
-          >
-            13
-          </p>
-          <div className="mt-auto flex flex-col gap-3">
-            <h2
-              id="banned-heading"
-              className="font-stencil text-3xl leading-tight uppercase sm:text-4xl"
-            >
-              <span className="sr-only">13 </span>Dark patterns banned in India
-            </h2>
-            <p className="max-w-2xl text-lg leading-normal">
-              India's Central Consumer Protection Authority named them in its 2023 guidelines. They
-              cover every platform selling to people in India, including international companies.
-            </p>
-          </div>
-        </section>
-
-        <section
-          aria-labelledby="agent-heading"
-          className="flex flex-col gap-3 rounded-[26px] bg-teal px-6 py-8 text-bone sm:px-8 lg:justify-end"
-        >
-          <h2 id="agent-heading" className="font-stencil text-3xl leading-tight uppercase">
-            A TinyFish agent walks the site
-          </h2>
-          <p className="text-lg leading-normal">
-            It goes through checkout or sign-up like a real customer, stops before payment, and
-            reports what it saw.
-          </p>
-        </section>
+      <main
+        id="main"
+        ref={main}
+        tabIndex={-1}
+        className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 outline-none sm:px-8 sm:py-10"
+      >
+        <Page />
       </main>
 
-      <footer className="flex flex-wrap items-center justify-between gap-x-6 font-label text-lg font-bold tracking-[0.06em] uppercase">
-        <p>The audit form is not open yet</p>
-        <a
-          className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-teal active:opacity-70"
-          href="https://github.com/brixdorf/aletheia"
-        >
-          Source on GitHub
-        </a>
+      <footer className="border-t border-rule">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-8 gap-y-1 px-4 py-3 text-sm text-muted sm:px-8">
+          <p>
+            Checks the 13 dark patterns in India's 2023 CCPA guidelines. The agent stops before
+            payment.
+          </p>
+          <a
+            className="link inline-flex min-h-11 items-center"
+            href="https://github.com/brixdorf/aletheia"
+          >
+            Source on GitHub
+          </a>
+        </div>
       </footer>
     </div>
   );
