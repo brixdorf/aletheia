@@ -32,6 +32,7 @@ export const openRemoteScreen: OpenScreen = async (cdpUrl, url) => {
 
   let page: Page = context.pages()[0] ?? (await context.newPage());
   let session: CDPSession | undefined;
+  let latest: Frame | undefined;
 
   const showPage = async (next: Page) => {
     await session?.detach().catch(() => undefined);
@@ -39,6 +40,7 @@ export const openRemoteScreen: OpenScreen = async (cdpUrl, url) => {
     const cdp = await context.newCDPSession(next);
     cdp.on("Page.screencastFrame", ({ data, metadata, sessionId }) => {
       const frame = { data, width: metadata.deviceWidth, height: metadata.deviceHeight };
+      latest = frame;
       for (const listener of listeners) listener(frame);
       cdp.send("Page.screencastFrameAck", { sessionId }).catch(() => undefined);
     });
@@ -63,8 +65,10 @@ export const openRemoteScreen: OpenScreen = async (cdpUrl, url) => {
   }
 
   return {
+    // Chrome only sends a frame on repaint, so a still page would stay blank for a late watcher.
     onFrame(listener) {
       listeners.add(listener);
+      if (latest) listener(latest);
       return () => listeners.delete(listener);
     },
     click: (x, y) => page.mouse.click(x, y),
@@ -73,6 +77,7 @@ export const openRemoteScreen: OpenScreen = async (cdpUrl, url) => {
     scroll: (dx, dy) => page.mouse.wheel(dx, dy),
     async close() {
       listeners.clear();
+      latest = undefined;
       await browser.close().catch(() => undefined);
     },
   };
