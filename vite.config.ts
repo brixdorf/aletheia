@@ -9,6 +9,10 @@ export default defineConfig({
   },
   run: {
     cache: true,
+    tasks: {
+      // Never cached: a replay would report a wipe that did not happen. Env reaches only uncached tasks.
+      wipe: { command: "node --env-file-if-exists=.env server/src/wipe.ts", cache: false },
+    },
   },
   test: {
     include: ["server/src/**/*.test.ts", "web/src/**/*.test.{ts,tsx}"],
