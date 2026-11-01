@@ -83,11 +83,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "name",
-            "amount",
-            "first_seen_at_step"
-          ],
+          "required": ["name", "amount", "first_seen_at_step"],
           "properties": {
             "name": {
               "type": "string"
@@ -106,13 +102,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "step",
-            "page",
-            "url",
-            "total_shown",
-            "note"
-          ],
+          "required": ["step", "page", "url", "total_shown", "note"],
           "properties": {
             "url": {
               "type": "string",
@@ -170,10 +160,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "text",
-            "seen_at_step"
-          ],
+          "required": ["text", "seen_at_step"],
           "properties": {
             "text": {
               "type": "string"
@@ -188,11 +175,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "label",
-            "cost",
-            "seen_at_step"
-          ],
+          "required": ["label", "cost", "seen_at_step"],
           "properties": {
             "cost": {
               "type": "number",
@@ -211,11 +194,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "name",
-            "cost",
-            "seen_at_step"
-          ],
+          "required": ["name", "cost", "seen_at_step"],
           "properties": {
             "cost": {
               "type": "number",

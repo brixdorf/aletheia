@@ -213,12 +213,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "name",
-            "amount",
-            "first_seen_at_step",
-            "included_in_first_price"
-          ],
+          "required": ["name", "amount", "first_seen_at_step", "included_in_first_price"],
           "properties": {
             "name": {
               "type": "string"
@@ -244,13 +239,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "step",
-            "page",
-            "url",
-            "price_shown",
-            "note"
-          ],
+          "required": ["step", "page", "url", "price_shown", "note"],
           "properties": {
             "url": {
               "type": "string",
@@ -277,21 +266,10 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "term",
-            "quote",
-            "shown_where",
-            "seen_at_step"
-          ],
+          "required": ["term", "quote", "shown_where", "seen_at_step"],
           "properties": {
             "term": {
-              "enum": [
-                "trial",
-                "renewal",
-                "price_after_intro",
-                "cancellation",
-                "cancellation_fee"
-              ],
+              "enum": ["trial", "renewal", "price_after_intro", "cancellation", "cancellation_fee"],
               "type": "string"
             },
             "quote": {
@@ -299,12 +277,7 @@
               "nullable": true
             },
             "shown_where": {
-              "enum": [
-                "main_page",
-                "fine_print",
-                "info_icon",
-                "not_shown"
-              ],
+              "enum": ["main_page", "fine_print", "info_icon", "not_shown"],
               "type": "string"
             },
             "seen_at_step": {
@@ -363,13 +336,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "pattern",
-            "status",
-            "quote",
-            "seen_at_step",
-            "note"
-          ],
+          "required": ["pattern", "status", "quote", "seen_at_step", "note"],
           "properties": {
             "note": {
               "type": "string",
@@ -380,11 +347,7 @@
               "nullable": true
             },
             "status": {
-              "enum": [
-                "found",
-                "not_found",
-                "not_checked"
-              ],
+              "enum": ["found", "not_found", "not_checked"],
               "type": "string"
             },
             "pattern": {
@@ -426,10 +389,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "text",
-            "seen_at_step"
-          ],
+          "required": ["text", "seen_at_step"],
           "properties": {
             "text": {
               "type": "string"
@@ -448,12 +408,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "label",
-            "cost",
-            "included_in_total",
-            "seen_at_step"
-          ],
+          "required": ["label", "cost", "included_in_total", "seen_at_step"],
           "properties": {
             "cost": {
               "type": "number",
@@ -475,11 +430,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "name",
-            "cost",
-            "seen_at_step"
-          ],
+          "required": ["name", "cost", "seen_at_step"],
           "properties": {
             "cost": {
               "type": "number",

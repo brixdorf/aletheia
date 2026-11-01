@@ -104,11 +104,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "name",
-            "amount",
-            "first_seen_at_step"
-          ],
+          "required": ["name", "amount", "first_seen_at_step"],
           "properties": {
             "name": {
               "type": "string"
@@ -127,13 +123,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "step",
-            "page",
-            "url",
-            "total_shown",
-            "note"
-          ],
+          "required": ["step", "page", "url", "total_shown", "note"],
           "properties": {
             "url": {
               "type": "string",
@@ -168,13 +158,7 @@
         "nullable": true
       },
       "stopped_at": {
-        "enum": [
-          "incomplete",
-          "payment_page",
-          "login_wall",
-          "blocked",
-          "error"
-        ],
+        "enum": ["incomplete", "payment_page", "login_wall", "blocked", "error"],
         "type": "string"
       },
       "final_price": {
@@ -202,10 +186,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "text",
-            "seen_at_step"
-          ],
+          "required": ["text", "seen_at_step"],
           "properties": {
             "text": {
               "type": "string"
@@ -220,10 +201,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "name",
-            "price"
-          ],
+          "required": ["name", "price"],
           "properties": {
             "name": {
               "type": "string"
@@ -239,12 +217,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "label",
-            "cost",
-            "included_in_total",
-            "seen_at_step"
-          ],
+          "required": ["label", "cost", "included_in_total", "seen_at_step"],
           "properties": {
             "cost": {
               "type": "number",
@@ -266,11 +239,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "name",
-            "cost",
-            "seen_at_step"
-          ],
+          "required": ["name", "cost", "seen_at_step"],
           "properties": {
             "cost": {
               "type": "number",
