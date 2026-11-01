@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { ApiError } from "../errors.ts";
+import { TinyFishError } from "../tinyfish/client.ts";
 import type { Frame, RemoteScreen } from "./remoteScreen.ts";
 import type { SignInClient } from "./service.ts";
 import { SignInService } from "./service.ts";
@@ -131,6 +132,20 @@ describe("SignInService", () => {
     expect(screen.close).toHaveBeenCalledOnce();
     expect(view.state).toBe("ready");
     expect(signIns.claim("visitor", id)).toBe("prof_1");
+  });
+
+  it("keeps the session open when Done is pressed before there is anything to save", async () => {
+    client.saveSetup.mockRejectedValueOnce(new TinyFishError("nothing captured", 409));
+    const signIns = service();
+    const { id } = await signIns.start("visitor", URL_LOGIN);
+
+    const error = await signIns.done("visitor", id).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).code).toBe("sign_in_not_ready");
+    expect(screen.close).not.toHaveBeenCalled();
+    expect(signIns.view("visitor", id).state).toBe("setting_up");
+    await expect(signIns.done("visitor", id)).resolves.toMatchObject({ state: "ready" });
   });
 
   it("lasts for one check only", async () => {

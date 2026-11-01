@@ -1,4 +1,4 @@
-import { TinyFish } from "@tiny-fish/sdk";
+import { ConflictError, TinyFish } from "@tiny-fish/sdk";
 
 import type { RunRecord } from "./types.ts";
 import { parseRunRecord } from "./types.ts";
@@ -138,10 +138,16 @@ export class TinyFishClient {
   }
 
   async saveSetup(profileId: string, sessionId: string, site: string): Promise<void> {
-    await this.#sdk.profiles.setup.save(profileId, {
-      session_id: sessionId,
-      signed_in_sites: [site],
-    });
+    try {
+      await this.#sdk.profiles.setup.save(profileId, {
+        session_id: sessionId,
+        signed_in_sites: [site],
+      });
+    } catch (error) {
+      // TinyFish keeps the browser open on a 409, so the person can finish and press Done again.
+      if (error instanceof ConflictError) throw new TinyFishError(error.message, 409);
+      throw error;
+    }
   }
 
   async cancelSetup(profileId: string, sessionId: string): Promise<void> {

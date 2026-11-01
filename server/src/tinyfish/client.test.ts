@@ -247,6 +247,17 @@ describe("TinyFishClient", () => {
     expect(seen[2]?.path).toBe("/v1/profiles/prof_1/setup-session/cancel");
   });
 
+  it("reports a save with nothing to capture as a typed conflict", async () => {
+    handler = json(409, { error: { code: "RETRY_REQUIRED", message: "No savable browser state" } });
+
+    const error = await client()
+      .saveSetup("prof_1", "sess_1", "example.test")
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(TinyFishError);
+    expect((error as TinyFishError).status).toBe(409);
+  });
+
   it("raises a typed error without the key in it", async () => {
     handler = json(401, { error: { code: "INVALID_API_KEY", message: "bad key" } });
 

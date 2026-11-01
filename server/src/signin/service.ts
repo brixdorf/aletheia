@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { ApiError } from "../errors.ts";
 import { readJson, writeJson } from "../store/jsonFile.ts";
 import type { SetupSession } from "../tinyfish/client.ts";
+import { TinyFishError } from "../tinyfish/client.ts";
 import type { Frame, OpenScreen, RemoteScreen } from "./remoteScreen.ts";
 
 export interface SignInClient {
@@ -137,7 +138,14 @@ export class SignInService {
     const record = this.#owned(visitorId, id);
     if (record.state !== "setting_up") return this.#view(record);
 
-    await this.#deps.client.saveSetup(record.profileId, record.sessionId, record.host);
+    try {
+      await this.#deps.client.saveSetup(record.profileId, record.sessionId, record.host);
+    } catch (error) {
+      if (error instanceof TinyFishError && error.status === 409) {
+        throw new ApiError("sign_in_not_ready", "Finish signing in, then press Done again.");
+      }
+      throw error;
+    }
     await this.#closeScreen(id);
     record.state = "ready";
     record.savedAt = this.#now();
