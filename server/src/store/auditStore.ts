@@ -4,6 +4,9 @@ import { join } from "node:path";
 import type { Audit } from "../audit/types.ts";
 import { readJson, writeJson } from "./jsonFile.ts";
 
+const REMOVE_RETRIES = 5;
+const REMOVE_RETRY_DELAY_MS = 50;
+
 /** One folder per audit under DATA_DIR, so deleting an audit deletes everything it made. */
 export class AuditStore {
   readonly #root: string;
@@ -32,11 +35,13 @@ export class AuditStore {
   async save(audit: Audit): Promise<void> {
     this.#audits.set(audit.id, audit);
     await writeJson(join(this.#root, audit.id, "audit.json"), audit);
+    // A delete can land while this write is on its way, and deleted has to stay deleted.
+    if (!this.#audits.has(audit.id)) await this.#removeFolder(audit.id);
   }
 
   async remove(id: string): Promise<void> {
     this.#audits.delete(id);
-    await rm(join(this.#root, id), { recursive: true, force: true });
+    await this.#removeFolder(id);
   }
 
   async readScreenshot(id: string, stepId: string): Promise<Uint8Array | null> {
@@ -48,6 +53,15 @@ export class AuditStore {
     const path = this.#shotPath(id, stepId);
     await mkdir(join(this.#root, id, "screenshots"), { recursive: true });
     await writeFile(path, image);
+  }
+
+  async #removeFolder(id: string): Promise<void> {
+    await rm(join(this.#root, id), {
+      recursive: true,
+      force: true,
+      maxRetries: REMOVE_RETRIES,
+      retryDelay: REMOVE_RETRY_DELAY_MS,
+    });
   }
 
   #shotPath(id: string, stepId: string): string {
