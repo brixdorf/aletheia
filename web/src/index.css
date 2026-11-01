@@ -1,0 +1,31 @@
+@import "tailwindcss";
+@import "@fontsource/stardos-stencil/700.css";
+@import "@fontsource/barlow-condensed/700.css";
+@import "@fontsource-variable/public-sans/wght.css";
+
+@theme {
+  --color-bone: #e2dcc9;
+  --color-ink: #0a0a0a;
+  --color-orange: #ee7a2e;
+  /* Darker than the deck's #2D7E73 so bone body text clears 4.5:1. */
+  --color-teal: #256b61;
+
+  --font-stencil: "Stardos Stencil", serif;
+  --font-label: "Barlow Condensed", sans-serif;
+  --font-body: "Public Sans Variable", sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-bone font-body text-ink;
+  }
+
+  a[href] {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-ink);
+    outline-offset: 3px;
+  }
+}
