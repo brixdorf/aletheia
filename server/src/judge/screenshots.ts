@@ -45,7 +45,7 @@ export function locateScreenshots(
 
   const pageSets = pages.map(pageWords);
   // best[p][a]: top score for pages p.. when page p may use actions a.. onward.
-  const best = pageSets.map(() => new Array<number>(shots.length + 1).fill(0));
+  const best = pageSets.map(() => Array.from({ length: shots.length + 1 }, () => 0));
   for (let p = pages.length - 1; p >= 0; p -= 1) {
     const row = best[p] as number[];
     const next = best[p + 1];
