@@ -10,7 +10,7 @@ function exact(amount: number, currency: string | null): string {
 }
 
 /** The bill card that sits in the pastel panel. The card runs off the panel's bottom edge. */
-export function Receipt({ report }: { report: SiteReport }) {
+export function Receipt({ report, Heading }: { report: SiteReport; Heading: "h2" | "h3" }) {
   const { bill, priceLabel, item } = report;
   const lines = billLines(bill);
   const said = totalLine(report);
@@ -18,7 +18,7 @@ export function Receipt({ report }: { report: SiteReport }) {
   if (lines.length === 0) {
     return (
       <div className="card flex-1 rounded-b-none px-6 py-8 text-center">
-        <h3 className="text-lg">The bill</h3>
+        <Heading className="text-lg">The bill</Heading>
         <p className="mt-1 text-mute">The agent never reached a price on this site.</p>
       </div>
     );
@@ -27,7 +27,7 @@ export function Receipt({ report }: { report: SiteReport }) {
   return (
     <div className="card flex-1 rounded-b-none border-b-0 px-4 pt-6 pb-5 sm:px-[26px] sm:pt-[26px] sm:pb-[22px]">
       <div className="text-center">
-        <h3 className="sr-only">The bill</h3>
+        <Heading className="sr-only">The bill</Heading>
         <div className="mb-2 flex justify-center">
           <Pill {...billPill(report)} className="whitespace-normal" />
         </div>

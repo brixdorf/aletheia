@@ -18,7 +18,7 @@ const EVIDENCE = [
     place: "float-2",
   },
   { where: "Zomato bill", what: "Platform fee Rs 14.99", place: "float-3" },
-  { where: "Croma cart", what: "Rs 549 shown, Rs 549 to pay", place: "float-4" },
+  { where: "Croma cart", what: "Rs 549 shown, Rs 549 before sign-in", place: "float-4" },
 ];
 
 const TESTED = ["blinkit.com", "zomato.com", "croma.com", "adobe.com/in", "flipkart.com"];

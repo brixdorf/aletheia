@@ -37,7 +37,7 @@ export function ComparisonTable({
   const [patternsShown, setPatternsShown] = useState(!foldPatterns);
 
   return (
-    <section aria-labelledby="comparison-title" className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4">
       <div>
         <Heading id="comparison-title" className="text-[28px]/[1.1] sm:text-[34px]/[1.1]">
           Side by side
@@ -75,7 +75,7 @@ export function ComparisonTable({
                       <SiteAvatar host={column.host} />
                       <div>
                         <Link
-                          className="text-base font-semibold text-ink hover:underline hover:underline-offset-4"
+                          className="inline-flex min-h-6 items-center text-base font-semibold text-ink hover:underline hover:underline-offset-4"
                           href={linkFor(column)}
                         >
                           {siteName(column.host)}

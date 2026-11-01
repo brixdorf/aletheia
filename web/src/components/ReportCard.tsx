@@ -217,7 +217,7 @@ export function ReportCard({ site, report, task, scope, press, solo }: ReportCar
         <div
           className={`overflow-hidden rounded-panel bg-linear-to-b px-4 pt-8 sm:px-12 sm:pt-11 ${PANEL[told.tone]}`}
         >
-          <Receipt report={report} />
+          <Receipt report={report} Heading={solo ? "h2" : "h3"} />
         </div>
         <FindingCopy
           told={told}

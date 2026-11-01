@@ -50,11 +50,11 @@ function Amount({ site, detail }: { site: SummarySite; detail: SiteView | null }
       <span className="flex items-baseline justify-end gap-1.5 text-base font-semibold whitespace-nowrap text-ink sm:gap-2 sm:text-lg">
         {from === null ? null : (
           <>
-            <s className="num font-medium text-mute decoration-1 sm:text-faint">
+            <s className="num font-medium text-mute decoration-1">
               <span className="sr-only">Shown as </span>
               <Money amount={from} currency={currency} plain />
             </s>
-            <span aria-hidden="true" className="font-normal text-faint">
+            <span aria-hidden="true" className="font-normal text-mute">
               &rarr;
             </span>
           </>

@@ -9,7 +9,6 @@
   --color-body: #4b5563;
   --color-mute: #6b7280;
   /* Large figures and decoration only: this grey reaches 3:1 on white, not 4.5:1. */
-  --color-faint: #8a919c;
   --color-line: #e6e8ec;
   --color-wash: #f7f8fa;
   --color-graphite: #1f2023;
@@ -187,7 +186,7 @@
   }
 
   .cents {
-    color: var(--color-faint);
+    color: var(--color-mute);
   }
 
   /* One word per headline, in the serif, filled with the multicolour gradient. */
@@ -383,8 +382,10 @@
     @apply mx-auto mt-8 flex max-w-[680px] flex-col gap-2 rounded-[28px] border border-line bg-white p-3 text-left shadow-card sm:mt-10 sm:flex-row sm:items-center sm:gap-2.5 sm:rounded-full sm:py-[9px] sm:pr-[9px] sm:pl-[26px];
   }
 
-  .audit-bar:focus-within {
-    border-color: var(--color-dash);
+  /* The inputs have no border of their own, so the whole bar shows where the focus is. */
+  .audit-bar:has(input:focus-visible) {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
   }
 
   .audit-bar-fields {
@@ -404,7 +405,7 @@
   }
 
   .audit-bar-site::placeholder {
-    color: var(--color-faint);
+    color: var(--color-mute);
   }
 
   .audit-bar-task {
@@ -417,7 +418,7 @@
   }
 
   .audit-bar-slash {
-    @apply hidden pr-2 text-2xl text-faint sm:block;
+    @apply hidden pr-2 text-2xl text-mute sm:block;
   }
 
   .audit-row {

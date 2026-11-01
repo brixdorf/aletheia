@@ -98,7 +98,7 @@ export function PatternList({ report, siteId, scope, press, told }: PatternListP
                     <StatusPill status={row.status} {...(press ? { popOrder: index } : {})} />
                     <span
                       aria-hidden="true"
-                      className="text-faint transition-transform group-open:rotate-90"
+                      className="text-mute transition-transform group-open:rotate-90"
                     >
                       <Chevron size={14} />
                     </span>
