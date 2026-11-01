@@ -1,0 +1,171 @@
+import { TinyFish } from "@tiny-fish/sdk";
+
+import type { RunRecord } from "./types.ts";
+import { parseRunRecord } from "./types.ts";
+
+const BASE_URL = "https://agent.tinyfish.ai";
+const SETUP_TIMEOUT_SECONDS = 900;
+// The runner enforces its own deadline. This only stops the sdk cutting a long stream first.
+const SDK_TIMEOUT_MS = 40 * 60 * 1000;
+
+export class TinyFishError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+
+  constructor(message: string, status: number, code: string | null = null) {
+    super(message);
+    this.name = "TinyFishError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+export interface RunRequest {
+  url: string;
+  goal: string;
+  maxDurationSeconds: number;
+  profileId?: string | undefined;
+  outputSchema?: Record<string, unknown> | undefined;
+}
+
+export type RunEvent =
+  | { type: "started"; runId: string }
+  | { type: "live"; runId: string; streamingUrl: string }
+  | { type: "progress"; runId: string; text: string; at: string }
+  | { type: "complete"; runId: string; status: RunRecord["status"] };
+
+export interface SetupSession {
+  sessionId: string;
+  cdpUrl: string;
+  expiresAt: string;
+}
+
+export interface ClientOptions {
+  apiKey: string;
+  baseUrl?: string;
+}
+
+export class TinyFishClient {
+  readonly #apiKey: string;
+  readonly #baseUrl: string;
+  readonly #sdk: TinyFish;
+
+  constructor({ apiKey, baseUrl = BASE_URL }: ClientOptions) {
+    this.#apiKey = apiKey;
+    this.#baseUrl = baseUrl;
+    // No retries: a retried start is a second billed run in a second browser.
+    this.#sdk = new TinyFish({ apiKey, baseURL: baseUrl, maxRetries: 0, timeout: SDK_TIMEOUT_MS });
+  }
+
+  async *streamRun(request: RunRequest, signal?: AbortSignal): AsyncGenerator<RunEvent> {
+    const stream = await this.#sdk.agent.stream(
+      {
+        url: request.url,
+        goal: request.goal,
+        browser_profile: "stealth",
+        proxy_config: { enabled: true, country_code: "IN" },
+        agent_config: { max_duration_seconds: request.maxDurationSeconds },
+        ...(request.outputSchema ? { output_schema: request.outputSchema } : {}),
+        ...(request.profileId ? { use_profile: true, profile_id: request.profileId } : {}),
+      },
+      signal ? { signal } : {},
+    );
+
+    for await (const event of stream) {
+      switch (event.type) {
+        case "STARTED":
+          yield { type: "started", runId: event.run_id };
+          break;
+        case "STREAMING_URL":
+          yield { type: "live", runId: event.run_id, streamingUrl: event.streaming_url };
+          break;
+        case "PROGRESS":
+          yield { type: "progress", runId: event.run_id, text: event.purpose, at: event.timestamp };
+          break;
+        case "COMPLETE":
+          yield { type: "complete", runId: event.run_id, status: event.status };
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  /** Reads the record directly, because the sdk's `runs.get` drops the `steps` array. */
+  async getRun(runId: string): Promise<RunRecord> {
+    const response = await this.#request("GET", `/v1/runs/${encodeURIComponent(runId)}`);
+    return parseRunRecord(await response.json());
+  }
+
+  async cancelRun(runId: string): Promise<void> {
+    await this.#request("POST", `/v1/runs/${encodeURIComponent(runId)}/cancel`);
+  }
+
+  async getScreenshot(runId: string, stepId: string): Promise<Uint8Array> {
+    const path = `/v1/runs/${encodeURIComponent(runId)}/steps/${encodeURIComponent(stepId)}/screenshot`;
+    const response = await this.#request("GET", path);
+    return new Uint8Array(await response.arrayBuffer());
+  }
+
+  async createProfile(name: string): Promise<string> {
+    const response = await this.#request("POST", "/v1/profiles", {
+      name,
+      proxy_country_code: "IN",
+    });
+    const { id } = (await response.json()) as { id: string };
+    return id;
+  }
+
+  async deleteProfile(profileId: string): Promise<void> {
+    try {
+      await this.#request("DELETE", `/v1/profiles/${encodeURIComponent(profileId)}`);
+    } catch (error) {
+      if (error instanceof TinyFishError && error.status === 404) return;
+      throw error;
+    }
+  }
+
+  async startSetup(profileId: string, url: string): Promise<SetupSession> {
+    const session = await this.#sdk.profiles.setup.start(profileId, {
+      url,
+      timeout_seconds: SETUP_TIMEOUT_SECONDS,
+    });
+    return {
+      sessionId: session.session_id,
+      cdpUrl: session.cdp_url,
+      expiresAt: session.expires_at,
+    };
+  }
+
+  async saveSetup(profileId: string, sessionId: string, site: string): Promise<void> {
+    await this.#sdk.profiles.setup.save(profileId, {
+      session_id: sessionId,
+      signed_in_sites: [site],
+    });
+  }
+
+  async cancelSetup(profileId: string, sessionId: string): Promise<void> {
+    await this.#sdk.profiles.setup.cancel(profileId, { session_id: sessionId });
+  }
+
+  async #request(method: string, path: string, body?: unknown): Promise<Response> {
+    const response = await fetch(`${this.#baseUrl}${path}`, {
+      method,
+      headers: {
+        "X-API-Key": this.#apiKey,
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    if (response.ok) return response;
+
+    const detail = (await response.json().catch(() => null)) as {
+      error?: { code?: string; message?: string };
+    } | null;
+    throw new TinyFishError(
+      detail?.error?.message ?? `TinyFish answered ${response.status}`,
+      response.status,
+      detail?.error?.code ?? null,
+    );
+  }
+}
