@@ -22,7 +22,7 @@ describe("htmlToText", () => {
 describe("checkQuote", () => {
   const page = htmlToText(
     `<div>Fee applies of <span>half your remaining</span> annual commitment</div>
-     <button>No, I’ll risk it</button><p>Only <b>2</b> left 2013 hurry</p><p>₹ 1,199.00/mo</p>`,
+     <button>No, I’ll risk it</button><p>Only <b>2</b> left – hurry</p><p>₹ 1,199.00/mo</p>`,
   );
 
   it("matches wording split across tags and lines", () => {
