@@ -1,6 +1,21 @@
 /** Matches the most sites the server takes in one audit. */
 export const MAX_SITES = 4;
 
+const TONES = 5;
+
+/** A readable name for any host: "www.adobe.com" gives "Adobe". */
+export function siteName(host: string): string {
+  const name = host.replace(/^www\./, "").split(".")[0] ?? host;
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/** Picks one of the avatar tints, the same one every time for a host. */
+export function avatarTone(host: string): number {
+  let sum = 0;
+  for (const char of host) sum += char.codePointAt(0) ?? 0;
+  return sum % TONES;
+}
+
 export interface PlannedSite {
   url: string;
   host: string;

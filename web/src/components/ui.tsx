@@ -1,8 +1,12 @@
 import type { AnchorHTMLAttributes, CSSProperties, MouseEvent, ReactNode } from "react";
 import { useEffect } from "react";
 
+import { moneyParts } from "../lib/format.ts";
+import { avatarTone, siteName } from "../lib/sites.ts";
+import type { Pill as PillValue } from "../lib/story.ts";
 import type { PatternStatus } from "../lib/types.ts";
 import { navigate } from "../lib/useRoute.ts";
+import { Check } from "./icons.tsx";
 
 export function Link({ href, onClick, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) {
   function follow(event: MouseEvent<HTMLAnchorElement>) {
@@ -15,28 +19,92 @@ export function Link({ href, onClick, ...props }: AnchorHTMLAttributes<HTMLAncho
   return <a href={href} onClick={follow} {...props} />;
 }
 
-const STAMP: Record<PatternStatus, { text: string; className: string }> = {
-  found: { text: "Found", className: "stamp-found" },
-  not_found: { text: "Not found", className: "stamp-not-found" },
-  not_checked: { text: "Not checked", className: "stamp-not-checked" },
-};
-
-interface StampProps {
-  status: PatternStatus;
-  className?: string;
-  /** Position among the stamps landing together, so they fall one after another. */
-  pressOrder?: number;
+export function Pill({ tone, text, className = "" }: PillValue & { className?: string }) {
+  return (
+    <span className={`pill pill-${tone} ${className}`}>
+      {tone === "found" || tone === "live" ? <span aria-hidden="true" className="dot" /> : null}
+      {tone === "clean" ? <Check size={13} /> : null}
+      {text}
+    </span>
+  );
 }
 
-export function Stamp({ status, className = "", pressOrder }: StampProps) {
-  const { text, className: tone } = STAMP[status];
-  const pressing = status === "found" && pressOrder !== undefined;
-  const style = pressing
-    ? ({ "--stamp-delay": `${Math.min(pressOrder, 4) * 120}ms` } as CSSProperties)
+const STATUS: Record<PatternStatus, { text: string; tone: string }> = {
+  found: { text: "Found", tone: "pill-found" },
+  not_found: { text: "Not found", tone: "pill-clean" },
+  not_checked: { text: "Not checked", tone: "pill-unchecked" },
+};
+
+interface StatusPillProps {
+  status: PatternStatus;
+  /** Position among the pills landing together, so they pop one after another. */
+  popOrder?: number;
+}
+
+export function StatusPill({ status, popOrder }: StatusPillProps) {
+  const { text, tone } = STATUS[status];
+  const popping = status === "found" && popOrder !== undefined;
+  const style = popping
+    ? ({ "--pop-delay": `${Math.min(popOrder, 4) * 120}ms` } as CSSProperties)
     : undefined;
   return (
-    <span className={`stamp ${tone} ${pressing ? "stamp-press" : ""} ${className}`} style={style}>
+    <span className={`pill ${tone} ${popping ? "pop-in" : ""}`} style={style}>
       {text}
+    </span>
+  );
+}
+
+const CELL_POP_MS = 90;
+
+function stripLabel(statuses: readonly PatternStatus[]): string {
+  const of = (status: PatternStatus) => statuses.filter((entry) => entry === status).length;
+  return `${of("found")} found, ${of("not_checked")} not checked, ${of("not_found")} not found`;
+}
+
+interface PatternStripProps {
+  statuses: readonly PatternStatus[];
+  /** True when the results have just arrived, so the cells fill in one by one. */
+  fill?: boolean;
+  className?: string;
+}
+
+export function PatternStrip({ statuses, fill = false, className = "" }: PatternStripProps) {
+  return (
+    <span role="img" aria-label={stripLabel(statuses)} className={`strip ${className}`}>
+      {statuses.map((status, index) => (
+        <i
+          key={index}
+          className={`strip-cell strip-cell-${status} ${fill ? "pop-in" : ""}`}
+          style={
+            fill ? ({ "--pop-delay": `${index * CELL_POP_MS}ms` } as CSSProperties) : undefined
+          }
+        />
+      ))}
+    </span>
+  );
+}
+
+interface MoneyProps {
+  amount: number;
+  currency: string | null;
+  /** Such as "/mo", drawn in place of a zero paise part. */
+  suffix?: string;
+}
+
+export function Money({ amount, currency, suffix = "" }: MoneyProps) {
+  const { main, minor } = moneyParts(amount, currency);
+  return (
+    <span className="num">
+      {main}
+      <span className="cents">{suffix && minor === ".00" ? suffix : `${minor}${suffix}`}</span>
+    </span>
+  );
+}
+
+export function SiteAvatar({ host }: { host: string }) {
+  return (
+    <span aria-hidden="true" className={`avatar avatar-${avatarTone(host)}`}>
+      {siteName(host).charAt(0)}
     </span>
   );
 }
@@ -60,17 +128,18 @@ export function Notice({
   level?: "h1" | "h2";
 }) {
   return (
-    <div className="flex flex-col items-start gap-3 rounded-sm border border-rule bg-sheet p-6 sm:p-8">
-      <Heading className="text-xl font-semibold">{title}</Heading>
-      {children ? <div className="max-w-prose text-muted">{children}</div> : null}
-      {action}
+    <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center sm:py-16">
+      <Heading className="text-2xl">{title}</Heading>
+      {children ? <div className="max-w-md text-mute">{children}</div> : null}
+      {action ? <div className="mt-2">{action}</div> : null}
     </div>
   );
 }
 
 export function Loading({ what }: { what: string }) {
   return (
-    <p role="status" className="py-12 text-muted">
+    <p role="status" className="flex items-center justify-center gap-3 py-16 text-mute">
+      <span aria-hidden="true" className="spinner" />
       {what}
     </p>
   );
@@ -91,7 +160,7 @@ export function Failed({
         title="That did not work"
         level={level}
         action={
-          <button type="button" className="button" onClick={onRetry}>
+          <button type="button" className="btn btn-soft" onClick={onRetry}>
             Try again
           </button>
         }
@@ -100,4 +169,9 @@ export function Failed({
       </Notice>
     </div>
   );
+}
+
+/** Kept for the screens that have not moved to StatusPill yet. */
+export function Stamp({ status }: { status: PatternStatus; className?: string }) {
+  return <StatusPill status={status} />;
 }

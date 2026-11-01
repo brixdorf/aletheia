@@ -1,39 +1,68 @@
 @import "tailwindcss";
-@import "@fontsource/stardos-stencil/700.css";
-@import "@fontsource-variable/schibsted-grotesk/wght.css";
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
-@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource-variable/geist/wght.css";
+@import "@fontsource-variable/geist-mono/wght.css";
+@import "@fontsource/instrument-serif/400-italic.css";
 
 @theme {
-  --color-paper: #f5f0e6;
-  --color-sheet: #fcfaf4;
-  --color-ink: #1b1916;
-  --color-muted: #5c574d;
-  --color-rule: #d9d2c3;
-  /* Borders of controls, which need 3:1 against the paper. Never used for text. */
-  --color-edge: #8a8375;
-  --color-signal: #c2380e;
-  --color-signal-wash: #fbe9df;
-  --color-signal-deep: #a32e0a;
-  --color-live: #1f6b60;
-  --color-live-wash: #e3efea;
-  --color-clear: #47665a;
+  --color-ink: #0e2a47;
+  --color-text: #1f2937;
+  --color-body: #4b5563;
+  --color-mute: #6b7280;
+  /* Large figures and decoration only: this grey reaches 3:1 on white, not 4.5:1. */
+  --color-faint: #8a919c;
+  --color-line: #e6e8ec;
+  --color-wash: #f7f8fa;
+  --color-graphite: #1f2023;
 
-  --font-stencil: "Stardos Stencil", serif;
-  --font-sans: "Schibsted Grotesk Variable", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --color-peach: #fff2e8;
+  --color-peach-ink: #c2410c;
+  --color-peach-line: #ffdcc4;
+  --color-mint: #eafbf0;
+  --color-mint-ink: #15803d;
+  --color-mint-line: #cdefd9;
+  --color-sky: #eaf4ff;
+  --color-sky-ink: #1a67c4;
+  --color-sky-line: #d3e6fb;
+  --color-rose: #ffedef;
+  --color-rose-ink: #be123c;
+  --color-found: #e4572e;
+  --color-dash: #b4b9c1;
 
-  --animate-stamp: stamp 280ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  --font-sans: "Geist Variable", system-ui, sans-serif;
+  --font-serif: "Instrument Serif", serif;
+  --font-mono: "Geist Mono Variable", monospace;
 
-  @keyframes stamp {
+  --radius-card: 22px;
+  --radius-panel: 28px;
+
+  --shadow-card: 0 1px 2px rgb(14 42 71 / 0.06), 0 12px 32px -8px rgb(14 42 71 / 0.14);
+
+  --animate-fade-up: fade-up 320ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  --animate-toast: toast-in 260ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  --animate-pop: pop 300ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  --animate-spin-soft: spin 900ms linear infinite;
+
+  @keyframes fade-up {
     from {
       opacity: 0;
-      transform: rotate(var(--stamp-tilt)) scale(1.35);
+      translate: 0 10px;
     }
-    to {
-      opacity: 1;
-      transform: rotate(var(--stamp-tilt)) scale(1);
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      translate: 0 14px;
+    }
+  }
+
+  @keyframes pop {
+    from {
+      opacity: 0;
+      scale: 0.5;
+    }
+    60% {
+      scale: 1.2;
     }
   }
 }
@@ -41,10 +70,23 @@
 @layer base {
   html {
     scrollbar-gutter: stable;
+    scroll-padding-top: 6rem;
   }
 
   body {
-    @apply bg-paper font-sans text-ink antialiased;
+    background: #fff;
+    color: var(--color-text);
+    font: 15px/1.55 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--color-ink);
+    font-weight: 600;
+    letter-spacing: -0.03em;
   }
 
   a[href],
@@ -57,73 +99,290 @@
     cursor: pointer;
   }
 
-  button:disabled {
+  button:disabled,
+  input:disabled {
     cursor: not-allowed;
   }
 
   :focus-visible {
-    outline: 3px solid var(--color-ink);
+    outline: 2px solid #2563eb;
     outline-offset: 2px;
   }
 
   dialog::backdrop {
-    background: rgb(27 25 22 / 0.6);
+    background: rgb(255 255 255 / 0.45);
+    backdrop-filter: blur(10px);
+  }
+
+  details > summary {
+    list-style: none;
+  }
+
+  details > summary::-webkit-details-marker {
+    display: none;
   }
 }
 
 @layer components {
-  .button {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-sm border-2 border-ink bg-sheet px-4 py-2 font-medium transition-colors hover:bg-rule active:translate-y-px disabled:border-edge disabled:bg-transparent disabled:text-muted;
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2 text-center font-semibold whitespace-nowrap transition duration-150 active:scale-[0.98];
   }
 
-  .button-primary {
-    @apply border-ink bg-ink text-sheet hover:border-muted hover:bg-muted disabled:bg-transparent;
+  /* The main action on a screen. Only this button and the accent word carry the rainbow. */
+  .btn-ring {
+    position: relative;
+    isolation: isolate;
+    background: #fff;
+    color: var(--color-ink);
   }
 
-  .button-quiet {
-    @apply border-edge bg-transparent hover:bg-sheet;
+  .btn-ring::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 2.5px;
+    background: var(--ring);
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
   }
 
-  .button-danger {
-    @apply border-signal bg-transparent text-signal-deep hover:bg-signal-wash;
+  .btn-ring:hover {
+    background: var(--color-wash);
+  }
+
+  .btn-dark {
+    background: var(--color-graphite);
+    color: #fff;
+  }
+
+  .btn-dark:hover {
+    background: #3a3c42;
+  }
+
+  .btn-soft {
+    @apply border border-line bg-white font-medium text-text hover:border-dash hover:bg-wash;
+  }
+
+  .btn:disabled {
+    @apply opacity-50 active:scale-100;
+  }
+
+  .btn-sm {
+    @apply min-h-11 px-4 text-sm sm:min-h-9;
   }
 
   .field {
-    @apply w-full rounded-sm border-2 border-edge bg-sheet px-3 py-2 text-base placeholder:text-muted;
+    @apply w-full rounded-[14px] border border-line bg-white px-4 py-2.5 text-[15px] text-ink transition-colors placeholder:text-mute hover:border-dash;
   }
 
   .link {
-    @apply underline decoration-edge underline-offset-4 hover:decoration-ink active:text-muted;
+    @apply underline decoration-dash underline-offset-4 transition-colors hover:text-ink hover:decoration-ink;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cents {
+    color: var(--color-faint);
+  }
+
+  /* One word per headline, in the serif, filled with the multicolour gradient. */
+  .accent {
+    padding-right: 0.06em;
+    background: linear-gradient(90deg, #c026d3, #2563eb 45%, #16a34a 80%, #ca8a04);
+    background-clip: text;
+    color: transparent;
+    font: italic 400 1.08em/1 var(--font-serif);
+    letter-spacing: -0.01em;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-transparent px-[11px] py-1 text-[13px]/[1.4] font-medium whitespace-nowrap;
+  }
+
+  .pill-found {
+    @apply border-peach-line bg-peach text-peach-ink;
+  }
+
+  .pill-clean {
+    @apply border-mint-line bg-mint text-mint-ink;
+  }
+
+  .pill-unchecked {
+    @apply border-dashed border-dash bg-white text-mute;
+  }
+
+  .pill-info {
+    @apply border-sky-line bg-sky text-sky-ink;
+  }
+
+  .pill-live {
+    @apply border-line bg-white text-peach-ink;
+  }
+
+  .dot {
+    @apply size-[7px] shrink-0 rounded-full bg-current;
+  }
+
+  .card {
+    @apply rounded-card border border-line bg-white shadow-card;
+  }
+
+  /* The signature: 13 small squares, one per banned pattern. */
+  .strip {
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .strip-cell {
+    @apply size-3 rounded-[4px] bg-[#e8eaee];
+  }
+
+  .strip-cell-found {
+    background: var(--color-found);
+  }
+
+  .strip-cell-not_checked {
+    @apply border border-dashed border-dash bg-white;
+  }
+
+  .avatar {
+    @apply grid size-11 shrink-0 place-items-center rounded-[14px] text-lg font-semibold;
+  }
+
+  .avatar-0 {
+    background: #fff6cc;
+    color: #7a6000;
+  }
+
+  .avatar-1 {
+    background: var(--color-rose);
+    color: var(--color-rose-ink);
+  }
+
+  .avatar-2 {
+    background: var(--color-peach);
+    color: var(--color-peach-ink);
+  }
+
+  .avatar-3 {
+    background: var(--color-mint);
+    color: var(--color-mint-ink);
+  }
+
+  .avatar-4 {
+    background: var(--color-sky);
+    color: var(--color-sky-ink);
+  }
+
+  /* Tall sign-in content scrolls inside the dialog, with the Back pill below the card. */
+  .modal {
+    margin: auto;
+    max-height: 100dvh;
+    max-width: 100vw;
+    overflow-y: auto;
+    background: transparent;
+    padding: 12px;
+  }
+
+  .modal[open] {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .round-button {
+    @apply grid size-11 place-items-center rounded-full text-mute transition-colors hover:text-ink sm:size-8;
+    background: #f3f4f6;
+  }
+
+  .round-button:hover {
+    background: var(--color-line);
+  }
+
+  .back-pill {
+    @apply inline-flex min-h-11 items-center gap-2 rounded-full bg-graphite px-5 text-[15px] font-semibold text-white transition-colors hover:bg-[#3a3c42];
+  }
+
+  .logo-mark {
+    display: grid;
+    width: 20px;
+    height: 20px;
+    place-items: center;
+    border-radius: 6px;
+    background: var(--ring);
+  }
+
+  .logo-mark::after {
+    content: "";
+    width: 13px;
+    height: 13px;
+    border-radius: 4px;
+    background: #fff;
+  }
+
+  .spinner {
+    @apply size-4 animate-spin-soft rounded-full border-2 border-line border-t-ink;
+  }
+
+  /* Old names, in use until every screen has moved over. */
+  .button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-2 font-medium;
+  }
+
+  .button-primary {
+    @apply border-transparent bg-graphite text-white;
+  }
+
+  .button-quiet {
+    @apply bg-transparent;
+  }
+
+  .button-danger {
+    @apply text-peach-ink;
   }
 
   .mono {
-    @apply font-mono tabular-nums;
-  }
-
-  /* The stencil belongs to the wordmark and these stamps. A slight tilt reads as pressed by hand. */
-  .stamp {
-    --stamp-tilt: -1.5deg;
-    @apply inline-block rounded-[3px] border-2 px-2 pt-[0.2em] pb-[0.1em] font-stencil leading-none tracking-[0.04em] whitespace-nowrap uppercase;
-    transform: rotate(var(--stamp-tilt));
-  }
-
-  .stamp-found {
-    @apply border-signal text-signal;
-  }
-
-  .stamp-not-found {
-    @apply border-clear text-clear;
-  }
-
-  .stamp-not-checked {
-    @apply border-dashed border-muted text-muted;
+    font-variant-numeric: tabular-nums;
   }
 }
 
+:root {
+  --ring: conic-gradient(
+    from 200deg,
+    #ff4d6d,
+    #ff9f43,
+    #ffd43b,
+    #3ddc84,
+    #2fb6f5,
+    #7c5cff,
+    #ff4d6d
+  );
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  /* The one decorative motion in the product: a confirmed pattern lands once. */
-  .stamp-press {
-    @apply animate-stamp;
-    animation-delay: var(--stamp-delay, 0ms);
+  .rise {
+    @apply animate-fade-up;
+  }
+
+  .toast-in {
+    @apply animate-toast;
+  }
+
+  /* A confirmed pattern pops once when its report lands. */
+  .pop-in {
+    @apply animate-pop;
+    animation-delay: var(--pop-delay, 0ms);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
   }
 }

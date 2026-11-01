@@ -1,6 +1,37 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { clock, dateTime, money, plural } from "./format.ts";
+import { ago, clock, dateTime, duration, money, moneyParts, plural } from "./format.ts";
+
+describe("moneyParts", () => {
+  it("splits off the paise so they can be drawn lighter", () => {
+    expect(moneyParts(81, "INR")).toEqual({ main: "Rs 81", minor: ".00" });
+    expect(moneyParts(497.18, "INR")).toEqual({ main: "Rs 497", minor: ".18" });
+    expect(moneyParts(125000, "INR")).toEqual({ main: "Rs 1,25,000", minor: ".00" });
+  });
+});
+
+describe("duration", () => {
+  it("writes minutes and seconds", () => {
+    expect(duration("2026-10-31T14:32:00Z", "2026-10-31T14:34:45Z")).toBe("2m 45s");
+  });
+
+  it("drops the minutes under one minute", () => {
+    expect(duration("2026-10-31T14:32:00Z", "2026-10-31T14:32:09Z")).toBe("9s");
+  });
+});
+
+describe("ago", () => {
+  const now = Date.parse("2026-10-31T14:32:30Z");
+
+  it("calls the last few seconds now", () => {
+    expect(ago("2026-10-31T14:32:29Z", now)).toBe("now");
+  });
+
+  it("counts seconds, then minutes", () => {
+    expect(ago("2026-10-31T14:32:09Z", now)).toBe("21s");
+    expect(ago("2026-10-31T14:29:30Z", now)).toBe("3m");
+  });
+});
 
 describe("money", () => {
   it("writes rupees as Rs with Indian grouping", () => {

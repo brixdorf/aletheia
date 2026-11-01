@@ -1,6 +1,27 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { addSite, MAX_SITES, parseSite } from "./sites.ts";
+import { addSite, avatarTone, MAX_SITES, parseSite, siteName } from "./sites.ts";
+
+describe("siteName", () => {
+  it("takes the name from the host", () => {
+    expect(siteName("blinkit.com")).toBe("Blinkit");
+    expect(siteName("www.adobe.com")).toBe("Adobe");
+    expect(siteName("shop.example.co.in")).toBe("Shop");
+  });
+});
+
+describe("avatarTone", () => {
+  it("always gives a host the same tone", () => {
+    expect(avatarTone("blinkit.com")).toBe(avatarTone("blinkit.com"));
+  });
+
+  it("stays inside the five tints", () => {
+    for (const host of ["a.in", "blinkit.com", "zomato.com", "croma.com", "adobe.com"]) {
+      expect(avatarTone(host)).toBeGreaterThanOrEqual(0);
+      expect(avatarTone(host)).toBeLessThan(5);
+    }
+  });
+});
 
 describe("parseSite", () => {
   it("adds https to a bare domain", () => {
