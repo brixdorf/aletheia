@@ -30,7 +30,7 @@ export interface ApiLimits {
   maxWaiting: number;
 }
 
-const DEFAULT_LIMITS: ApiLimits = { perVisitor: 6, perAddress: 20, maxWaiting: 12 };
+const DEFAULT_LIMITS: ApiLimits = { perVisitor: 6, perAddress: 60, maxWaiting: 12 };
 
 export interface ApiDeps {
   audits: AuditService;
