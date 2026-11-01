@@ -11,6 +11,7 @@ export default defineConfig({
     cache: true,
     tasks: {
       // Never cached: a replay would report a wipe that did not happen. Env reaches only uncached tasks.
+      e2e: { command: "vp run web#build && playwright test", cache: false },
       wipe: { command: "node --env-file-if-exists=.env server/src/wipe.ts", cache: false },
     },
   },

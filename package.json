@@ -14,6 +14,9 @@
     "ready": "vp check && vp test && vp run web#build"
   },
   "devDependencies": {
+    "@hono/node-server": "^2.1.5",
+    "@playwright/test": "1.64.1",
+    "@types/node": "^26.6.6",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },
