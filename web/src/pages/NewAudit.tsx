@@ -1,8 +1,9 @@
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { ArrowLeft, Cross } from "../components/icons.tsx";
 import { SignInPanel } from "../components/SignInPanel.tsx";
-import { usePageTitle } from "../components/ui.tsx";
+import { Link, SiteAvatar, usePageTitle } from "../components/ui.tsx";
 import type { NewAudit as NewAuditRequest } from "../lib/api.ts";
 import { loginHint, signOut, startAudit } from "../lib/api.ts";
 import { rememberSignIn } from "../lib/signInMemory.ts";
@@ -45,37 +46,37 @@ interface SiteRowProps {
 
 function SiteRow({ site, loginExpected, onSignIn, onSignOut, onRemove }: SiteRowProps) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2">
-      <div className="min-w-0">
-        <p className="font-medium wrap-anywhere">{site.host}</p>
-        <p className="text-sm text-muted">
-          {site.signInId
-            ? "Signed in for one check"
-            : loginExpected
-              ? "Guest. This site asked for a login last time, so signing in will show more."
-              : "Guest"}
-        </p>
+    <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-[14px] bg-wash py-1.5 pr-1.5 pl-3">
+      <div className="flex min-w-0 flex-1 basis-48 items-center gap-2.5">
+        <SiteAvatar host={site.host} />
+        <div className="min-w-0">
+          <p className="font-medium wrap-anywhere text-ink">{site.host}</p>
+          <p className="text-[13px] text-mute">
+            {site.signInId
+              ? "Signed in for one check"
+              : loginExpected
+                ? "Guest. This site asked for a login last time, so signing in will show more."
+                : "Guest"}
+          </p>
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-x-4">
+      <div className="flex flex-wrap items-center gap-1">
         {site.signInId ? (
-          <button
-            type="button"
-            className="link inline-flex min-h-11 items-center"
-            onClick={onSignOut}
-          >
+          <button type="button" className="btn btn-soft btn-sm" onClick={onSignOut}>
             Sign out<span className="sr-only"> of {site.host}</span>
           </button>
         ) : (
-          <button
-            type="button"
-            className="link inline-flex min-h-11 items-center"
-            onClick={onSignIn}
-          >
+          <button type="button" className="btn btn-soft btn-sm" onClick={onSignIn}>
             Sign in to see more<span className="sr-only"> on {site.host}</span>
           </button>
         )}
-        <button type="button" className="link inline-flex min-h-11 items-center" onClick={onRemove}>
-          Remove<span className="sr-only"> {site.host}</span>
+        <button
+          type="button"
+          className="round-button"
+          aria-label={`Remove ${site.host}`}
+          onClick={onRemove}
+        >
+          <Cross />
         </button>
       </div>
     </li>
@@ -122,6 +123,11 @@ export function NewAudit({ prefill }: NewAuditProps) {
       () => undefined,
     );
   }
+
+  // A site filled in from the dashboard gets the same sign-in offer as one added here.
+  useEffect(() => {
+    for (const site of initialSites(prefill.url)) checkHint(site);
+  }, [prefill.url]);
 
   function tryAdd(input: string): PlannedSite[] | null {
     const parsed = parseSite(input);
@@ -204,152 +210,176 @@ export function NewAudit({ prefill }: NewAuditProps) {
   });
 
   return (
-    <div className="max-w-3xl">
-      <h1 className="text-3xl font-semibold sm:text-4xl">New audit</h1>
-      <p className="mt-1 max-w-prose text-muted">
-        An agent walks each site like a customer and stops before payment. It is told never to pay
-        or enter contact details, and the report flags any step that looks like it did.
-      </p>
-
-      <form
-        noValidate
-        onSubmit={(event) => void submit(event)}
-        className="mt-8 flex flex-col gap-8"
-      >
-        <div className="flex flex-col gap-2">
-          <label htmlFor="task" className="text-lg font-semibold">
-            What should the agent try to do?
-          </label>
-          <textarea
-            id="task"
-            rows={3}
-            maxLength={300}
-            value={task}
-            onChange={(event) => setTask(event.target.value)}
-            placeholder="In your own words, for example: buy a 1 litre pack of milk"
-            aria-invalid={taskError !== null}
-            aria-describedby={taskError ? "task-error" : undefined}
-            className="field"
-          />
-          {taskError ? (
-            <p id="task-error" className="font-medium text-signal-deep">
-              {taskError}
-            </p>
-          ) : null}
+    <div className="relative flex flex-col items-center gap-3.5 pt-2">
+      <div aria-hidden="true" className="aurora" />
+      <div className="rise card w-full max-w-[560px] p-5 sm:p-7">
+        <div className="flex justify-end">
+          <Link href="/" aria-label="Close and go back to your audits" className="round-button">
+            <Cross />
+          </Link>
+        </div>
+        <div className="text-center">
+          <h1 className="text-[28px]/[1.1]">New audit</h1>
+          <p className="mx-auto mt-2 max-w-md text-body">
+            An agent walks each site like a customer and stops before payment. It is told never to
+            pay or enter contact details, and the report flags any step that looks like it did.
+          </p>
         </div>
 
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-lg font-semibold">What kind of flow is it?</legend>
-          <div className="mt-2 grid gap-2 sm:grid-cols-3">
-            {FLOWS.map((option) => (
-              <label
-                key={option.value}
-                className={`flex min-h-11 cursor-pointer items-start gap-2 rounded-sm border-2 bg-sheet p-3 hover:border-ink ${
-                  flow === option.value ? "border-ink" : "border-rule"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="flow"
-                  value={option.value}
-                  checked={flow === option.value}
-                  onChange={() => setFlow(option.value)}
-                  className="mt-1 accent-ink"
-                />
-                <span>
-                  <span className="block font-medium">{option.label}</span>
-                  <span className="block text-sm text-muted">{option.hint}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <div className="flex flex-col gap-3">
-          <div>
-            <label htmlFor="site" className="text-lg font-semibold">
-              Which sites?
+        <form
+          noValidate
+          onSubmit={(event) => void submit(event)}
+          className="mt-6 flex flex-col gap-6"
+        >
+          <div className="flex flex-col gap-2">
+            <label htmlFor="task" className="font-semibold text-ink">
+              What should the agent try to do?
             </label>
-            <p className="text-muted">Up to {MAX_SITES}. Every site is a guest run by default.</p>
+            <textarea
+              id="task"
+              rows={2}
+              maxLength={300}
+              value={task}
+              onChange={(event) => setTask(event.target.value)}
+              placeholder="In your own words, for example: buy a 1 litre pack of milk"
+              aria-invalid={taskError !== null}
+              aria-describedby={taskError ? "task-error" : undefined}
+              className="field resize-y"
+            />
+            {taskError ? (
+              <p id="task-error" className="font-medium text-peach-ink">
+                {taskError}
+              </p>
+            ) : null}
           </div>
 
-          {sites.length > 0 ? (
-            <ul className="divide-y divide-rule rounded-sm border border-rule bg-sheet px-3">
-              {sites.map((site) => (
-                <SiteRow
-                  key={site.host}
-                  site={site}
-                  loginExpected={hints[site.host] === true}
-                  onSignIn={() => setSigningIn(site)}
-                  onSignOut={() => endSignIn(site)}
-                  onRemove={() => remove(site)}
-                />
+          <fieldset className="flex flex-col gap-2">
+            <legend className="font-semibold text-ink">What kind of flow is it?</legend>
+            <div className="mt-2 grid gap-2">
+              {FLOWS.map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex min-h-11 cursor-pointer items-center gap-2.5 rounded-[14px] border px-3.5 py-2.5 transition-colors ${
+                    flow === option.value
+                      ? "border-ink bg-white"
+                      : "border-line bg-wash hover:border-dash"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="flow"
+                    value={option.value}
+                    checked={flow === option.value}
+                    onChange={() => setFlow(option.value)}
+                    className="accent-ink"
+                  />
+                  <span className="min-w-0">
+                    <span className="font-medium text-ink">{option.label}</span>{" "}
+                    <span className="text-[13px] text-mute">{option.hint}</span>
+                  </span>
+                </label>
               ))}
-            </ul>
-          ) : null}
+            </div>
+          </fieldset>
 
-          {sites.length < MAX_SITES ? (
-            <>
-              <div className="flex flex-wrap gap-2">
-                <input
-                  id="site"
-                  type="text"
-                  inputMode="url"
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter") return;
-                    event.preventDefault();
-                    addDraft();
-                  }}
-                  placeholder="Any site address"
-                  aria-invalid={siteError !== null}
-                  aria-describedby={siteError ? "site-error" : undefined}
-                  className="field min-w-0 flex-1 basis-56"
-                />
-                <button type="button" className="button" onClick={addDraft}>
-                  Add site
-                </button>
-              </div>
-              <div>
-                <p className="text-sm text-muted">Sites we have tested</p>
-                <ul className="mt-1 flex flex-wrap gap-x-1">
-                  {suggestions.map(({ address, host }) => (
-                    <li key={address}>
-                      <button
-                        type="button"
-                        onClick={() => tryAdd(address)}
-                        className="link inline-flex min-h-11 items-center px-1.5"
-                      >
-                        {host}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          ) : null}
-          {siteError ? (
-            <p id="site-error" className="font-medium text-signal-deep">
-              {siteError}
-            </p>
-          ) : null}
-        </div>
+          <div className="flex flex-col gap-3">
+            <div>
+              <label htmlFor="site" className="font-semibold text-ink">
+                Which sites?
+              </label>
+              <p className="text-[13px] text-mute">
+                Up to {MAX_SITES}. Every site is a guest run by default.
+              </p>
+            </div>
 
-        <div className="flex flex-col items-start gap-3">
-          {formError ? (
-            <p role="alert" className="font-medium text-signal-deep">
-              {formError}
+            {sites.length > 0 ? (
+              <ul className="flex flex-col gap-2">
+                {sites.map((site) => (
+                  <SiteRow
+                    key={site.host}
+                    site={site}
+                    loginExpected={hints[site.host] === true}
+                    onSignIn={() => setSigningIn(site)}
+                    onSignOut={() => endSignIn(site)}
+                    onRemove={() => remove(site)}
+                  />
+                ))}
+              </ul>
+            ) : null}
+
+            {sites.length < MAX_SITES ? (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    id="site"
+                    type="text"
+                    inputMode="url"
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter") return;
+                      event.preventDefault();
+                      addDraft();
+                    }}
+                    placeholder="Any site address"
+                    aria-invalid={siteError !== null}
+                    aria-describedby={siteError ? "site-error" : undefined}
+                    className="field min-w-0 flex-1"
+                  />
+                  <button type="button" className="btn btn-soft shrink-0" onClick={addDraft}>
+                    Add site
+                  </button>
+                </div>
+                {suggestions.length > 0 ? (
+                  <div>
+                    <p className="text-[13px] text-mute">Sites we have tested</p>
+                    <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                      {suggestions.map(({ address, host }) => (
+                        <li key={address}>
+                          <button
+                            type="button"
+                            onClick={() => tryAdd(address)}
+                            className="btn btn-soft btn-sm px-3 text-[13px]"
+                          >
+                            {host}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+            {siteError ? (
+              <p id="site-error" className="font-medium text-peach-ink">
+                {siteError}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {formError ? (
+              <p role="alert" className="font-medium text-peach-ink">
+                {formError}
+              </p>
+            ) : null}
+            <button type="submit" className="btn btn-dark w-full" disabled={busy}>
+              {busy ? "Starting the audit" : "Start audit"}
+            </button>
+            <p className="text-center text-[13px] text-mute">
+              Your sign-ins and audits stay tied to this browser.
             </p>
-          ) : null}
-          <button type="submit" className="button button-primary" disabled={busy}>
-            {busy ? "Starting the audit" : "Start audit"}
-          </button>
-        </div>
-      </form>
+          </div>
+        </form>
+      </div>
+
+      <Link href="/" className="back-pill">
+        <ArrowLeft />
+        Back
+      </Link>
 
       {signingIn ? (
         <SignInPanel
