@@ -511,6 +511,19 @@ describe("subscriptions, against the hand-checked table", () => {
 });
 
 describe("blocked and failed runs", () => {
+  it("reports a site that never loaded as incomplete, with nothing claimed", () => {
+    const report = judge("blinkit-page-never-loaded");
+
+    expect(report.stop.at).toBe("incomplete");
+    expect(report.stop.reach).toBe("pages");
+    expect(report.bill.total).toBeNull();
+    expect(report.login.offerSignIn).toBe(false);
+    expect(report.patterns.some((entry) => entry.status === "found")).toBe(false);
+    expect(report.patterns.find((entry) => entry.id === "drip_pricing")?.status).toBe(
+      "not_checked",
+    );
+  });
+
   it("reports Ajio as blocked with nothing on the bill", () => {
     const report = judge("ajio");
 
@@ -596,6 +609,16 @@ describe("step screenshots", () => {
 
     expect(index).toBeGreaterThanOrEqual(13);
     expect(index).toBeLessThanOrEqual(16);
+  });
+
+  it("gives each page its own step, and never the final write-up", () => {
+    const report = judge("blinkit-page-never-loaded");
+    const shots = report.pages.map((page) => page.screenshot?.stepId);
+
+    expect(new Set(shots).size).toBe(report.pages.length);
+    for (const page of report.pages) {
+      expect(page.screenshot?.action).not.toMatch(/^report findings/i);
+    }
   });
 
   it("leaves the screenshot empty when the run kept no steps", () => {
