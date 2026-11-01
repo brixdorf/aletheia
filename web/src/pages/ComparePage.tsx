@@ -17,12 +17,25 @@ export function ComparePage({ ids }: { ids: string[] }) {
   const view = buildComparison(result.data);
   if (view.columns.length < 2) return <NothingToCompare />;
   return (
-    <ComparisonTable
-      view={view}
-      showTasks={ids.length > 1}
-      headingLevel="h1"
-      linkFor={({ auditId, key }) => `/audits/${auditId}#site-${key}`}
-    />
+    <div className="flex flex-col gap-5">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-2.5">
+        <Link href="/" className="inline-flex min-h-11 items-center text-mute hover:text-ink">
+          Your audits
+        </Link>
+        <span aria-hidden="true" className="text-mute">
+          /
+        </span>
+        <span aria-current="page" className="font-semibold text-ink">
+          Side by side
+        </span>
+      </nav>
+      <ComparisonTable
+        view={view}
+        showTasks={ids.length > 1}
+        headingLevel="h1"
+        linkFor={({ auditId, key }) => `/audits/${auditId}#site-${key}`}
+      />
+    </div>
   );
 }
 
@@ -32,7 +45,7 @@ function NothingToCompare() {
       title="There are not two reports to compare yet"
       level="h1"
       action={
-        <Link className="button" href="/">
+        <Link className="btn btn-soft" href="/">
           Pick audits to compare
         </Link>
       }

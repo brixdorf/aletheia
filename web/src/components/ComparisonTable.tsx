@@ -3,15 +3,18 @@ import { useState } from "react";
 import type { CompareColumn, ComparisonView } from "../lib/compare.ts";
 import { money } from "../lib/format.ts";
 import { counts, stopSummary } from "../lib/report.ts";
-import { Stamp } from "./ui.tsx";
+import { siteName } from "../lib/sites.ts";
+import { patternName } from "../lib/story.ts";
+import { Link, Money, PatternStrip, SiteAvatar, StatusPill } from "./ui.tsx";
 
-function price(amount: number | null, currency: string | null): string {
-  return amount === null ? "Not reached" : money(amount, currency);
+function Price({ amount, currency }: { amount: number | null; currency: string | null }) {
+  if (amount === null) return <span className="text-mute">Not reached</span>;
+  return <Money amount={amount} currency={currency} />;
 }
 
 const headCell =
-  "bg-sheet px-3 py-2 text-left align-top font-normal text-muted sm:sticky sm:left-0";
-const cell = "px-3 py-2 align-top";
+  "bg-white px-4 py-3 text-left align-top font-normal text-mute sm:sticky sm:left-0 sm:z-1";
+const cell = "px-4 py-3 align-top";
 
 interface ComparisonTableProps {
   view: ComparisonView;
@@ -35,47 +38,63 @@ export function ComparisonTable({
   const [patternsShown, setPatternsShown] = useState(!foldPatterns);
 
   return (
-    <section aria-labelledby="comparison-title" className="flex flex-col gap-3">
-      <Heading id="comparison-title" className="text-2xl font-semibold">
-        Side by side
-      </Heading>
-      {ranked ? (
-        <p className="text-muted">Same task and currency, so these are ranked by the total.</p>
-      ) : null}
-      {notes.length > 0 ? (
-        <ul className="text-muted">
-          {notes.map((note) => (
-            <li key={note}>{note}</li>
-          ))}
-        </ul>
-      ) : null}
+    <section aria-labelledby="comparison-title" className="flex flex-col gap-4">
+      <div>
+        <Heading id="comparison-title" className="text-[28px]/[1.1] sm:text-[34px]/[1.1]">
+          Side by side
+        </Heading>
+        {ranked ? (
+          <p className="mt-1.5 text-mute">
+            Same task and currency, so these are ranked by the total.
+          </p>
+        ) : null}
+        {notes.length > 0 ? (
+          <ul className="mt-1.5 text-mute">
+            {notes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
 
       {/* The table keeps its columns aligned and scrolls inside this box on a phone. */}
       <div
         tabIndex={0}
         role="region"
         aria-labelledby="comparison-title"
-        className="overflow-x-auto rounded-sm border border-rule bg-sheet"
+        className="card overflow-x-auto p-2"
       >
         <table className="w-full min-w-max border-collapse">
           <thead>
-            <tr className="border-b-2 border-ink">
+            <tr className="border-b border-line">
               <td className={headCell} />
-              {columns.map((column) => (
-                <th key={column.key} scope="col" className={`${cell} min-w-40 text-left`}>
-                  <a className="link font-semibold" href={linkFor(column)}>
-                    {column.host}
-                  </a>
-                  {column.rank === null ? null : (
-                    <span className="mono block text-sm font-normal text-muted">
-                      {column.rank === 1 ? "Lowest total" : `Number ${column.rank} by total`}
-                    </span>
-                  )}
-                </th>
-              ))}
+              {columns.map((column) => {
+                const statuses = column.report.patterns.map(({ status }) => status);
+                return (
+                  <th key={column.key} scope="col" className={`${cell} min-w-56 text-left`}>
+                    <div className="flex items-center gap-3">
+                      <SiteAvatar host={column.host} />
+                      <div>
+                        <Link
+                          className="text-base font-semibold text-ink hover:underline hover:underline-offset-4"
+                          href={linkFor(column)}
+                        >
+                          {siteName(column.host)}
+                        </Link>
+                        {column.rank === null ? null : (
+                          <span className="block text-[13px] font-normal text-mute">
+                            {column.rank === 1 ? "Lowest total" : `Number ${column.rank} by total`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <PatternStrip statuses={statuses} className="mt-3" />
+                  </th>
+                );
+              })}
             </tr>
           </thead>
-          <tbody className="divide-y divide-rule">
+          <tbody className="divide-y divide-line">
             {showTasks ? (
               <tr>
                 <th scope="row" className={headCell}>
@@ -93,8 +112,8 @@ export function ComparisonTable({
                 First price shown
               </th>
               {columns.map(({ key, report: { bill } }) => (
-                <td key={key} className={`${cell} mono`}>
-                  {price(bill.firstPrice, bill.currency)}
+                <td key={key} className={cell}>
+                  <Price amount={bill.firstPrice} currency={bill.currency} />
                 </td>
               ))}
             </tr>
@@ -103,8 +122,8 @@ export function ComparisonTable({
                 Last total seen
               </th>
               {columns.map(({ key, report: { bill } }) => (
-                <td key={key} className={`${cell} mono font-semibold`}>
-                  {price(bill.total, bill.currency)}
+                <td key={key} className={`${cell} text-lg font-semibold text-ink`}>
+                  <Price amount={bill.total} currency={bill.currency} />
                 </td>
               ))}
             </tr>
@@ -115,7 +134,7 @@ export function ComparisonTable({
               {columns.map(({ key, report: { bill } }) => (
                 <td
                   key={key}
-                  className={`${cell} mono ${(bill.increase ?? 0) > 0 ? "font-semibold text-signal" : ""}`}
+                  className={`${cell} num ${(bill.increase ?? 0) > 0 ? "font-semibold text-peach-ink" : ""}`}
                 >
                   {bill.increase === null ? "Unknown" : money(bill.increase, bill.currency)}
                 </td>
@@ -128,9 +147,8 @@ export function ComparisonTable({
               {columns.map(({ key, report }) => {
                 const { found, notChecked } = counts(report);
                 return (
-                  <td key={key} className={cell}>
-                    <span className="mono">{found}</span> found,{" "}
-                    <span className="mono">{notChecked}</span> not checked
+                  <td key={key} className={`${cell} num`}>
+                    {found} found, {notChecked} not checked
                   </td>
                 );
               })}
@@ -140,7 +158,7 @@ export function ComparisonTable({
                 Where it stopped
               </th>
               {columns.map(({ key, report }) => (
-                <td key={key} className={`${cell} max-w-56 text-sm text-muted`}>
+                <td key={key} className={`${cell} max-w-56 text-[13px] text-mute`}>
                   {stopSummary(report)}
                 </td>
               ))}
@@ -149,11 +167,11 @@ export function ComparisonTable({
               ? patternRows.map((row) => (
                   <tr key={row.id}>
                     <th scope="row" className={headCell}>
-                      {row.label}
+                      {patternName(row.label)}
                     </th>
                     {row.statuses.map((status, index) => (
                       <td key={columns[index]?.key} className={cell}>
-                        <Stamp status={status} className="text-xs" />
+                        <StatusPill status={status} />
                       </td>
                     ))}
                   </tr>
@@ -165,7 +183,7 @@ export function ComparisonTable({
       {foldPatterns ? (
         <button
           type="button"
-          className="link inline-flex min-h-11 w-fit items-center"
+          className="btn btn-soft btn-sm w-fit"
           aria-expanded={patternsShown}
           onClick={() => setPatternsShown((shown) => !shown)}
         >
