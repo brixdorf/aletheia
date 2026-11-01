@@ -41,6 +41,7 @@ export function bill(overrides: Partial<Bill> = {}): Bill {
     firstPriceSource: null,
     itemsTotal: null,
     charges: [],
+    notInTotal: [],
     includedCharges: [],
     discounts: [],
     extras: [],
