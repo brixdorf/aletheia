@@ -89,10 +89,13 @@ interface MoneyProps {
   currency: string | null;
   /** Such as "/mo", drawn in place of a zero paise part. */
   suffix?: string;
+  /** Leaves off a zero paise part, for a price that only sets up the next one. */
+  plain?: boolean;
 }
 
-export function Money({ amount, currency, suffix = "" }: MoneyProps) {
+export function Money({ amount, currency, suffix = "", plain = false }: MoneyProps) {
   const { main, minor } = moneyParts(amount, currency);
+  if (plain && minor === ".00") return <span className="num">{main}</span>;
   return (
     <span className="num">
       {main}
@@ -169,9 +172,4 @@ export function Failed({
       </Notice>
     </div>
   );
-}
-
-/** Kept for the screens that have not moved to StatusPill yet. */
-export function Stamp({ status }: { status: PatternStatus; className?: string }) {
-  return <StatusPill status={status} />;
 }

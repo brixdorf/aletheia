@@ -1,62 +1,122 @@
 import { useEffect, useState } from "react";
 
 import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
-import { Failed, Link, Loading, Notice, usePageTitle } from "../components/ui.tsx";
+import { Hero } from "../components/Hero.tsx";
+import { Bin } from "../components/icons.tsx";
+import {
+  Failed,
+  Link,
+  Loading,
+  Money,
+  Notice,
+  PatternStrip,
+  Pill,
+  SiteAvatar,
+  usePageTitle,
+} from "../components/ui.tsx";
 import { deleteAudit, listAudits } from "../lib/api.ts";
 import { dateTime, plural } from "../lib/format.ts";
 import { summaryPrice } from "../lib/report.ts";
-import type { AuditSummary } from "../lib/types.ts";
+import { siteName } from "../lib/sites.ts";
+import { priceJump, rowPill } from "../lib/story.ts";
+import type { AuditSummary, AuditView, PatternStatus, SiteView } from "../lib/types.ts";
+import { useAuditDetails } from "../lib/useAuditDetails.ts";
 import { useLoad } from "../lib/useLoad.ts";
 
 const REFRESH_MS = 5000;
 const MAX_PICKED = 4;
+const NOT_YET: PatternStatus[] = Array.from({ length: 13 }, () => "not_checked");
 
 type SummarySite = AuditSummary["sites"][number];
 
-const STATE_LABEL: Record<Exclude<SummarySite["state"], "done">, string> = {
-  queued: "Waiting",
-  running: "Running",
-  writing_up: "Writing up",
-  failed: "Failed",
-  cancelled: "Stopped",
-};
-
 const doneSites = ({ sites }: AuditSummary) => sites.filter((site) => site.state === "done").length;
 
-function SiteLine({ site }: { site: SummarySite }) {
+function Amount({ site, detail }: { site: SummarySite; detail: SiteView | null }) {
+  if (site.state !== "done") return <span className="row-amount" />;
+  if (!detail?.report) {
+    return <span className="row-amount num font-semibold text-ink">{summaryPrice(site)}</span>;
+  }
+
+  const { from, to, suffix, currency } = priceJump(detail.report);
+  const label = {
+    final: null,
+    price_before_sign_in: "before sign-in",
+    last_seen: "last seen",
+    none: null,
+  }[site.priceLabel];
+
   return (
-    <li className="grid items-baseline gap-x-6 py-1.5 sm:grid-cols-[minmax(0,1fr)_11rem_16rem]">
-      <span className="min-w-0 wrap-anywhere">{site.host}</span>
-      {site.state === "done" ? (
-        <>
-          <span className="mono sm:order-last sm:text-right">{summaryPrice(site)}</span>
-          <span className="text-sm">
-            <span className={site.found > 0 ? "font-semibold text-signal" : ""}>
-              <span className="mono">{site.found}</span> found
+    <span className="row-amount">
+      <span className="flex items-baseline justify-end gap-1.5 text-base font-semibold whitespace-nowrap text-ink sm:gap-2 sm:text-lg">
+        {from === null ? null : (
+          <>
+            <s className="num font-medium text-mute decoration-1 sm:text-faint">
+              <span className="sr-only">Shown as </span>
+              <Money amount={from} currency={currency} plain />
+            </s>
+            <span aria-hidden="true" className="font-normal text-faint">
+              &rarr;
             </span>
-            {site.notChecked > 0 ? (
-              <span className="text-muted">
-                , <span className="mono">{site.notChecked}</span> not checked
-              </span>
-            ) : null}
-          </span>
-        </>
-      ) : (
-        <span
-          className={`text-sm sm:col-span-2 ${
-            site.state === "running" || site.state === "writing_up"
-              ? "font-medium text-live"
-              : "text-muted"
-          }`}
-        >
-          {STATE_LABEL[site.state]}
-        </span>
-      )}
-    </li>
+          </>
+        )}
+        {to === null ? (
+          <span className="text-base font-medium text-mute">No total</span>
+        ) : (
+          <Money amount={to} currency={currency} suffix={suffix} />
+        )}
+      </span>
+      {label ? <span className="block text-right text-xs text-mute">{label}</span> : null}
+    </span>
   );
 }
 
-interface AuditRowProps {
+interface SiteRowProps {
+  audit: AuditSummary;
+  site: SummarySite;
+  detail: SiteView | null;
+  /** The compare tick and delete button. A multi-site audit has them on its header line. */
+  controls: AuditControlsProps | null;
+  /** Dropped under a multi-site header, which already says it. */
+  showTask: boolean;
+}
+
+function SiteRow({ audit, site, detail, controls, showTask }: SiteRowProps) {
+  const report = detail?.report ?? null;
+  const statuses = report?.patterns.map(({ status }) => status) ?? NOT_YET;
+  const href = `/audits/${audit.id}${detail && !showTask ? `#site-${detail.id}` : ""}`;
+  const who = report ? (report.signedIn ? "signed in" : "guest") : null;
+  const line = showTask
+    ? [audit.task, dateTime(audit.createdAt), who]
+    : [report?.item ?? site.host, who];
+
+  return (
+    <div className="audit-row">
+      <div className="row-pick">{controls ? <PickBox {...controls} /> : null}</div>
+      <div className="row-avatar">
+        <SiteAvatar host={site.host} />
+      </div>
+      <div className="row-name min-w-0">
+        <Link
+          href={href}
+          className="text-base font-semibold text-ink after:absolute after:inset-0 after:rounded-2xl"
+        >
+          {siteName(site.host)}
+        </Link>
+        <p className="text-[13px] wrap-anywhere text-mute">{line.filter(Boolean).join(" · ")}</p>
+      </div>
+      <div className="row-strip">
+        <PatternStrip statuses={statuses} />
+      </div>
+      <Amount site={site} detail={detail} />
+      <div className="row-status">
+        <Pill {...rowPill(site, report)} />
+      </div>
+      <div className="row-delete">{controls ? <DeleteRow {...controls} /> : null}</div>
+    </div>
+  );
+}
+
+interface AuditControlsProps {
   audit: AuditSummary;
   picked: boolean;
   canPick: boolean;
@@ -64,58 +124,93 @@ interface AuditRowProps {
   onDelete: () => void;
 }
 
-function AuditRow({ audit, picked, canPick, onToggle, onDelete }: AuditRowProps) {
-  const running = audit.status === "running";
-  const finished = doneSites(audit);
+function PickBox({ audit, picked, canPick, onToggle }: AuditControlsProps) {
+  if (doneSites(audit) === 0) return null;
+  return (
+    <label className="relative z-1 grid size-11 place-items-center">
+      <input
+        type="checkbox"
+        checked={picked}
+        disabled={!picked && !canPick}
+        onChange={onToggle}
+        className="size-[18px] rounded accent-ink"
+      />
+      <span className="sr-only">Compare: {audit.task}</span>
+    </label>
+  );
+}
+
+function DeleteRow({ audit, onDelete }: AuditControlsProps) {
+  return (
+    <button
+      type="button"
+      onClick={onDelete}
+      aria-label={`Delete: ${audit.task}`}
+      className="relative z-1 grid size-11 place-items-center rounded-full text-mute transition-colors hover:bg-rose hover:text-rose-ink"
+    >
+      <Bin />
+    </button>
+  );
+}
+
+interface AuditEntryProps extends AuditControlsProps {
+  detail: AuditView | undefined;
+}
+
+function AuditEntry({ detail, ...controls }: AuditEntryProps) {
+  const { audit } = controls;
+  const detailOf = (site: SummarySite) =>
+    detail?.sites.find((entry) => entry.host === site.host) ?? null;
+
+  const only = audit.sites.length === 1 ? audit.sites[0] : undefined;
+  if (only) {
+    return (
+      <li>
+        <SiteRow
+          audit={audit}
+          site={only}
+          detail={detailOf(only)}
+          controls={controls}
+          showTask={true}
+        />
+      </li>
+    );
+  }
 
   return (
-    <li className="flex flex-col gap-3 py-5">
-      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-1">
-        <div className="min-w-0 flex-1 basis-80">
-          <Link href={`/audits/${audit.id}`} className="link text-lg font-semibold wrap-anywhere">
-            {audit.task}
-          </Link>
-          <p className="text-sm text-muted">
-            <span className="mono">{dateTime(audit.createdAt)}</span>
-            {running ? <span className="ml-3 font-medium text-live">Running now</span> : null}
+    <li>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 px-[6px] pt-2">
+        <div className="flex min-w-0 items-center">
+          <PickBox {...controls} />
+          <p className="min-w-0 pl-1 text-[13px] wrap-anywhere text-mute">
+            <Link href={`/audits/${audit.id}`} className="link font-semibold text-ink">
+              {audit.task}
+            </Link>
+            {` · ${dateTime(audit.createdAt)}`}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-x-4">
-          {finished >= 2 ? (
+        <div className="flex items-center gap-3 text-sm">
+          {doneSites(audit) >= 2 ? (
             <Link
               href={`/compare?audits=${audit.id}`}
-              className="link inline-flex min-h-11 items-center text-sm"
+              className="link inline-flex min-h-11 items-center"
             >
               Compare these sites
             </Link>
           ) : null}
-          {finished >= 1 ? (
-            <label className="inline-flex min-h-11 items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={picked}
-                disabled={!picked && !canPick}
-                onChange={onToggle}
-                className="size-4 accent-ink"
-              />
-              Compare
-              <span className="sr-only">: {audit.task}</span>
-            </label>
-          ) : null}
-          <button
-            type="button"
-            onClick={onDelete}
-            className="link inline-flex min-h-11 items-center text-sm"
-          >
-            Delete<span className="sr-only">: {audit.task}</span>
-          </button>
+          <DeleteRow {...controls} />
         </div>
       </div>
-      <ul className="divide-y divide-rule rounded-sm border border-rule bg-sheet px-3">
-        {audit.sites.map((site) => (
-          <SiteLine key={site.host} site={site} />
-        ))}
-      </ul>
+      {audit.sites.map((site) => (
+        <SiteRow
+          key={site.host}
+          audit={audit}
+          site={site}
+          detail={detailOf(site)}
+          controls={null}
+          showTask={false}
+        />
+      ))}
     </li>
   );
 }
@@ -123,21 +218,42 @@ function AuditRow({ audit, picked, canPick, onToggle, onDelete }: AuditRowProps)
 function ComparePick({ audits }: { audits: AuditSummary[] }) {
   const sites = audits.reduce((sum, audit) => sum + doneSites(audit), 0);
   return (
-    <div className="sticky bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t-2 border-ink bg-paper px-4 py-3 sm:mx-0 sm:px-0">
-      <p>
-        {plural(audits.length, "audit")} picked, {plural(sites, "finished site")}
-      </p>
-      {sites >= 2 ? (
-        <Link
-          className="button button-primary"
-          href={`/compare?audits=${audits.map((audit) => audit.id).join(",")}`}
-        >
-          Compare side by side
-        </Link>
-      ) : (
-        <p className="text-muted">Pick one more to compare.</p>
-      )}
+    <div className="sticky bottom-4 z-20 flex justify-center">
+      <div className="rise card flex flex-wrap items-center justify-center gap-x-4 gap-y-1 rounded-full py-2 pr-2 pl-5">
+        <p className="text-sm">
+          {plural(audits.length, "audit")} picked, {plural(sites, "finished site")}
+        </p>
+        {sites >= 2 ? (
+          <Link
+            className="btn btn-dark btn-sm"
+            href={`/compare?audits=${audits.map((audit) => audit.id).join(",")}`}
+          >
+            Compare side by side
+          </Link>
+        ) : (
+          <p className="pr-3 text-sm text-mute">Pick one more to compare.</p>
+        )}
+      </div>
     </div>
+  );
+}
+
+function CompareSelected({ audits }: { audits: AuditSummary[] }) {
+  const sites = audits.reduce((sum, audit) => sum + doneSites(audit), 0);
+  if (sites < 2) {
+    return (
+      <button type="button" className="btn btn-soft btn-sm" disabled>
+        Compare selected
+      </button>
+    );
+  }
+  return (
+    <Link
+      className="btn btn-soft btn-sm"
+      href={`/compare?audits=${audits.map((audit) => audit.id).join(",")}`}
+    >
+      Compare selected
+    </Link>
   );
 }
 
@@ -162,57 +278,63 @@ export function Dashboard() {
   }
 
   const audits = result.state === "ready" ? result.data : [];
+  const details = useAuditDetails(audits);
   const pickedAudits = audits.filter((audit) => picked.includes(audit.id));
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold sm:text-4xl">Your audits</h1>
-          <p className="mt-1 max-w-prose text-muted">
-            Which banned dark patterns does a site use? Each audit answers that with proof.
-          </p>
+    <div className="flex flex-col">
+      <Hero />
+
+      <section aria-labelledby="audits-title" className="flex flex-col gap-5 pt-6 sm:pt-14">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 id="audits-title" className="text-[28px]/[1.1] sm:text-[34px]/[1.1]">
+              Your audits
+            </h2>
+            <p className="mt-1.5 text-mute">
+              Each row shows the 13 patterns: orange found, grey not found, dashed not checked.
+            </p>
+          </div>
+          {audits.length > 0 ? <CompareSelected audits={pickedAudits} /> : null}
         </div>
-        <Link className="button button-primary" href="/new">
-          New audit
-        </Link>
-      </header>
 
-      {result.state === "loading" ? <Loading what="Fetching your audits." /> : null}
-      {result.state === "failed" ? (
-        <Failed message={result.message} onRetry={() => void refresh()} />
-      ) : null}
+        {result.state === "loading" ? <Loading what="Fetching your audits." /> : null}
+        {result.state === "failed" ? (
+          <Failed message={result.message} onRetry={() => void refresh()} />
+        ) : null}
 
-      {result.state === "ready" && audits.length === 0 ? (
-        <Notice
-          title="No audits yet"
-          action={
-            <Link className="button button-primary" href="/new">
-              Start your first audit
-            </Link>
-          }
-        >
-          Give Aletheia a task and a site. The agent walks the site like a customer, stops before
-          payment, and reports which of the 13 banned patterns it saw.
-        </Notice>
-      ) : null}
+        {result.state === "ready" && audits.length === 0 ? (
+          <Notice
+            title="No audits yet"
+            action={
+              <Link className="btn btn-ring" href="/new">
+                Start your first audit
+              </Link>
+            }
+          >
+            Give Aletheia a task and a site. The agent walks the site like a customer, stops before
+            payment, and reports which of the 13 banned patterns it saw.
+          </Notice>
+        ) : null}
 
-      {audits.length > 0 ? (
-        <ul className="divide-y divide-rule border-y border-rule">
-          {audits.map((audit) => (
-            <AuditRow
-              key={audit.id}
-              audit={audit}
-              picked={picked.includes(audit.id)}
-              canPick={picked.length < MAX_PICKED}
-              onToggle={() => toggle(audit.id)}
-              onDelete={() => setDeleting(audit)}
-            />
-          ))}
-        </ul>
-      ) : null}
+        {audits.length > 0 ? (
+          <ul className="rise card divide-y divide-line p-2">
+            {audits.map((audit) => (
+              <AuditEntry
+                key={audit.id}
+                audit={audit}
+                detail={details[audit.id]}
+                picked={picked.includes(audit.id)}
+                canPick={picked.length < MAX_PICKED}
+                onToggle={() => toggle(audit.id)}
+                onDelete={() => setDeleting(audit)}
+              />
+            ))}
+          </ul>
+        ) : null}
 
-      {pickedAudits.length > 0 ? <ComparePick audits={pickedAudits} /> : null}
+        {pickedAudits.length > 0 ? <ComparePick audits={pickedAudits} /> : null}
+      </section>
 
       {deleting ? (
         <ConfirmDialog
