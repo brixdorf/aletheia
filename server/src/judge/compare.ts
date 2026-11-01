@@ -1,12 +1,22 @@
 import type { SiteReport } from "./types.ts";
 
+/** The gap between the first price shown and the last total, the one number any two items share. */
+export interface HiddenCost {
+  amount: number;
+  percent: number | null;
+  /** False when the run stopped before payment, so more could still be added. */
+  final: boolean;
+}
+
 export interface ComparisonRow {
   host: string;
+  item: string | null;
   total: number | null;
   currency: string | null;
   destination: string | null;
   comparable: boolean;
   rank: number | null;
+  hiddenCost: HiddenCost | null;
   found: number;
   notChecked: number;
 }
@@ -27,7 +37,32 @@ function samePlace(wanted: string, seen: string): boolean {
   return seen.toLowerCase().includes(wanted);
 }
 
-/** Only like-for-like results are ever ranked: same currency, and the place the task named. */
+/** Size is often written both ways, "500 ml" and "500ml", so a number keeps its unit. */
+function itemWords(item: string): string {
+  const words = item
+    .toLowerCase()
+    .replace(/(\d)\s+([a-z])/g, "$1$2")
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  return [...new Set(words)].toSorted().join(" ");
+}
+
+/** Strict on purpose: "iPhone 15" and "iPhone 15 Pro" share words but are not the same item. */
+function sameItems(reports: readonly SiteReport[]): boolean {
+  const items = reports.map((report) => (report.item ? itemWords(report.item) : ""));
+  return items.every((item) => item !== "" && item === items[0]);
+}
+
+export function hiddenCost({ bill, priceLabel }: SiteReport): HiddenCost | null {
+  if (bill.increase === null || bill.firstPrice === null) return null;
+  return {
+    amount: bill.increase,
+    percent: bill.firstPrice > 0 ? Math.round((bill.increase / bill.firstPrice) * 100) : null,
+    final: priceLabel === "final",
+  };
+}
+
+/** Only like-for-like results are ever ranked: same item, same currency, the place the task named. */
 export function compareReports(task: string, reports: readonly SiteReport[]): Comparison {
   const wanted = wantedPlace(task);
   const reasons: string[] = [];
@@ -42,11 +77,13 @@ export function compareReports(task: string, reports: readonly SiteReport[]): Co
 
     return {
       host: report.host,
+      item: report.item,
       total: report.bill.total,
       currency: report.bill.currency,
       destination: report.destination,
       comparable: !elsewhere && report.bill.total !== null,
       rank: null,
+      hiddenCost: hiddenCost(report),
       found: report.patterns.filter((entry) => entry.status === "found").length,
       notChecked: report.patterns.filter((entry) => entry.status === "not_checked").length,
     };
@@ -58,18 +95,19 @@ export function compareReports(task: string, reports: readonly SiteReport[]): Co
     reasons.push(`Prices are in different currencies: ${[...currencies].join(", ")}.`);
   }
 
-  const everyRowComparable = comparable.length === rows.length;
-  const rankable = comparable.length >= 2 && currencies.size === 1 && everyRowComparable;
-  if (currencies.size <= 1 && comparable.length >= 1) {
-    const ranked = comparable.toSorted((a, b) => (a.total ?? 0) - (b.total ?? 0));
-    ranked.forEach((row, index) => {
-      row.rank = index + 1;
-    });
+  const itemsMatch = sameItems(reports);
+  if (!itemsMatch && reports.length >= 2) {
+    reasons.push("These are different items, so there is no winner. Compare the hidden cost.");
   }
 
-  return {
-    rankable,
-    reasons,
-    rows: rows.toSorted((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity)),
-  };
+  const everyRowComparable = comparable.length === rows.length;
+  const rankable =
+    comparable.length >= 2 && currencies.size === 1 && everyRowComparable && itemsMatch;
+  if (!rankable) return { rankable, reasons, rows };
+
+  const ranked = rows.toSorted((a, b) => (a.total ?? 0) - (b.total ?? 0));
+  ranked.forEach((row, index) => {
+    row.rank = index + 1;
+  });
+  return { rankable, reasons, rows: ranked };
 }
