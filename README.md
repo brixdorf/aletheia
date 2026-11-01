@@ -2,7 +2,7 @@
 
 Audits a site's checkout and subscription flows for the 13 dark patterns banned by India's CCPA, and shows the proof.
 
-Live at [aletheia.romitraj.dev](https://aletheia.romitraj.dev). The audit flow is still being built, so the live site shows a holding page for now.
+Live at [aletheia.romitraj.dev](https://aletheia.romitraj.dev).
 
 ## Setup
 
@@ -16,6 +16,10 @@ vp run dev
 ```
 
 To use the TinyFish agent, copy `.env.example` to `.env` and add your key.
+
+`vp test` runs the unit tests. `vp run e2e` runs the full flow in a browser on saved runs, so it needs no key.
+
+`vp run wipe` deletes every saved audit, screenshot and sign-in in `DATA_DIR`. Stop the server first.
 
 ## Team
 
