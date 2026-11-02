@@ -99,6 +99,31 @@ describe("SitePlanner", () => {
     expect(search).toHaveBeenCalledWith(expect.stringContaining("Snitch"), "IN");
   });
 
+  it("takes a brand no data file knows when Search shows it is a real site", async () => {
+    const search = vi.fn(() =>
+      Promise.resolve([hit("https://www.zee5.com/plans"), hit("https://www.reddit.com/r/zee5")]),
+    );
+    const result = await plan("zee5 premium", "IN", search);
+
+    expect(result.source).toBe("search");
+    expect(result.flow).toBe("subscription");
+    expect(result.sites.map(({ host }) => host)).toEqual(["zee5.com"]);
+  });
+
+  it("joins a two-word brand, and takes a brand's own store", async () => {
+    const liv = vi.fn(() => Promise.resolve([hit("https://www.sonyliv.com/")]));
+    const sony = vi.fn(() => Promise.resolve([hit("https://electronics.sony.com/audio")]));
+
+    expect(await hosts(plan("sony liv subscription", "IN", liv))).toEqual(["sonyliv.com"]);
+    expect(await hosts(plan("sony wh1000xm5", "US", sony))).toEqual(["electronics.sony.com"]);
+  });
+
+  it("does not take a place or a passing word for a brand", async () => {
+    const search = vi.fn(() => Promise.resolve([hit("https://www.mumbaiairport.com/")]));
+
+    expect((await plan("mumbai flight", "IN", search)).source).toBe("category");
+  });
+
   it("falls back to the category when a named site cannot be found", async () => {
     const result = await plan("buy shoes on Snitch");
     expect(result.source).toBe("category");
@@ -206,8 +231,9 @@ describe("SitePlanner", () => {
     const search = vi.fn(() => Promise.resolve([hit("https://www.gnomes.test/")]));
     const planner = new SitePlanner(search);
     await planner.plan("a garden gnome", "IN");
+    const searches = search.mock.calls.length;
     await planner.plan("A garden  gnome", "IN");
-    expect(search).toHaveBeenCalledTimes(1);
+    expect(search).toHaveBeenCalledTimes(searches);
   });
 
   it("does not look for sites until there is a task", async () => {

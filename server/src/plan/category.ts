@@ -296,6 +296,16 @@ function typedIn(words: readonly string[], vocabulary: readonly string[]): boole
   return words.some((word) => vocabulary.some((known) => word === known || isTypoOf(word, known)));
 }
 
+/** A word that says what is wanted, rather than who sells it. */
+export function isCategoryWord(word: string): boolean {
+  return (
+    typedIn(
+      [word],
+      VOCABULARY.flatMap(({ words }) => words),
+    ) || inferCategory(word) !== null
+  );
+}
+
 export function inferCategory(task: string): Category | null {
   const words = wordsOf(task);
   const entry = VOCABULARY.find(

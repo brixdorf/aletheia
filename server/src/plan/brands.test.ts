@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { domainsIn, namedBrands, unknownSiteIn } from "./brands.ts";
+import { domainsIn, leadingName, namedBrands, unknownSiteIn } from "./brands.ts";
 import { FALLBACK_SITES } from "./sites/fallback.ts";
 import { IN_SITES } from "./sites/in.ts";
 
@@ -61,6 +61,29 @@ describe("namedBrands", () => {
 
   it("stops at an exact match, so a typo check cannot add a second brand", () => {
     expect(names("netflix on flipcart")).toEqual(["Netflix"]);
+  });
+});
+
+describe("leadingName", () => {
+  it.each([
+    ["zee5 premium", "zee5"],
+    ["sony liv subscription", "sony liv"],
+    ["costco membership", "costco"],
+    ["kogan tv", "kogan"],
+    ["southwest flight to denver", "southwest"],
+    ["buy a boat speaker", "boat"],
+  ])("reads the name at the front of %s", (task, name) => {
+    expect(leadingName(task)).toBe(name);
+  });
+
+  it.each([
+    "a laptop",
+    "cheap flights to goa",
+    "movie tickets",
+    "need a new phone charger",
+    "2 tvs",
+  ])("finds no name in %s", (task) => {
+    expect(leadingName(task)).toBeNull();
   });
 });
 

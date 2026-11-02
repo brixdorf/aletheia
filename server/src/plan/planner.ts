@@ -1,5 +1,5 @@
 import { detectFlow } from "../audit/goals.ts";
-import { domainsIn, namedBrands, unknownSiteIn } from "./brands.ts";
+import { domainsIn, leadingName, namedBrands, unknownSiteIn } from "./brands.ts";
 import { inferCategory, isShopCategory, isSignUpCategory } from "./category.ts";
 import { countryName, proxyCountry } from "./country.ts";
 import { FALLBACK_SITES, REGIONAL_MARKETPLACES } from "./sites/fallback.ts";
@@ -29,6 +29,7 @@ const MIN_TASK_LENGTH = 3;
 const MAX_NAMED_SITES = 4;
 const MAX_SEARCHED_SITES = 3;
 const MAX_CACHED_SEARCHES = 500;
+const TOP_HITS = 2;
 
 /** Lists, reviews and the like, which come back from a search ahead of the shops themselves. */
 const NOT_A_SHOP_HOST =
@@ -152,6 +153,12 @@ export class SitePlanner {
       if (site) return { source: "search", sites: [site] };
     }
 
+    const leading = isVague(task) ? null : leadingName(task);
+    if (leading) {
+      const site = await this.#brandSite(leading, country);
+      if (site) return { source: "search", sites: [site] };
+    }
+
     if (category) {
       const national = sitesFor(country)?.categories[category];
       if (national) return { source: "category", sites: national.map(planned) };
@@ -204,6 +211,20 @@ export class SitePlanner {
     );
     const wanted = name.toLowerCase().replaceAll(/[^a-z\d]/g, "");
     const site = hits.find(({ host }) => host.replaceAll("-", "").includes(wanted));
+    return site ? { ...site, name: capitalised(name) } : null;
+  }
+
+  /** A guess at a name counts only if one of the top hits is that name's own domain. */
+  async #brandSite(name: string, country: string | null): Promise<PlannedSite | null> {
+    const hits = await this.#searchSites(
+      `${name} official website ${countryName(country)}`,
+      country,
+    );
+    const [firstWord = name] = name.split(" ");
+    const owns = (host: string, label: string) => host.split(".").includes(label);
+    const site = hits
+      .slice(0, TOP_HITS)
+      .find(({ host }) => owns(host, name.replaceAll(" ", "")) || owns(host, firstWord));
     return site ? { ...site, name: capitalised(name) } : null;
   }
 

@@ -1,4 +1,5 @@
 import { isTravelTask } from "../audit/goals.ts";
+import { isCategoryWord } from "./category.ts";
 import { isTypoOf } from "./fuzzy.ts";
 import type { Brand, Site } from "./types.ts";
 
@@ -124,6 +125,28 @@ export function domainsIn(task: string): Site[] {
     const url = /^https?:/i.test(address) ? address : `https://${address}`;
     return { name: new URL(url).hostname.replace(/^www\./, ""), url };
   });
+}
+
+/** Words that open a request and say nothing of who sells the thing. */
+const OPENING_WORD =
+  /^(buy|get|order|book|a|an|the|my|some|cheap|cheapest|new|best|good|need|want|i|to|try|cancel|sign|up|for|subscribe|start|choose|how|do|can|help|me|please|find|looking|gaming|noise|running|winter|womens|mens|kids|comprar|kaufen|acheter|beli|billet|abonnement|\d+)$/;
+/** Words that end a name, because what follows it is the product or the terms. */
+const AFTER_A_NAME =
+  /^(plan|plans|premium|subscription|membership|trial|ticket|tickets|deal|deals|online|gold|pro|plus|sale|under|in|to|from|on|at|for|near|this|next|vs|and|with|or)$/;
+const LONGEST_NAME = 2;
+const SHORTEST_NAME = 3;
+
+/** What may be a brand at the front of a task, such as "zee5 premium", for Search to confirm. */
+export function leadingName(task: string): string | null {
+  const words = wordsOf(task);
+  const start = words.findIndex((word) => !OPENING_WORD.test(word));
+  const name: string[] = [];
+  for (const word of words.slice(start === -1 ? words.length : start)) {
+    if (AFTER_A_NAME.test(word) || isCategoryWord(word) || name.length === LONGEST_NAME) break;
+    name.push(word);
+  }
+  const joined = name.join(" ");
+  return joined.replaceAll(" ", "").length >= SHORTEST_NAME ? joined : null;
 }
 
 /** A site the task seems to name that is in no data file, such as "shoes on Decathlon". */
