@@ -8,6 +8,15 @@ describe("siteName", () => {
     expect(siteName("www.adobe.com")).toBe("Adobe");
     expect(siteName("shop.example.co.in")).toBe("Shop");
   });
+
+  it("skips a country subdomain, which is not the site's name", () => {
+    expect(siteName("in.bookmyshow.com")).toBe("Bookmyshow");
+    expect(siteName("uk.example.com")).toBe("Example");
+  });
+
+  it("keeps a two-letter name that is the site itself", () => {
+    expect(siteName("go.dev")).toBe("Go");
+  });
 });
 
 describe("avatarTone", () => {

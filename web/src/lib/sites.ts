@@ -3,9 +3,9 @@ export const MAX_SITES = 4;
 
 const TONES = 5;
 
-/** A readable name for any host: "www.adobe.com" gives "Adobe". */
+/** A readable name for any host: "www.adobe.com" gives "Adobe", "in.bookmyshow.com" "Bookmyshow". */
 export function siteName(host: string): string {
-  const name = host.replace(/^www\./, "").split(".")[0] ?? host;
+  const name = host.replace(/^(www|[a-z]{2})\.(?=[^.]+\.[^.]+)/, "").split(".")[0] ?? host;
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
