@@ -1,4 +1,5 @@
 import { sitesFor } from "./sites/index.ts";
+import type { CountrySites, Site } from "./types.ts";
 
 export const EXAMPLES_SHOWN = 3;
 
@@ -14,36 +15,59 @@ function townOf(city: string | null): string | null {
   return city?.split(",")[0]?.trim() || null;
 }
 
+interface Places {
+  home: string;
+  away: string;
+  market: CountrySites;
+}
+
+interface ExampleKind {
+  words: (places: Places) => string;
+  /** Set once this kind has run as a guest on the live site and given a useful report. */
+  proven: boolean;
+}
+
+const firstName = (sites: readonly Site[] | undefined) => sites?.[0]?.name ?? "";
+
+const KINDS: readonly ExampleKind[] = [
+  { words: () => "Sign up for Spotify Premium", proven: true },
+  { words: () => "Sign up for Adobe Creative Cloud", proven: true },
+  {
+    words: ({ market }) => `Order dinner on ${firstName(market.categories.food_delivery)}`,
+    proven: true,
+  },
+  {
+    words: ({ market }) => `Buy concert tickets on ${firstName(market.categories.movies_events)}`,
+    proven: false,
+  },
+  { words: ({ home, away }) => `Book a flight from ${home} to ${away}`, proven: false },
+  { words: ({ away }) => `Book a hotel in ${away} for this weekend`, proven: false },
+  {
+    words: ({ market }) => `Buy a laptop on ${firstName(market.categories.electronics)}`,
+    proven: false,
+  },
+  {
+    words: ({ market }) => `Choose a mobile plan on ${firstName(market.categories.telecom)}`,
+    proven: false,
+  },
+];
+
 function localExamples(country: string, city: string | null): string[] | null {
   const market = sitesFor(country);
   if (!market) return null;
 
   const [first, second] = market.cities;
   const home = townOf(city) ?? first;
-  const away = home === first ? second : first;
-  const { electronics, movies_events: events, telecom, food_delivery: food } = market.categories;
-
-  return [
-    `Book a flight from ${home} to ${away}`,
-    `Book a hotel in ${away} for this weekend`,
-    "Sign up for Netflix",
-    "Sign up for Spotify Premium",
-    `Buy a laptop on ${electronics[0]?.name}`,
-    `Buy concert tickets on ${events[0]?.name}`,
-    `Choose a mobile plan on ${telecom[0]?.name}`,
-    `Order dinner on ${food[0]?.name}`,
-  ];
+  const places = { home, away: home === first ? second : first, market };
+  return KINDS.filter(({ proven }) => proven).map(({ words }) => words(places));
 }
 
 const WORLDWIDE_EXAMPLES = [
-  "Book a hotel in Paris for this weekend",
-  "Sign up for Netflix",
   "Sign up for Spotify Premium",
-  "Buy a laptop on Amazon",
-  "Book a flight from London to Rome",
+  "Sign up for Adobe Creative Cloud",
+  "Order dinner on Uber Eats",
 ] as const;
 
-/** Every kind of example has run as a guest on the live site and produced a useful report. */
 export function examplesFor(
   country: string | null,
   city: string | null,

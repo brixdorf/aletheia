@@ -27,29 +27,13 @@ describe("examplesFor", () => {
     expect(every(null)).toHaveLength(3);
   });
 
-  it("uses real cities in the visitor's country", () => {
-    const examples = allOf("IN");
-
-    expect(examples).toContain("Book a flight from Mumbai to Delhi");
-    expect(examples).toContain("Book a hotel in Delhi for this weekend");
+  it("names the country's own delivery app", () => {
+    expect(allOf("DE")).toContain("Order dinner on Lieferando");
+    expect(allOf("IN")).toContain("Order dinner on Zomato");
   });
 
-  it("starts from the visitor's own city when it is known", () => {
-    const examples = allOf("IN", "Pune, Maharashtra");
-
-    expect(examples).toContain("Book a flight from Pune to Mumbai");
-    expect(examples).toContain("Book a hotel in Mumbai for this weekend");
-  });
-
-  it("does not fly from a city to itself", () => {
-    expect(allOf("IN", "Mumbai, Maharashtra")).toContain("Book a flight from Mumbai to Delhi");
-  });
-
-  it("names the country's own stores", () => {
-    const germany = allOf("DE");
-
-    expect(germany).toContain("Buy a laptop on MediaMarkt");
-    expect(germany).toContain("Order dinner on Lieferando");
+  it("shows only kinds that have run on the live site", () => {
+    expect(allOf("IN").join(" ")).not.toMatch(/flight|hotel|mobile plan|laptop|Netflix/);
   });
 
   it("never offers groceries or jokes", () => {
@@ -58,15 +42,12 @@ describe("examplesFor", () => {
     }
   });
 
-  it("changes from one visit to the next", () => {
-    const first = examplesFor("IN", null, () => 0.1).join();
-    let draw = 0;
-    const second = examplesFor("IN", null, () => {
-      draw += 0.3;
-      return draw % 1;
-    }).join();
+  it("shows them in a new order from one visit to the next", () => {
+    const first = examplesFor("IN", null, () => 0.1);
+    const orders = [0.9, 0.1, 0.5];
+    const second = examplesFor("IN", null, () => orders.shift() ?? 0);
 
-    expect(second).not.toBe(first);
+    expect(second).not.toEqual(first);
   });
 });
 

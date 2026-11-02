@@ -110,6 +110,7 @@ const resultSchema = z.object({
   stop_note: str,
   stopped_reason: str,
   login_wall_at: str,
+  login_prompt: str,
   login_required: z.boolean().nullish().catch(null),
   reached_payment_page: z.boolean().nullish().catch(null),
   blocked_by_bot_protection: z.boolean().nullish().catch(null),
@@ -219,6 +220,7 @@ export interface Evidence {
   stopPoint: StopPoint;
   stopNote: string | null;
   loginWallAt: string | null;
+  loginPrompt: string | null;
   billItemised: boolean;
   itemName: string | null;
   listedPrice: number | null;
@@ -329,6 +331,7 @@ export function parseEvidence(result: Record<string, unknown> | null): Evidence 
     stopPoint: stop,
     stopNote: raw.stop_note ?? raw.stopped_reason ?? null,
     loginWallAt: raw.login_wall_at ?? null,
+    loginPrompt: raw.login_prompt ?? null,
     billItemised: raw.bill_itemised ?? fees.some((fee) => fee.amount !== null && fee.amount > 0),
     itemName: raw.item_name ?? null,
     listedPrice: raw.item_listed_price ?? raw.first_price_shown ?? null,

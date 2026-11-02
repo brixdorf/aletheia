@@ -745,6 +745,19 @@ describe("a checkout that hides its price behind sign-in", () => {
     expect(pattern(report, "price_behind_signin").status).toBe("found");
   });
 
+  it("takes the words of the wall from the field the agent always fills", () => {
+    const report = judge("zomato", "checkout", (run) => {
+      if (!run.result) return;
+      Object.assign(run.result, {
+        price_anchors: [],
+        pattern_checks: [],
+        login_prompt: "Log in to continue",
+      });
+    });
+
+    expect(pattern(report, "price_behind_signin").quote).toBe("Log in to continue");
+  });
+
   it("never counts the account a subscription needs", () => {
     const report = judge("zomato", "subscription", wall);
 

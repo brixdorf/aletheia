@@ -21,7 +21,7 @@ import type {
 } from "./types.ts";
 
 /** Raised when the rules change, so reports saved under older ones are judged again. */
-export const RULES_VERSION = 2;
+export const RULES_VERSION = 3;
 
 export interface JudgeInput {
   flow: Flow;

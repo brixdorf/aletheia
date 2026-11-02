@@ -404,11 +404,11 @@ function cancellationTermsMissing(context: JudgedContext): Draft | null {
 function priceBehindSignIn({ flow, stop, bill, evidence }: JudgedContext): Draft | null {
   if (flow !== "checkout" || bill.total !== null) return null;
   if (stop !== "login_wall" && stop !== "contact_required") return null;
-  return agentQuote(
-    evidence,
-    "price_behind_signin",
-    "The site asks for an account or contact details before showing what the order costs.",
-  );
+  const note =
+    "The site asks for an account or contact details before showing what the order costs.";
+  return evidence.loginPrompt
+    ? seen(evidence.loginPrompt, evidence.pages.at(-1)?.step ?? null, note)
+    : agentQuote(evidence, "price_behind_signin", note);
 }
 
 function forcedAction({ evidence }: JudgedContext): Draft | null {

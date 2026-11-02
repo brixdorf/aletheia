@@ -30,6 +30,7 @@ const properties = {
   },
   stop_note: nullableString,
   login_wall_at: nullableString,
+  login_prompt: nullableString,
   bill_itemised: { type: "boolean" },
   item_name: nullableString,
   item_listed_price: nullableNumber,

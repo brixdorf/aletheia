@@ -166,6 +166,13 @@ describe("buildGoal", () => {
     }
   });
 
+  it("treats a required email as the end of the walk, with no made-up address", () => {
+    const text = goal({ flow: "subscription" });
+
+    expect(text).toMatch(/not even a made-up one/i);
+    expect(text).toContain("login_prompt");
+  });
+
   it("shows the agent what does not count", () => {
     const text = goal();
 

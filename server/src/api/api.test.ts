@@ -101,7 +101,7 @@ describe("api", () => {
   });
 
   afterEach(async () => {
-    await rm(dataDir, { recursive: true, force: true });
+    await rm(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   });
 
   function visitor(name: string) {
