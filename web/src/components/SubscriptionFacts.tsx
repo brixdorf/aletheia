@@ -72,7 +72,7 @@ export function SubscriptionFacts({ subscription, currency, renewal }: Subscript
                     {option.commitment ? (
                       <p className="text-[13px] text-mute">{option.commitment}</p>
                     ) : null}
-                    {option.feeLine ? (
+                    {option.feeLine && option.feeLine !== option.commitment ? (
                       <p className="text-[13px] text-mute">{option.feeLine}</p>
                     ) : null}
                   </li>
