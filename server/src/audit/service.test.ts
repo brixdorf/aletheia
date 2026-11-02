@@ -110,9 +110,32 @@ describe("AuditService", () => {
     expect(audit.sites[0]?.report?.missing.join(" ")).not.toMatch(/browse from/);
   });
 
-  it("says so in the report when TinyFish cannot browse from the country", async () => {
+  it("tells the agent the visitor's city and keeps it on the audit", async () => {
     const client = clientFor(loadRun("blinkit-2"));
     const streamRun = vi.fn((request: RunRequest) => client.streamRun(request));
+    const audits = service({ ...client, streamRun });
+
+    const created = await audits.create({
+      visitorId: "visitor",
+      task: "buy one pair of headphones",
+      country: "IN",
+      city: "Pune, Maharashtra",
+      sites: [{ url: SITE }],
+    });
+    const audit = await finished(audits, created.id);
+
+    const [request] = streamRun.mock.calls[0] as unknown as [RunRequest];
+    expect(request.goal).toContain("Pune, Maharashtra");
+    expect(audit.city).toBe("Pune, Maharashtra");
+  });
+
+  it("runs from elsewhere and says so when the country's browser will not start", async () => {
+    const run = loadRun("blinkit-2");
+    const client = clientFor(run);
+    const streamRun = vi.fn((request: RunRequest) => {
+      if (request.proxyCountry === "BR") throw new RunStartError("unknown country_code");
+      return client.streamRun(request);
+    });
     const audits = service({ ...client, streamRun });
 
     const created = await audits.create({
@@ -123,10 +146,10 @@ describe("AuditService", () => {
     });
     const audit = await finished(audits, created.id);
 
-    const [request] = streamRun.mock.calls[0] as unknown as [RunRequest];
+    const [request] = streamRun.mock.calls[1] as unknown as [RunRequest];
     expect(request.proxyCountry).toBeNull();
     expect(audit.sites[0]?.report?.missing).toContain(
-      "TinyFish cannot browse from Brazil, so this run came from another country and prices may differ.",
+      "This run could not browse from Brazil, so it came from another country and prices may differ.",
     );
   });
 

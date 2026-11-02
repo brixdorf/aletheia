@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { GLOBAL_CATEGORIES, NATIONAL_CATEGORIES } from "./category.ts";
+import { COVERED_COUNTRIES } from "./country.ts";
 import { FALLBACK_SITES } from "./sites/fallback.ts";
 import { coveredCountries, sitesFor } from "./sites/index.ts";
 import { MARKETS } from "./sites/markets.ts";
@@ -13,6 +14,10 @@ describe("the national data", () => {
     for (const code of ["US", "CN", "GB", "JP", "DE", "IN", "BR", "AE"]) {
       expect(sitesFor(code), code).not.toBeNull();
     }
+  });
+
+  it("matches the list the browser uses", () => {
+    expect(coveredCountries().toSorted()).toEqual([...COVERED_COUNTRIES]);
   });
 
   it("knows nothing of a country outside them, so Search takes over", () => {

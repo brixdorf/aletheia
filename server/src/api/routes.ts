@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import type { AuditService, NewAudit } from "../audit/service.ts";
 import { ApiError } from "../errors.ts";
-import { proxyCountry, resolveCountry } from "../plan/country.ts";
+import { proxyCountry, resolveCity, resolveCountry } from "../plan/country.ts";
 import type { SitePlanner } from "../plan/planner.ts";
 import type { RunQueue } from "../runner/queue.ts";
 import type { Frame } from "../signin/remoteScreen.ts";
@@ -121,6 +121,13 @@ function countryOf(c: Context, { country, timeZone, languages }: PlaceSignals): 
   return resolveCountry({ choice: country, cloudflare, timeZone, languages });
 }
 
+/** A city only holds for the country the visitor is really in, not one picked on a report. */
+function cityOf(c: Context, country: string | null): string | null {
+  const here = c.req.header("cf-ipcountry")?.toUpperCase();
+  if (!country || country !== here) return null;
+  return resolveCity(c.req.header("cf-ipcity"), c.req.header("cf-region"));
+}
+
 function clientAddress(c: Context): string {
   // The last hop is the one our own proxy added, and a visitor cannot forge that.
   return c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "direct";
@@ -192,7 +199,7 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
       throw new ApiError("rate_limited", "That is the limit for this hour.");
     }
     const country = countryOf(c, body);
-    return c.json(await planner.plan(body.task, country));
+    return c.json({ ...(await planner.plan(body.task, country)), city: cityOf(c, country) });
   });
 
   api.get("/audits", (c) => c.json({ audits: audits.list(c.get("visitorId")).map(summaryView) }));
@@ -225,7 +232,8 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
     }
 
     spend(c, sites.length);
-    const audit = await audits.create({ task: body.task, flow, country, sites, visitorId });
+    const city = cityOf(c, country);
+    const audit = await audits.create({ task: body.task, flow, country, city, sites, visitorId });
     return c.json(ownerView(audit), 201);
   });
 

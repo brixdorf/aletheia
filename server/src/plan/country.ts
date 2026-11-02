@@ -1,14 +1,31 @@
-/** The documented TinyFish proxy countries, plus India, which our test runs confirmed. */
-const PROXY_COUNTRIES: ReadonlySet<string> = new Set([
-  "IN",
-  "US",
-  "GB",
-  "CA",
-  "DE",
-  "FR",
-  "JP",
+/** The countries with national site data, listed apart so the browser need not load that data. */
+export const COVERED_COUNTRIES = [
+  "AE",
   "AU",
-]);
+  "BR",
+  "CA",
+  "CN",
+  "DE",
+  "ES",
+  "FR",
+  "GB",
+  "ID",
+  "IN",
+  "IT",
+  "JP",
+  "KR",
+  "MX",
+  "MY",
+  "NL",
+  "PH",
+  "PL",
+  "SA",
+  "SG",
+  "TH",
+  "TR",
+  "US",
+  "VN",
+] as const;
 
 export const WORLDWIDE = "ZZ";
 const WORLDWIDE_NAME = "Worldwide";
@@ -28,9 +45,28 @@ const TIME_ZONE_COUNTRY: readonly (readonly [RegExp, string])[] = [
   [/^Australia\//, "AU"],
   [/^Europe\/Berlin$/, "DE"],
   [/^Europe\/Paris$/, "FR"],
+  [/^Europe\/Madrid$/, "ES"],
+  [/^Europe\/Rome$/, "IT"],
+  [/^Europe\/Amsterdam$/, "NL"],
+  [/^Europe\/Warsaw$/, "PL"],
+  [/^Europe\/Stockholm$/, "SE"],
+  [/^Europe\/Istanbul$/, "TR"],
   [/^Asia\/Tokyo$/, "JP"],
+  [/^Asia\/Seoul$/, "KR"],
+  [/^Asia\/(Shanghai|Urumqi)$/, "CN"],
   [/^Asia\/Singapore$/, "SG"],
+  [/^Asia\/(Jakarta|Makassar|Jayapura)$/, "ID"],
+  [/^Asia\/Bangkok$/, "TH"],
+  [/^Asia\/(Ho_Chi_Minh|Saigon)$/, "VN"],
+  [/^Asia\/Manila$/, "PH"],
+  [/^Asia\/Kuala_Lumpur$/, "MY"],
+  [/^Asia\/Riyadh$/, "SA"],
   [/^Asia\/Dubai$/, "AE"],
+  [/^America\/(Sao_Paulo|Fortaleza|Recife|Bahia|Manaus)$/, "BR"],
+  [/^America\/(Mexico_City|Cancun|Monterrey|Tijuana)$/, "MX"],
+  [/^Africa\/Nairobi$/, "KE"],
+  [/^Africa\/Lagos$/, "NG"],
+  [/^Africa\/Johannesburg$/, "ZA"],
 ];
 
 const NAMES = new Intl.DisplayNames(["en"], { type: "region" });
@@ -76,9 +112,23 @@ export function resolveCountry({
   );
 }
 
-/** The code to hand TinyFish, or null to leave it out. */
+/**
+ * The code to hand TinyFish, or null to leave it out. Its docs list a few countries, but every
+ * country tried on 2 Nov 2026 browsed from there, so a run only falls back if one will not start.
+ */
 export function proxyCountry(country: string | null): string | null {
-  return country !== null && PROXY_COUNTRIES.has(country) ? country : null;
+  return country;
+}
+
+/** Headers can be forged where Cloudflare is not in front, and this text reaches the agent. */
+const PLACE_NAME = /^[\p{L}\p{M} .'-]{2,60}$/u;
+
+/** The visitor's city from Cloudflare's location headers, for a delivery or pickup location. */
+export function resolveCity(city: string | undefined, region: string | undefined): string | null {
+  const place = city?.trim();
+  if (!place || !PLACE_NAME.test(place)) return null;
+  const area = region?.trim();
+  return area && area !== place && PLACE_NAME.test(area) ? `${place}, ${area}` : place;
 }
 
 export function countryName(country: string | null): string {

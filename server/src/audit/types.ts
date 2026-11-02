@@ -19,6 +19,8 @@ export interface SiteRun {
   runId: string | null;
   /** The site blocked a run and this one fresh run followed. Saved so a restart adds no third. */
   retried?: boolean;
+  /** The country's browser would not start, so this run came from elsewhere. */
+  unproxied?: boolean;
   streamingUrl: string | null;
   steps: SiteStep[];
   startedAt: string | null;
@@ -35,6 +37,8 @@ export interface Audit {
   flow: Flow;
   /** Null for a worldwide audit. Saved audits from before countries have none. */
   country?: string | null;
+  /** Where the visitor was, for delivery. Never shared, since a report link can travel. */
+  city?: string | null;
   createdAt: string;
   status: "running" | "finished";
   shareToken: string | null;

@@ -42,6 +42,17 @@ describe("delivery location", () => {
     expect(goal({ country: "GB" })).toContain("SW1A 1AA");
   });
 
+  it("uses the visitor's city over the country's default", () => {
+    const text = goal({ country: "IN", city: "Pune, Maharashtra" });
+
+    expect(text).toContain('"Pune, Maharashtra"');
+    expect(text).not.toContain("Andheri");
+  });
+
+  it("uses a city even in a country we hold no data for", () => {
+    expect(goal({ country: "FJ", city: "Suva" })).toContain('"Suva"');
+  });
+
   it("names no address for a country we hold none for", () => {
     const text = goal({ country: "FJ" });
     expect(text).not.toContain("Andheri");

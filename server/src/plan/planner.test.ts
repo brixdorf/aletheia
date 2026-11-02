@@ -228,7 +228,7 @@ describe("SitePlanner", () => {
     expect(await plan("buy a laptop", "IN")).toMatchObject({ countryName: "India", proxied: true });
     expect(await plan("buy a laptop", "FJ")).toMatchObject({
       countryName: "Fiji",
-      proxied: false,
+      proxied: true,
     });
     expect(await plan("buy a laptop", null)).toMatchObject({
       country: null,

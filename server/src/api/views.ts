@@ -27,7 +27,7 @@ export function ownerView({ visitorId: _visitorId, ...audit }: Audit) {
 }
 
 export function sharedView(audit: Audit) {
-  const { shareToken: _shareToken, ...view } = ownerView(audit);
+  const { shareToken: _shareToken, city: _city, ...view } = ownerView(audit);
   return view;
 }
 

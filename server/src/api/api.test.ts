@@ -183,6 +183,45 @@ describe("api", () => {
     expect(audit).not.toHaveProperty("visitorId");
   });
 
+  it("reads the visitor's city from Cloudflare and never shares it", async () => {
+    const as = alice();
+    const headers = {
+      "cf-ipcountry": "IN",
+      "cf-ipcity": "Pune",
+      "cf-region": "Maharashtra",
+    };
+    const planned = (await (
+      await as("/plan", { ...post({ task: "buy a laptop" }), headers })
+    ).json()) as { city: string | null };
+    expect(planned.city).toBe("Pune, Maharashtra");
+
+    const created = (await (
+      await as("/audits", {
+        ...post({ task: "buy a laptop", sites: [{ url: "https://shop.test/" }], flow: "checkout" }),
+        headers,
+      })
+    ).json()) as { id: string; city: string | null };
+    expect(created.city).toBe("Pune, Maharashtra");
+
+    const { token } = (await (
+      await as(`/audits/${created.id}/share`, { method: "POST" })
+    ).json()) as {
+      token: string;
+    };
+    const shared = (await (await as(`/shared/${token}`)).json()) as Record<string, unknown>;
+    expect(shared).not.toHaveProperty("city");
+  });
+
+  it("drops the city when the audit runs from another country", async () => {
+    const as = alice();
+    const response = await as("/plan", {
+      ...post({ task: "buy a laptop", country: "DE" }),
+      headers: { "cf-ipcountry": "IN", "cf-ipcity": "Pune" },
+    });
+    const { city } = (await response.json()) as { city: string | null };
+    expect(city).toBeNull();
+  });
+
   it("lists past audits in short form", async () => {
     const as = alice();
     await createAudit(as);

@@ -52,6 +52,7 @@ export interface NewAudit {
   task: string;
   flow?: Flow | undefined;
   country?: string | null | undefined;
+  city?: string | null | undefined;
   sites: { url: string; signInId?: string | undefined }[];
 }
 
@@ -119,7 +120,14 @@ export class AuditService {
     this.#now = deps.now ?? (() => new Date());
   }
 
-  async create({ visitorId, task, flow, country = null, sites }: NewAudit): Promise<Audit> {
+  async create({
+    visitorId,
+    task,
+    flow,
+    country = null,
+    city = null,
+    sites,
+  }: NewAudit): Promise<Audit> {
     const id = randomUUID();
     const audit: Audit = {
       id,
@@ -127,6 +135,7 @@ export class AuditService {
       task,
       flow: flow ?? detectFlow(task),
       country,
+      city,
       createdAt: this.#now().toISOString(),
       status: "running",
       shareToken: null,
@@ -320,7 +329,11 @@ export class AuditService {
     site.startedAt ??= this.#now().toISOString();
     this.#publish(audit);
 
-    await this.#walk(audit, site, signal);
+    await this.#walk(audit, site, signal).catch(async (error: unknown) => {
+      if (!(error instanceof RunStartError) || !proxyCountry(audit.country ?? null)) throw error;
+      site.unproxied = true;
+      await this.#walk(audit, site, signal);
+    });
     await this.#retryIfBlocked(audit, site, signal);
     if (site.retried && site.report) site.report.flags.push(retryFlag(site.report));
   }
@@ -367,11 +380,12 @@ export class AuditService {
           signedIn,
           today: this.#now(),
           country,
+          city: audit.city ?? null,
         }),
         maxDurationSeconds: budget,
         outputSchema: OUTPUT_SCHEMA,
         profileId,
-        proxyCountry: proxyCountry(country),
+        proxyCountry: site.unproxied ? null : proxyCountry(country),
       },
       {
         onRunId: (runId) => {
@@ -434,9 +448,9 @@ export class AuditService {
       captures: await collectPageText(this.#deps.client, run),
     });
     const { country } = audit;
-    if (country && !proxyCountry(country)) {
+    if (country && site.unproxied) {
       report.missing.push(
-        `TinyFish cannot browse from ${countryName(country)}, so this run came from another country and prices may differ.`,
+        `This run could not browse from ${countryName(country)}, so it came from another country and prices may differ.`,
       );
     }
     return scrubPersonal(report);
