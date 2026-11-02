@@ -207,7 +207,10 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
     const picked = (plan?.sites ?? []).filter(({ url }) => siteUrl.safeParse(url).success);
     const sites: NewAudit["sites"] = body.sites ?? picked.map(({ url }) => ({ url }));
     if (sites.length === 0) {
-      throw new ApiError("invalid_request", "No sites could be picked for that. Please add one.");
+      throw new ApiError(
+        "invalid_request",
+        plan?.question?.text ?? "No sites could be picked for that. Please add one.",
+      );
     }
 
     for (const { url, signInId } of sites) {

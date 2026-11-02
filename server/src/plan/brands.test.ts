@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { domainsIn, namedBrands, unknownSiteIn } from "./brands.ts";
+import { FALLBACK_SITES } from "./sites/fallback.ts";
 import { IN_SITES } from "./sites/in.ts";
 
-const names = (task: string) => namedBrands(task, IN_SITES.brands).map(({ name }) => name);
+const names = (task: string) =>
+  namedBrands(task, [...IN_SITES.brands, ...FALLBACK_SITES.brands]).map(({ name }) => name);
 
 describe("namedBrands", () => {
   it("finds a brand in any case", () => {
@@ -37,6 +39,29 @@ describe("namedBrands", () => {
   it("does not match inside a longer word", () => {
     expect(names("a cromatic scale book")).toEqual([]);
   });
+
+  it.each([
+    ["flipcart laptop", "Flipkart"],
+    ["flpkart shoes", "Flipkart"],
+    ["amzon headphones", "Amazon"],
+    ["zomoto order", "Zomato"],
+    ["swigy pizza", "Swiggy"],
+    ["netflx", "Netflix"],
+    ["bookmyshoww", "BookMyShow"],
+    ["make my trip", "MakeMyTrip"],
+  ])("reads the typo or nickname %s as %s", (task, name) => {
+    expect(names(task)).toEqual([name]);
+  });
+
+  it("does not take a real word for a brand it looks like", () => {
+    expect(names("a tomato plant")).toEqual([]);
+    expect(names("a cosy abode")).toEqual([]);
+    expect(names("a shine kit")).toEqual([]);
+  });
+
+  it("stops at an exact match, so a typo check cannot add a second brand", () => {
+    expect(names("netflix on flipcart")).toEqual(["Netflix"]);
+  });
 });
 
 describe("domainsIn", () => {
@@ -47,6 +72,15 @@ describe("domainsIn", () => {
     expect(domainsIn("https://www.shop.co.uk/lamps")).toEqual([
       { name: "shop.co.uk", url: "https://www.shop.co.uk/lamps" },
     ]);
+  });
+
+  it("reads the many country endings a pasted address can have", () => {
+    expect(domainsIn("zalando.fr robe")[0]?.url).toBe("https://zalando.fr");
+    expect(domainsIn("kabum.com.br placa")[0]?.url).toBe("https://kabum.com.br");
+  });
+
+  it("leaves an email address alone", () => {
+    expect(domainsIn("mail me at sam@shop.com")).toEqual([]);
   });
 
   it("does not read decimals or sizes as addresses", () => {
@@ -73,6 +107,6 @@ describe("unknownSiteIn", () => {
   });
 
   it("leaves out places in a travel task", () => {
-    expect(unknownSiteIn("flight from Bangalore to Delhi on 25 Nov")).toBeNull();
+    expect(unknownSiteIn("flight from Mumbai to Delhi on 25 Nov")).toBeNull();
   });
 });

@@ -27,7 +27,7 @@ describe("detectFlow", () => {
     expect(detectFlow(task)).toBe("subscription");
   });
 
-  it.each(["buy one pair of headphones", "one USB-C cable", "flight from Bangalore to Delhi"])(
+  it.each(["buy one pair of headphones", "one USB-C cable", "flight from Mumbai to Delhi"])(
     "treats %s as a checkout",
     (task) => {
       expect(detectFlow(task)).toBe("checkout");
@@ -37,14 +37,14 @@ describe("detectFlow", () => {
 
 describe("delivery location", () => {
   it("gives the agent an address in the visitor's country", () => {
-    expect(goal({ country: "IN" })).toContain("Koramangala, Bengaluru");
+    expect(goal({ country: "IN" })).toContain("Andheri West, Mumbai");
     expect(goal({ country: "US" })).toContain("New York, NY");
     expect(goal({ country: "GB" })).toContain("SW1A 1AA");
   });
 
   it("names no address for a country we hold none for", () => {
-    const text = goal({ country: "BR" });
-    expect(text).not.toContain("Koramangala");
+    const text = goal({ country: "FJ" });
+    expect(text).not.toContain("Andheri");
     expect(text).toContain("largest city");
   });
 });
@@ -53,8 +53,8 @@ describe("budgets", () => {
   it("gives shops 300 seconds, sign-ins 450 and travel 600", () => {
     expect(budgetSeconds({ task: "buy a laptop", signedIn: false })).toBe(300);
     expect(budgetSeconds({ task: "buy a laptop", signedIn: true })).toBe(450);
-    expect(budgetSeconds({ task: "flight from Bangalore to Delhi", signedIn: false })).toBe(600);
-    expect(budgetSeconds({ task: "flight from Bangalore to Delhi", signedIn: true })).toBe(600);
+    expect(budgetSeconds({ task: "flight from Mumbai to Delhi", signedIn: false })).toBe(600);
+    expect(budgetSeconds({ task: "flight from Mumbai to Delhi", signedIn: true })).toBe(600);
   });
 
   it("spots travel tasks", () => {
@@ -111,7 +111,7 @@ describe("buildGoal", () => {
   });
 
   it("asks for today's date and a placeholder traveller only on travel tasks", () => {
-    const travel = goal({ task: "flight from Bangalore to Delhi on 25 Nov" });
+    const travel = goal({ task: "flight from Mumbai to Delhi on 25 Nov" });
 
     expect(travel).toContain("Today is 1 Nov 2026");
     expect(travel).toContain("Test Traveller");

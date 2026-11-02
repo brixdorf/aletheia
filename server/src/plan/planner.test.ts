@@ -89,40 +89,86 @@ describe("SitePlanner", () => {
   });
 
   it("looks up a site the data file does not know", async () => {
-    const search = vi.fn(() => Promise.resolve([hit("https://www.decathlon.in/shoes")]));
-    const result = await plan("buy shoes on Decathlon", "IN", search);
+    const search = vi.fn(() => Promise.resolve([hit("https://www.snitch.co.in/shoes")]));
+    const result = await plan("buy shoes on Snitch", "IN", search);
 
     expect(result.source).toBe("search");
     expect(result.sites).toEqual([
-      { name: "Decathlon", url: "https://www.decathlon.in/", host: "decathlon.in" },
+      { name: "Snitch", url: "https://www.snitch.co.in/", host: "snitch.co.in" },
     ]);
-    expect(search).toHaveBeenCalledWith(expect.stringContaining("Decathlon"), "IN");
+    expect(search).toHaveBeenCalledWith(expect.stringContaining("Snitch"), "IN");
   });
 
   it("falls back to the category when a named site cannot be found", async () => {
-    const result = await plan("buy shoes on Decathlon");
+    const result = await plan("buy shoes on Snitch");
     expect(result.source).toBe("category");
     expect(result.sites[0]?.name).toBe("Myntra");
   });
 
-  it("searches for a category the country has no data for", async () => {
+  it("searches for a category the country has no data for, and drops what is not a shop", async () => {
     const search = vi.fn(() =>
       Promise.resolve([
-        hit("https://www.reddit.com/r/brasil"),
-        hit("https://www.mercadolivre.com.br/ofertas"),
+        hit("https://www.reddit.com/r/fiji"),
+        hit("https://www.tripadvisor.com/shops"),
+        hit("https://www.techradar.com/best/earphones"),
+        hit("https://www.vinod.com.fj/ofertas"),
         hit("https://blog.example.com/best-shops"),
-        hit("https://www.mercadolivre.com.br/outra"),
-        hit("https://www.magazineluiza.com.br/"),
+        hit("https://shop.example.com/best-earphones"),
+        hit("https://www.vinod.com.fj/outra"),
+        hit("https://www.courts.com.fj/"),
       ]),
     );
-    const result = await plan("buy earphones", "BR", search);
+    const result = await plan("buy earphones", "FJ", search);
 
     expect(result.source).toBe("search");
-    expect(result.sites.map(({ host }) => host)).toEqual([
-      "mercadolivre.com.br",
-      "magazineluiza.com.br",
-    ]);
-    expect(search).toHaveBeenCalledWith(expect.stringContaining("Brazil"), "BR");
+    expect(result.sites.map(({ host }) => host)).toEqual(["vinod.com.fj", "courts.com.fj"]);
+    expect(search).toHaveBeenCalledWith(expect.stringContaining("Fiji"), "FJ");
+  });
+
+  it("puts the country's own domains first", async () => {
+    const search = vi.fn(() =>
+      Promise.resolve([hit("https://www.world-shop.com/"), hit("https://www.local-shop.fj/")]),
+    );
+    const result = await plan("buy earphones", "FJ", search);
+
+    expect(result.sites[0]?.host).toBe("local-shop.fj");
+  });
+
+  it("leads with the region's big marketplace where there is one", async () => {
+    const search = vi.fn(() => Promise.resolve([hit("https://www.corner-laptops.co.ke/")]));
+    const result = await plan("buy a laptop", "KE", search);
+
+    expect(result.sites[0]?.host).toBe("jumia.co.ke");
+  });
+
+  it("drops a search result that does not answer", async () => {
+    const search = vi.fn(() =>
+      Promise.resolve([hit("https://www.gone.com.fj/"), hit("https://www.alive.com.fj/")]),
+    );
+    const probe = vi.fn((url: string) => Promise.resolve(url.includes("alive")));
+    const result = await new SitePlanner(search, probe).plan("buy earphones", "FJ");
+
+    expect(result.sites.map(({ host }) => host)).toEqual(["alive.com.fj"]);
+  });
+
+  it("takes a brand's own site in the visitor's country", async () => {
+    expect(await hosts(plan("laptop stand on amazon", "DE"))).toEqual(["amazon.de"]);
+    expect(await hosts(plan("zalando sneaker", "FR"))).toEqual(["zalando.fr"]);
+  });
+
+  it("reads a typo in a brand", async () => {
+    expect(await hosts(plan("flipcart laptop"))).toEqual(["flipkart.com"]);
+  });
+
+  it("treats cancelling as the subscription flow", async () => {
+    expect(await plan("cancel my netflix")).toMatchObject({
+      flow: "subscription",
+      source: "named",
+    });
+  });
+
+  it("does not read noise cancelling as cancelling", async () => {
+    expect((await plan("noise cancelling headphones")).flow).toBe("checkout");
   });
 
   it("searches for a task the data file cannot place", async () => {
@@ -133,16 +179,27 @@ describe("SitePlanner", () => {
   });
 
   it("uses the generic sites when search finds nothing", async () => {
-    const result = await plan("buy earphones", "BR");
+    const result = await plan("buy earphones", "FJ");
     expect(result.source).toBe("fallback");
     expect(result.sites.length).toBeGreaterThan(0);
   });
 
-  it("uses the general sites when search fails", async () => {
+  it("asks one short question with suggestions when nothing can be picked", async () => {
     const search = vi.fn(() => Promise.reject(new Error("down")));
     const result = await plan("a garden gnome", "IN", search);
-    expect(result.source).toBe("category");
-    expect(result.sites[0]?.host).toBe("flipkart.com");
+
+    expect(result.source).toBe("question");
+    expect(result.sites).toEqual([]);
+    expect(result.question?.text).toBe("Which site should Aletheia check?");
+    expect(result.question?.suggestions[0]?.host).toBe("flipkart.com");
+  });
+
+  it("does not spend a search on words that mean nothing", async () => {
+    const search = vi.fn(noSearch);
+    const result = await plan("hello", "IN", search);
+
+    expect(search).not.toHaveBeenCalled();
+    expect(result.question).not.toBeNull();
   });
 
   it("asks search once for the same task and country", async () => {
@@ -164,13 +221,13 @@ describe("SitePlanner", () => {
   it("works out the subscription flow from the category", async () => {
     const result = await plan("a music streaming plan");
     expect(result.flow).toBe("subscription");
-    expect(result.category).toBe("subscriptions");
+    expect(result.category).toBe("music");
   });
 
   it("says where the country's name and browser stand", async () => {
     expect(await plan("buy a laptop", "IN")).toMatchObject({ countryName: "India", proxied: true });
-    expect(await plan("buy a laptop", "BR")).toMatchObject({
-      countryName: "Brazil",
+    expect(await plan("buy a laptop", "FJ")).toMatchObject({
+      countryName: "Fiji",
       proxied: false,
     });
     expect(await plan("buy a laptop", null)).toMatchObject({

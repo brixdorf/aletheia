@@ -1,13 +1,31 @@
 import type { Flow } from "../judge/types.ts";
 
-export type Category =
+/** Categories with their own main sites in each country. */
+export type NationalCategory =
   | "food_delivery"
   | "electronics"
   | "fashion"
   | "general"
   | "travel"
   | "movies_events"
-  | "subscriptions";
+  | "telecom"
+  | "home";
+
+/** Categories served by the same brands almost everywhere. */
+export type GlobalCategory =
+  | "subscriptions"
+  | "streaming"
+  | "music"
+  | "software"
+  | "security"
+  | "cloud"
+  | "dating"
+  | "fitness"
+  | "gaming"
+  | "learning"
+  | "news";
+
+export type Category = NationalCategory | GlobalCategory;
 
 export interface Site {
   name: string;
@@ -19,12 +37,15 @@ export interface Brand extends Site {
   aliases: readonly string[];
   /** The brand sells plans, so naming it means a sign-up even with no word such as "plan". */
   subscription?: boolean;
+  /** The brand's own site in a country, where it has one. */
+  urls?: Readonly<Partial<Record<string, string>>>;
 }
 
 export interface CountrySites {
-  /** What the agent types when a site asks where to deliver. Null if we have no address to use. */
-  location: string | null;
-  categories: Record<Category, readonly Site[]>;
+  /** What the agent types when a site asks where to deliver and the visitor's city is unknown. */
+  location: string;
+  categories: Record<NationalCategory, readonly Site[]> &
+    Partial<Record<GlobalCategory, readonly Site[]>>;
   brands: readonly Brand[];
 }
 
@@ -32,7 +53,12 @@ export interface PlannedSite extends Site {
   host: string;
 }
 
-export type PlanSource = "named" | "category" | "search" | "fallback" | "none";
+export type PlanSource = "named" | "category" | "search" | "fallback" | "question" | "none";
+
+export interface PlanQuestion {
+  text: string;
+  suggestions: PlannedSite[];
+}
 
 export interface AuditPlan {
   flow: Flow;
@@ -43,4 +69,6 @@ export interface AuditPlan {
   category: Category | null;
   source: PlanSource;
   sites: PlannedSite[];
+  /** Set when no site could be picked, so the visitor always has a way on. */
+  question: PlanQuestion | null;
 }

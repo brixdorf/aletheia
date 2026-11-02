@@ -2,9 +2,9 @@ import type { Flow } from "../judge/types.ts";
 import { sitesFor } from "../plan/sites/index.ts";
 
 const SUBSCRIPTION_TASK =
-  /\b(subscri\w+|plan|plans|premium|membership|trial|renew\w*|monthly|annual|pro version|per (month|year)|a (month|year))\b/i;
+  /\b(subscri\w+|plan|plans|premium|membership|trial|renew\w*|monthly|annual|pro version|per (month|year)|a (month|year)|unsubscribe)\b|(?<!noise[- ])\bcancel(l?ing|l?ation)?\b/i;
 const TRAVEL_TASK =
-  /\b(flights?|fly|airfare|trains?|bus tickets?|hotels? (in|near|at)|one[- ]way)\b/i;
+  /\b(flights?|flite|fly|airfare|trains?|bus tickets?|hot[ae]ls? (in|near|at|for)|book a hot[ae]l|weekend hot[ae]l|one[- ]way|flug|vuelos?|voos?)\b/i;
 
 const SHOP_BUDGET_SECONDS = 300;
 const SIGNED_IN_BUDGET_SECONDS = 450;

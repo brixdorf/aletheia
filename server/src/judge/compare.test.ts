@@ -60,7 +60,7 @@ describe("compareReports", () => {
   });
 
   it("says when a result is for a different place than the task names", () => {
-    const comparison = compareReports("One-way flight from Bangalore to Delhi on 25 Nov", [
+    const comparison = compareReports("One-way flight from Mumbai to Delhi on 25 Nov", [
       report({ host: "ixigo.test", total: 9973, destination: "Delhi (DEL)" }),
       report({ host: "cleartrip.test", total: 9528, destination: "Noida (DXN)" }),
     ]);

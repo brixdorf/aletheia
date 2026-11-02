@@ -1,26 +1,37 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { CATEGORIES } from "./category.ts";
+import { GLOBAL_CATEGORIES, NATIONAL_CATEGORIES } from "./category.ts";
 import { FALLBACK_SITES } from "./sites/fallback.ts";
-import { GB_SITES } from "./sites/gb.ts";
-import { IN_SITES } from "./sites/in.ts";
-import { US_SITES } from "./sites/us.ts";
-import type { CountrySites } from "./types.ts";
+import { coveredCountries, sitesFor } from "./sites/index.ts";
+import { MARKETS } from "./sites/markets.ts";
 
-const FILES: [string, CountrySites][] = [
-  ["India", IN_SITES],
-  ["United States", US_SITES],
-  ["United Kingdom", GB_SITES],
-  ["fallback", FALLBACK_SITES],
-];
+const MARKET_COUNT = 25;
 
-describe.each(FILES)("the %s data file", (_name, sites) => {
-  it.each(CATEGORIES)("names one to three https sites for %s", (category) => {
+describe("the national data", () => {
+  it("covers the largest online markets", () => {
+    expect(coveredCountries()).toHaveLength(MARKET_COUNT);
+    for (const code of ["US", "CN", "GB", "JP", "DE", "IN", "BR", "AE"]) {
+      expect(sitesFor(code), code).not.toBeNull();
+    }
+  });
+
+  it("knows nothing of a country outside them, so Search takes over", () => {
+    expect(sitesFor("KE")).toBeNull();
+    expect(sitesFor(null)).toBeNull();
+  });
+});
+
+describe.each(Object.entries(MARKETS))("the %s data", (_code, sites) => {
+  it.each(NATIONAL_CATEGORIES)("names one to three https sites for %s", (category) => {
     const picks = sites.categories[category];
     expect(picks.length).toBeGreaterThanOrEqual(1);
     expect(picks.length).toBeLessThanOrEqual(3);
     for (const { url } of picks) expect(new URL(url).protocol).toBe("https:");
     expect(new Set(picks.map(({ url }) => new URL(url).hostname)).size).toBe(picks.length);
+  });
+
+  it("gives a place the agent can type", () => {
+    expect(sites.location.length).toBeGreaterThan(3);
   });
 
   it("writes every brand alias in lower case", () => {
@@ -30,15 +41,20 @@ describe.each(FILES)("the %s data file", (_name, sites) => {
   });
 });
 
-describe("the India data file", () => {
-  it("leads each tested category with the sites that worked in testing", () => {
-    expect(IN_SITES.categories.electronics[0]?.name).toBe("Croma");
-    expect(IN_SITES.categories.fashion[0]?.name).toBe("Myntra");
-    expect(IN_SITES.categories.food_delivery[0]?.name).toBe("Zomato");
+describe("the global data", () => {
+  it.each(GLOBAL_CATEGORIES)("has sites for %s", (category) => {
+    expect(FALLBACK_SITES.categories[category]?.length).toBeGreaterThan(0);
   });
 
-  it("uses Adobe's Indian site", () => {
-    const adobe = IN_SITES.brands.find(({ name }) => name === "Adobe");
-    expect(adobe?.url).toContain("adobe.com/in");
+  it("writes every brand alias in lower case", () => {
+    for (const { aliases } of FALLBACK_SITES.brands) {
+      for (const alias of aliases) expect(alias).toBe(alias.toLowerCase());
+    }
+  });
+
+  it("has a country's own Amazon where one exists", () => {
+    const amazon = FALLBACK_SITES.brands.find(({ name }) => name === "Amazon");
+    expect(amazon?.urls?.["DE"]).toBe("https://www.amazon.de/");
+    expect(amazon?.urls?.["JP"]).toBe("https://www.amazon.co.jp/");
   });
 });

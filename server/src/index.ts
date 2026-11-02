@@ -18,6 +18,8 @@ import { AuditStore } from "./store/auditStore.ts";
 import { DomainMemory } from "./store/domainMemory.ts";
 import { TinyFishClient } from "./tinyfish/client.ts";
 
+import { siteAnswers } from "./plan/probe.ts";
+
 const CONCURRENT_RUNS = 2;
 const SWEEP_INTERVAL_MS = 60_000;
 
@@ -43,7 +45,7 @@ async function startApi(apiKey: string, { dataDir }: Config) {
   await signIns.recover();
   setInterval(() => void signIns.sweep().catch(() => undefined), SWEEP_INTERVAL_MS).unref();
 
-  const planner = new SitePlanner((query, country) => client.search(query, country));
+  const planner = new SitePlanner((query, country) => client.search(query, country), siteAnswers);
   return createApi({ audits, signIns, store, domains, queue, client, planner });
 }
 

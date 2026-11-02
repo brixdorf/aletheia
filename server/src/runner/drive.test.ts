@@ -99,7 +99,7 @@ describe("driveRun", () => {
 
     expect(on.onStep.mock.calls.map(([text]) => text)).toEqual([
       "First",
-      "Type delivery location Koramangala Bengaluru with pincode",
+      loadRun("blinkit-2").steps[1]?.action,
     ]);
   });
 

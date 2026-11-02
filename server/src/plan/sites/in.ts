@@ -2,7 +2,7 @@ import type { CountrySites } from "../types.ts";
 
 /** Sites from our own test runs come first in each category. */
 export const IN_SITES: CountrySites = {
-  location: `"Koramangala, Bengaluru" (pincode 560034)`,
+  location: `"Andheri West, Mumbai" (pincode 400058)`,
   categories: {
     food_delivery: [
       { name: "Zomato", url: "https://www.zomato.com/" },
@@ -30,10 +30,25 @@ export const IN_SITES: CountrySites = {
       { name: "District", url: "https://www.district.in/" },
       { name: "BookMyShow", url: "https://in.bookmyshow.com/" },
     ],
-    subscriptions: [
-      { name: "Spotify", url: "https://www.spotify.com/in-en/premium/" },
+    telecom: [
+      { name: "Airtel", url: "https://www.airtel.in/" },
+      { name: "Jio", url: "https://www.jio.com/" },
+      { name: "Vi", url: "https://www.myvi.in/" },
+    ],
+    home: [
+      { name: "Pepperfry", url: "https://www.pepperfry.com/" },
+      { name: "IKEA", url: "https://www.ikea.com/in/" },
+      { name: "Amazon", url: "https://www.amazon.in/" },
+    ],
+    streaming: [
       { name: "Netflix", url: "https://www.netflix.com/in/" },
-      { name: "Adobe", url: "https://www.adobe.com/in/" },
+      { name: "JioHotstar", url: "https://www.hotstar.com/in" },
+      { name: "Amazon Prime", url: "https://www.amazon.in/amazonprime" },
+    ],
+    music: [
+      { name: "Spotify", url: "https://www.spotify.com/in-en/premium/" },
+      { name: "YouTube Premium", url: "https://www.youtube.com/premium" },
+      { name: "Apple Music", url: "https://www.apple.com/in/apple-music/" },
     ],
   },
   brands: [
@@ -48,48 +63,53 @@ export const IN_SITES: CountrySites = {
     { name: "Swiggy", url: "https://www.swiggy.com/", aliases: ["swiggy"] },
     { name: "Zomato", url: "https://www.zomato.com/", aliases: ["zomato"] },
     { name: "Flipkart", url: "https://www.flipkart.com/", aliases: ["flipkart"] },
-    { name: "Amazon", url: "https://www.amazon.in/", aliases: ["amazon"] },
-    {
-      name: "Amazon Prime",
-      url: "https://www.amazon.in/amazonprime",
-      aliases: ["amazon prime", "prime video", "prime membership"],
-      subscription: true,
-    },
     { name: "Myntra", url: "https://www.myntra.com/", aliases: ["myntra"] },
     { name: "Ajio", url: "https://www.ajio.com/", aliases: ["ajio"] },
     { name: "Nykaa", url: "https://www.nykaa.com/", aliases: ["nykaa"] },
     { name: "Meesho", url: "https://www.meesho.com/", aliases: ["meesho"] },
-    { name: "Tata CLiQ", url: "https://www.tatacliq.com/", aliases: ["tata cliq", "tatacliq"] },
+    {
+      name: "Tata CLiQ",
+      url: "https://www.tatacliq.com/",
+      aliases: ["tata cliq", "tatacliq", "cliq"],
+    },
     { name: "Croma", url: "https://www.croma.com/", aliases: ["croma"] },
     {
       name: "Reliance Digital",
       url: "https://www.reliancedigital.in/",
-      aliases: ["reliance digital"],
+      aliases: ["reliance digital", "reliancedigital"],
     },
-    { name: "MakeMyTrip", url: "https://www.makemytrip.com/", aliases: ["makemytrip"] },
+    {
+      name: "MakeMyTrip",
+      url: "https://www.makemytrip.com/",
+      aliases: ["makemytrip", "make my trip", "mmt"],
+    },
     { name: "Goibibo", url: "https://www.goibibo.com/", aliases: ["goibibo"] },
     { name: "Cleartrip", url: "https://www.cleartrip.com/", aliases: ["cleartrip"] },
     { name: "ixigo", url: "https://www.ixigo.com/", aliases: ["ixigo"] },
-    { name: "EaseMyTrip", url: "https://www.easemytrip.com/", aliases: ["easemytrip"] },
-    { name: "IndiGo", url: "https://www.goindigo.in/", aliases: ["indigo"] },
-    { name: "BookMyShow", url: "https://in.bookmyshow.com/", aliases: ["bookmyshow"] },
+    {
+      name: "EaseMyTrip",
+      url: "https://www.easemytrip.com/",
+      aliases: ["easemytrip", "ease my trip"],
+    },
+    { name: "IndiGo", url: "https://www.goindigo.in/", aliases: ["indigo", "6e"] },
+    {
+      name: "BookMyShow",
+      url: "https://in.bookmyshow.com/",
+      aliases: ["bookmyshow", "book my show", "bms"],
+    },
     { name: "District", url: "https://www.district.in/", aliases: ["on district", "district app"] },
+    { name: "Pepperfry", url: "https://www.pepperfry.com/", aliases: ["pepperfry"] },
+    { name: "Bewakoof", url: "https://www.bewakoof.com/", aliases: ["bewakoof"] },
     {
-      name: "Adobe",
-      url: "https://www.adobe.com/in/",
-      aliases: ["adobe", "photoshop", "lightroom", "illustrator", "acrobat", "creative cloud"],
+      name: "Jio",
+      url: "https://www.jio.com/",
+      aliases: ["jio", "jiofiber", "jio fiber", "jio fibre"],
       subscription: true,
     },
     {
-      name: "Spotify",
-      url: "https://www.spotify.com/in-en/premium/",
-      aliases: ["spotify"],
-      subscription: true,
-    },
-    {
-      name: "Netflix",
-      url: "https://www.netflix.com/in/",
-      aliases: ["netflix"],
+      name: "Vi",
+      url: "https://www.myvi.in/",
+      aliases: ["vodafone idea", "myvi"],
       subscription: true,
     },
     {
