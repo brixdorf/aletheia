@@ -476,11 +476,7 @@ describe("api", () => {
       await finished(as, audit.id);
       expect(audit.country).toBe("IN");
       expect(audit.flow).toBe("checkout");
-      expect(audit.sites.map(({ host }) => host)).toEqual([
-        "blinkit.com",
-        "zepto.com",
-        "bigbasket.com",
-      ]);
+      expect(audit.sites.map(({ host }) => host)).toEqual(["blinkit.com", "zepto.com"]);
     });
 
     it("works out the flow for sites the visitor chose", async () => {

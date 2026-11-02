@@ -7,7 +7,6 @@ export const IN_SITES: CountrySites = {
     groceries: [
       { name: "Blinkit", url: "https://blinkit.com/" },
       { name: "Zepto", url: "https://www.zepto.com/" },
-      { name: "BigBasket", url: "https://www.bigbasket.com/" },
     ],
     food_delivery: [
       { name: "Zomato", url: "https://www.zomato.com/" },

@@ -19,11 +19,11 @@ describe("SitePlanner", () => {
     expect(result.flow).toBe("checkout");
     expect(result.category).toBe("groceries");
     expect(result.source).toBe("category");
-    expect(result.sites.map(({ host }) => host)).toEqual([
-      "blinkit.com",
-      "zepto.com",
-      "bigbasket.com",
-    ]);
+    expect(result.sites.map(({ host }) => host)).toEqual(["blinkit.com", "zepto.com"]);
+  });
+
+  it("still audits BigBasket when the task names it", async () => {
+    expect(await hosts(plan("buy milk on BigBasket"))).toEqual(["bigbasket.com"]);
   });
 
   it("picks each country's own sites for the same task", async () => {
