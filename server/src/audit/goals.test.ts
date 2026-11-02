@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { budgetSeconds, buildGoal, buildLogoutGoal, detectFlow, isTravelTask } from "./goals.ts";
-import { OUTPUT_SCHEMA } from "./outputSchema.ts";
+import { TERM_NAMES } from "../judge/types.ts";
+import { AGENT_PATTERNS, OUTPUT_SCHEMA } from "./outputSchema.ts";
 
 const today = new Date("2026-11-01T06:30:00Z");
 
@@ -166,6 +167,38 @@ describe("buildGoal", () => {
     }
   });
 
+  it("has the agent read the page text at every step for each kind of signal", () => {
+    for (const text of [goal(), goal({ flow: "subscription" })]) {
+      expect(text).toMatch(/at every step, before you act, read the page text/i);
+      for (const signal of [
+        "prices",
+        "fees",
+        "timers",
+        "pre-ticked boxes",
+        "consent text",
+        "renewal terms",
+        "cancellation terms",
+        "decline-button wording",
+      ]) {
+        expect(text).toContain(signal);
+      }
+    }
+  });
+
+  it("tells the agent to answer every signal with seen or none seen", () => {
+    const text = goal();
+
+    expect(text).toMatch(/every signal/i);
+    expect(text).toContain('"seen"');
+    expect(text).toContain('"none_seen"');
+    expect(text).toMatch(/not_shown/);
+  });
+
+  it("gives a guest every chance to reach the bill", () => {
+    expect(goal()).toMatch(/guest checkout/i);
+    expect(goal({ flow: "subscription" })).toMatch(/before you stop/i);
+  });
+
   it("treats a required email as the end of the walk, with no made-up address", () => {
     const text = goal({ flow: "subscription" });
 
@@ -227,9 +260,37 @@ describe("OUTPUT_SCHEMA", () => {
   });
 
   it("offers every place a term can be shown", () => {
-    expect(properties.terms.items.properties.shown_where.enum).toEqual(
+    expect(properties.terms.properties.renewal.properties.shown_where.enum).toEqual(
       expect.arrayContaining(["faq", "later_page", "not_shown"]),
     );
+  });
+
+  it("makes every signal say seen or none seen, never a bare empty list", () => {
+    for (const field of [
+      "fees",
+      "pre_ticked_options",
+      "added_without_asking",
+      "pressure_messages",
+      "decline_wording",
+      "consent_text",
+      "plan_options",
+      "price_anchors",
+      "cookie_banners",
+      "emphasis_pairs",
+      "repeated_prompts",
+    ] as const) {
+      expect(properties[field].properties.status.enum).toEqual(["seen", "none_seen"]);
+      expect(properties[field].required).toEqual(["status", "items"]);
+    }
+  });
+
+  it("requires an answer for every term and every agent-spotted pattern", () => {
+    expect(properties.terms.required).toEqual([...TERM_NAMES]);
+    expect(properties.pattern_checks.required).toEqual([...AGENT_PATTERNS]);
+    expect(properties.pattern_checks.properties.free_claim.properties.status.enum).toEqual([
+      "seen",
+      "none_seen",
+    ]);
   });
 
   it("requires every field, so an agent cannot skip one silently", () => {

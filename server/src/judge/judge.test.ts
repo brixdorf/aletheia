@@ -2,9 +2,9 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { capturedEverywhere, loadRun } from "../testing/fixtures.ts";
 import type { RunRecord } from "../tinyfish/types.ts";
-import { judgeRun } from "./judge.ts";
+import { judgeRun, judgeSavedReport, RULES_VERSION } from "./judge.ts";
 import type { PageCapture } from "./pageText.ts";
-import { htmlToText } from "./pageText.ts";
+import { capturePage, htmlToText } from "./pageText.ts";
 import type { Flow, PatternId, SiteReport } from "./types.ts";
 import { PATTERN_IDS } from "./types.ts";
 
@@ -762,6 +762,295 @@ describe("a checkout that hides its price behind sign-in", () => {
     const report = judge("zomato", "subscription", wall);
 
     expect(pattern(report, "price_behind_signin").status).toBe("not_found");
+  });
+});
+
+describe("what the saved pages say for themselves", () => {
+  const SHOP_PAGE = `<p>We have 2 left at this price</p><p>Limited-time Deal</p>
+    <p>18 people are looking at this right now</p><p><del>$120</del> <b>$99</b></p>
+    <p>$99 + $25 resort fee</p><button>No thanks, I prefer paying full price</button>
+    <label><input type="checkbox" checked> Send me special offers</label>
+    <p>We use cookies</p><button>Accept all</button>`;
+
+  function fromPages(html: string) {
+    const run = loadRun("blinkit-2");
+    const stepId = run.steps[3]?.id ?? "";
+    const captures = [capturePage(stepId, html)];
+    return judgeRun({ flow: "checkout", url: "https://example.test/", run, captures });
+  }
+
+  it.each([
+    ["scarcity_message", "We have 2 left at this price"],
+    ["countdown", "Limited-time Deal"],
+    ["activity_message", "18 people are looking at this right now"],
+    ["reference_price", "$120 $99"],
+    ["partitioned_pricing", "$99 + $25 resort fee"],
+    ["confirmshaming", "No thanks, I prefer paying full price"],
+    ["preticked_consent", "Send me special offers"],
+    ["no_cookie_reject", "Accept all"],
+  ] satisfies [PatternId, string][])("finds %s though the agent listed none", (id, quote) => {
+    const finding = pattern(fromPages(SHOP_PAGE), id);
+
+    expect(finding.status).toBe("found");
+    expect(finding.quote).toBe(quote);
+    expect(finding.screenshot).not.toBeNull();
+  });
+
+  it("calls them not found once the pages were read and hold none", () => {
+    const report = fromPages("<p>A plain page</p>");
+
+    expect(pattern(report, "countdown").status).toBe("not_found");
+    expect(pattern(report, "reference_price").status).toBe("not_found");
+    expect(pattern(report, "no_cookie_reject").status).toBe("not_found");
+  });
+
+  it("believes an agent that saw a reject button over a page that hid it", () => {
+    const run = loadRun("blinkit-2");
+    if (run.result) {
+      run.result["cookie_banners"] = [
+        { accept_label: "Accept all", reject_label: "Reject all", seen_at_step: 1 },
+      ];
+    }
+    const captures = [capturePage(run.steps[3]?.id ?? "", SHOP_PAGE)];
+    const report = judgeRun({ flow: "checkout", url: "https://example.test/", run, captures });
+
+    expect(pattern(report, "no_cookie_reject").status).toBe("not_found");
+  });
+});
+
+describe("terms the saved pages show, whatever the agent said", () => {
+  const LEGAL = `<div data-testid="legal-offer-section"><p>You will be automatically charged $4.00 every 4 weeks for 1 year, then $30.00 every 4 weeks.</p></div>`;
+
+  function subscription(html: string, terms: Record<string, unknown>) {
+    const run = loadRun("spotify-subscription");
+    if (run.result)
+      Object.assign(run.result, { terms, intro_price: null, price_after_intro: null });
+    const captures = [capturePage(run.steps[3]?.id ?? "", html)];
+    return judgeRun({ flow: "subscription", url: "https://example.test/", run, captures });
+  }
+  const notShown = { quote: null, shown_where: "not_shown", seen_at_step: null };
+
+  it("finds renewal in the small print when the agent said it was not shown", () => {
+    const finding = pattern(subscription(LEGAL, { renewal: notShown }), "renewal_small_print");
+
+    expect(finding.status).toBe("found");
+    expect(finding.quote).toContain("automatically charged");
+  });
+
+  it("does not let the agent call small print the main page", () => {
+    const report = subscription(LEGAL, {
+      renewal: {
+        quote: "You will be automatically charged $4.00 every 4 weeks",
+        shown_where: "main_page",
+        seen_at_step: 1,
+      },
+    });
+
+    expect(pattern(report, "renewal_small_print").status).toBe("found");
+  });
+
+  it("finds the price jump in the same line", () => {
+    const run = subscription(LEGAL, { price_after_intro: notShown });
+    const finding = pattern(run, "intro_price_jump");
+
+    expect(finding.status).toBe("found");
+    expect(finding.amounts.map(({ amount }) => amount)).toEqual([4, 30]);
+  });
+
+  it("does not call a price jump hidden when the later price is crossed out in view", () => {
+    const html = `${LEGAL}<p><del>$30.00</del> <b>$4.00</b></p>`;
+    const report = subscription(html, { price_after_intro: notShown });
+
+    expect(pattern(report, "intro_price_jump").status).toBe("not_found");
+  });
+
+  it("stays quiet when the same line is also in the page's plain text", () => {
+    const html = `${LEGAL}<p>You will be automatically charged $4.00 every 4 weeks.</p>`;
+
+    expect(pattern(subscription(html, { renewal: notShown }), "renewal_small_print").status).toBe(
+      "not_found",
+    );
+  });
+});
+
+describe("signals answered with seen or none seen", () => {
+  function answering(extra: Record<string, unknown>) {
+    return judge("blinkit-2", "checkout", (run) => {
+      if (!run.result) return;
+      Object.assign(
+        run.result,
+        { cart_item_count: 1, price_anchors: [], pattern_checks: [] },
+        extra,
+      );
+    });
+  }
+
+  it("counts an explicit none seen as looked and clean", () => {
+    const report = answering({ repeated_prompts: { status: "none_seen", items: [] } });
+
+    expect(pattern(report, "nagging").status).toBe("not_found");
+  });
+
+  it("does not count seen with nothing listed as clean", () => {
+    const empty = judge("blinkit-2", "checkout", (run) => {
+      if (!run.result) return;
+      Object.assign(run.result, {
+        fees: run.result["fees"],
+        added_without_asking: { status: "seen", items: [] },
+      });
+    });
+
+    expect(pattern(empty, "basket_sneaking").status).toBe("not_checked");
+  });
+
+  it("believes the items over the word when the two disagree", () => {
+    const item = { text: "Get the app for a better deal", seen_at_steps: [2, 4] };
+    const report = answering({ repeated_prompts: { status: "none_seen", items: [item] } });
+
+    expect(pattern(report, "nagging").status).toBe("found");
+  });
+
+  it("reads wrapped lists, keyed terms and keyed pattern checks", () => {
+    const report = answering({
+      price_anchors: {
+        status: "seen",
+        items: [{ quote: "Delivery charge", price: 499, reference_price: 999, seen_at_step: 2 }],
+      },
+      pattern_checks: {
+        forced_action: {
+          status: "seen",
+          quote: "Add the insurance to continue",
+          seen_at_step: 2,
+          note: null,
+        },
+        disguised_ad: { status: "none_seen", quote: null, seen_at_step: null, note: null },
+      },
+    });
+
+    expect(pattern(report, "reference_price").status).toBe("found");
+    expect(pattern(report, "forced_action").quote).toBe("Add the insurance to continue");
+    expect(pattern(report, "disguised_ad").status).toBe("not_found");
+  });
+
+  it("reads keyed terms into the subscription facts", () => {
+    const report = judge("spotify-subscription", "subscription", (run) => {
+      if (!run.result) return;
+      run.result["terms"] = {
+        renewal: { quote: "Renews automatically", shown_where: "fine_print", seen_at_step: 2 },
+        trial: { quote: null, shown_where: "not_shown", seen_at_step: null },
+      };
+    });
+
+    expect(report.subscription?.terms.map(({ term }) => term)).toEqual(["renewal", "trial"]);
+    expect(pattern(report, "renewal_small_print").quote).toBe("Renews automatically");
+  });
+});
+
+describe("a claim seen before the run stopped", () => {
+  it("keeps a shaming decline button seen ahead of the bill", () => {
+    const report = judge("spotify-subscription", "subscription", (run) => {
+      if (!run.result) return;
+      run.result["decline_wording"] = {
+        status: "seen",
+        items: [{ text: "No thanks, I don't want to save", seen_at_step: 1 }],
+      };
+    });
+
+    expect(report.stop.reach).not.toBe("order");
+    expect(pattern(report, "confirmshaming").status).toBe("found");
+  });
+
+  it("still says not checked when nothing was seen before the stop", () => {
+    const report = judge("spotify-subscription", "subscription");
+
+    expect(pattern(report, "confirmshaming").status).toBe("not_checked");
+    expect(pattern(report, "confirmshaming").note).toMatch(/before/i);
+  });
+
+  it("still never calls an unreached pattern not found", () => {
+    const report = judge("spotify-subscription", "subscription");
+
+    expect(pattern(report, "hidden_subscription").status).toBe("not_checked");
+    expect(pattern(report, "cancellation_terms_missing").status).toBe("not_checked");
+  });
+});
+
+describe("an older audit, saved before pages were kept", () => {
+  const older = (name: string, flow: Flow = "checkout") =>
+    judgeRun({ flow, url: "https://example.test/", run: loadRun(name) });
+
+  it("says so", () => {
+    expect(older("blinkit-2").older).toBe(true);
+    expect(judge("blinkit-2").older).toBe(false);
+  });
+
+  it("keeps a finding the sums settle, with the step's screenshot", () => {
+    const drip = pattern(older("blinkit-2"), "drip_pricing");
+
+    expect(drip.status).toBe("found");
+    expect(drip.amounts.length).toBeGreaterThan(0);
+    expect(drip.screenshot).not.toBeNull();
+  });
+
+  it("marks a quote it cannot match instead of showing nothing", () => {
+    const fee = pattern(older("adobe-subscription", "subscription"), "cancellation_fee");
+
+    expect(fee.status).toBe("not_checked");
+    expect(fee.quote).toBeNull();
+    expect(fee.note).toMatch(/older audit/i);
+  });
+
+  it("shows a quote the saved step text does hold", () => {
+    const report = judgeRun({
+      flow: "subscription",
+      url: "https://example.test/",
+      run: (() => {
+        const run = loadRun("adobe-subscription");
+        const [first] = run.steps;
+        if (first) first.action = "Read the line: Cancel anytime by calling us on the helpline";
+        const terms = run.result?.["terms"] as { term: string; quote: string | null }[];
+        const term = terms.find((entry) => entry.term === "cancellation");
+        if (term) term.quote = "Cancel anytime by calling us on the helpline";
+        return run;
+      })(),
+    });
+
+    expect(pattern(report, "hard_to_cancel").status).toBe("found");
+  });
+
+  it("does not take a quote with amounts on the strength of the sums", () => {
+    const jump = pattern(older("adobe-subscription", "subscription"), "intro_price_jump");
+
+    expect(jump.status).toBe("not_checked");
+  });
+
+  describe("whose run can no longer be read", () => {
+    const report = () => judgeSavedReport(judge("blinkit-2"));
+
+    it("keeps what the saved bill shows and marks the rest", () => {
+      const { patterns, older: isOlder, rules } = report();
+      const { status, amounts, screenshot } = pattern({ patterns } as SiteReport, "drip_pricing");
+
+      expect(isOlder).toBe(true);
+      expect(rules).toBe(RULES_VERSION);
+      expect(status).toBe("found");
+      expect(amounts.length).toBeGreaterThan(0);
+      expect(screenshot).not.toBeNull();
+    });
+
+    it("claims no quote it can no longer check", () => {
+      const others = report().patterns.filter(({ id }) => id !== "drip_pricing");
+
+      expect(others.every(({ status }) => status === "not_checked")).toBe(true);
+      expect(others.every(({ note }) => /older audit/i.test(note))).toBe(true);
+    });
+
+    it("keeps no finding when the saved bill does not add up", () => {
+      const saved = judge("blinkit-2");
+      saved.bill.addsUp = false;
+
+      expect(pattern(judgeSavedReport(saved), "drip_pricing").status).toBe("not_checked");
+    });
   });
 });
 

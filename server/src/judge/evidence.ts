@@ -18,6 +18,25 @@ function list<T extends z.ZodType>(item: T) {
   return z.array(item.nullable().catch(null)).nullish().catch([]);
 }
 
+/** Runs saved before signals said "none seen" gave a plain list, read here as the same thing. */
+function unwrapSignal(value: unknown): unknown {
+  if (value && typeof value === "object" && "items" in value) return value.items;
+  return value;
+}
+
+function signal<T extends z.ZodType>(item: T) {
+  return z.preprocess(unwrapSignal, list(item));
+}
+
+/** Terms and pattern checks come keyed by name now, and as lists in older runs. */
+function keyedList(value: unknown, nameField: string): unknown {
+  if (Array.isArray(value) || !value || typeof value !== "object") return value;
+  return Object.entries(value).map(([name, entry]: [string, unknown]) => ({
+    ...(entry as object),
+    [nameField]: name,
+  }));
+}
+
 const pageSchema = z.object({
   step: z.number().int(),
   page: z.string().catch("Page"),
@@ -44,6 +63,11 @@ const preTickedSchema = z.object({
 const addedSchema = z.object({ name: z.string(), cost: num, seen_at_step: step });
 
 const pressureSchema = z.object({ text: z.string(), seen_at_step: step });
+
+const declineSchema = z.preprocess(
+  (value) => (typeof value === "string" ? { text: value } : value),
+  z.object({ text: z.string(), seen_at_step: step }),
+);
 
 const consentSchema = z.object({
   text: z.string(),
@@ -99,7 +123,7 @@ const repeatedPromptSchema = z.object({
 
 const patternCheckSchema = z.object({
   pattern: z.string(),
-  status: z.enum(["found", "not_found", "not_checked"]),
+  status: z.enum(["found", "seen", "none_seen", "not_found", "not_checked"]),
   quote: str,
   seen_at_step: step,
   note: str,
@@ -129,20 +153,20 @@ const resultSchema = z.object({
   price_after_intro: num,
   final_price: num,
   steps: list(pageSchema),
-  fees: list(feeSchema),
-  pre_ticked_options: list(preTickedSchema),
-  added_without_asking: list(addedSchema),
-  pressure_messages: list(pressureSchema),
-  decline_wording: z.array(z.string()).nullish().catch([]),
-  consent_text: list(consentSchema),
-  terms: list(termSchema),
-  plan_options: list(planOptionSchema),
-  pattern_checks: list(patternCheckSchema),
+  fees: signal(feeSchema),
+  pre_ticked_options: signal(preTickedSchema),
+  added_without_asking: signal(addedSchema),
+  pressure_messages: signal(pressureSchema),
+  decline_wording: signal(declineSchema),
+  consent_text: signal(consentSchema),
+  terms: z.preprocess((value) => keyedList(value, "term"), list(termSchema)),
+  plan_options: signal(planOptionSchema),
+  pattern_checks: z.preprocess((value) => keyedList(value, "pattern"), list(patternCheckSchema)),
   cart_item_count: step,
-  price_anchors: list(priceAnchorSchema),
-  cookie_banners: list(cookieBannerSchema),
-  emphasis_pairs: list(emphasisSchema),
-  repeated_prompts: list(repeatedPromptSchema),
+  price_anchors: signal(priceAnchorSchema),
+  cookie_banners: signal(cookieBannerSchema),
+  emphasis_pairs: signal(emphasisSchema),
+  repeated_prompts: signal(repeatedPromptSchema),
 });
 
 export interface EvidencePage {
@@ -176,7 +200,11 @@ export interface Added {
 export interface Pressure {
   text: string;
   seenAtStep: number | null;
+  /** Set when the page's own wording already says which pattern this is. */
+  kind?: PatternId;
 }
+
+export type Decline = Pressure;
 
 export interface Consent {
   text: string;
@@ -239,7 +267,7 @@ export interface Evidence {
   preTicked: PreTicked[];
   added: Added[];
   pressure: Pressure[];
-  declineWording: string[];
+  declineWording: Decline[];
   consent: Consent[];
   terms: Term[];
   planOptions: PlanOption[];
@@ -299,6 +327,30 @@ function currencyCode(value: string | null | undefined): string | null {
   return CURRENCY_SYMBOLS.find(([symbol]) => symbol.test(value.trim()))?.[1] ?? null;
 }
 
+/**
+ * The fields the agent truly answered. "Seen" with nothing listed is no answer at all, and a
+ * signal left out means the agent never looked, which is not the same as seeing none.
+ */
+function answered(result: Record<string, unknown>): Set<string> {
+  const unanswered = ([, value]: [string, unknown]) =>
+    !!value &&
+    typeof value === "object" &&
+    "status" in value &&
+    "items" in value &&
+    value.status !== "none_seen" &&
+    (!Array.isArray(value.items) || value.items.length === 0);
+  return new Set(
+    Object.entries(result)
+      .filter((entry) => !unanswered(entry))
+      .map(([name]) => name),
+  );
+}
+
+function agentStatus(status: z.infer<typeof patternCheckSchema>["status"]): PatternStatus {
+  if (status === "seen") return "found";
+  return status === "none_seen" ? "not_found" : status;
+}
+
 function isPatternId(name: string): name is PatternId {
   return (PATTERN_IDS as readonly string[]).includes(name);
 }
@@ -319,7 +371,7 @@ export function parseEvidence(result: Record<string, unknown> | null): Evidence 
     const name = OLD_PATTERN_NAMES[check.pattern] ?? check.pattern;
     if (!isPatternId(name)) continue;
     checks[name] = {
-      status: check.status,
+      status: agentStatus(check.status),
       quote: check.quote?.trim() || null,
       seenAtStep: check.seen_at_step ?? null,
       note: check.note ?? null,
@@ -368,7 +420,10 @@ export function parseEvidence(result: Record<string, unknown> | null): Evidence 
       text: message.text,
       seenAtStep: message.seen_at_step ?? null,
     })),
-    declineWording: raw.decline_wording ?? [],
+    declineWording: present(raw.decline_wording).map((decline) => ({
+      text: decline.text,
+      seenAtStep: decline.seen_at_step ?? null,
+    })),
     consent: present(raw.consent_text).map((consent) => ({
       text: consent.text,
       seenAtStep: consent.seen_at_step ?? null,
@@ -411,6 +466,6 @@ export function parseEvidence(result: Record<string, unknown> | null): Evidence 
       text: prompt.text,
       steps: prompt.seen_at_steps,
     })),
-    reported: new Set(Object.keys(result)),
+    reported: answered(result),
   };
 }

@@ -243,7 +243,7 @@ describe("AuditService", () => {
       expect(audits.get("visitor", id).sites[0]?.report).toBe(first);
     });
 
-    it("keeps the report but claims nothing when the run is gone", async () => {
+    it("marks the report as an older audit and claims no quote when the run is gone", async () => {
       const { audits, id } = await saved();
       runGone = true;
 
@@ -254,6 +254,7 @@ describe("AuditService", () => {
       expect(report?.pages.length).toBeGreaterThan(0);
       expect(report?.patterns.length).toBeGreaterThan(0);
       expect(report?.patterns.every(({ status }) => status === "not_checked")).toBe(true);
+      expect(report?.older).toBe(true);
     });
   });
 

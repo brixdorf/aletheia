@@ -1,5 +1,6 @@
 import type { Evidence, PatternCheck } from "./evidence.ts";
 import type { PageCapture } from "./pageText.ts";
+import { SHAMING_DECLINE } from "./pageSignals.ts";
 import { reached } from "./stop.ts";
 import type {
   Amount,
@@ -65,8 +66,6 @@ const HIGH_DEMAND =
   /selling fast|filling fast|selling out|in (high )?demand|going fast|sell(s|ing)? out soon|booking fast/i;
 const ACTIVITY =
   /\b\d[\d,]*\+?\s+(people|others|customers|users|travell?ers|guests|shoppers|buyers)\b|\b(booked|bought|sold|viewed|purchased) \d+|\b(just|recently) (booked|bought|purchased|sold)\b/i;
-const SHAMING_DECLINE =
-  /risk it|i don'?t (want|need|care)|no,? i (prefer|like|'?ll pay|will pay)|pay (more|full price)|stay unprotected|stay unsecured|miss out|not interested in saving/i;
 const GUILT_NUDGE =
   /malnutrition|brighten their day|help us|help (them|feed)|feed (a|the)|hungry|don'?t let|you'?ll regret/i;
 const ACCOUNT_REQUIREMENT =
@@ -90,9 +89,9 @@ const COOKIE_PROMPT = /cookie/i;
 const ACCEPT_WORD = /accept|agree|allow|consent/i;
 const CARD_WORD = /\bcard\b|payment (method|details|information)|billing (details|information)/i;
 const RENEWAL_WORD =
-  /renew|auto|recurr|until (you )?cancel|each (month|year)|every (month|year)|billed/i;
+  /renew|auto|recurr|(until|unless) (you )?cancel|each (month|year)|every (month|year)|billed/i;
 const OFFLINE_CANCEL =
-  /\b(call|phone|telephone|e-?mail|write to|in writing|written notice|by post|contact (us|customer|support)|chat with|visit (a|the|your|our) (store|branch|office))\b/i;
+  /\b(call(ing)?|phon(e|ing)|telephone|e-?mail(ing)?|writ(e|ing) to|in writing|written notice|by post|contact (us|customer|support)|chat with|visit (a|the|your|our) (store|branch|office))\b/i;
 const ONLINE_CANCEL = /\bonline\b|in your account|account settings|self[- ]service|\bone click\b/i;
 
 // Captured text has no spaces, so these read it as it is stored.
@@ -103,6 +102,7 @@ const CANCEL_ON_PAGE = /cancel/;
 const SMALL_PRINT: ReadonlySet<string> = new Set(["fine_print", "info_icon", "faq", "later_page"]);
 
 export const UNCONFIRMED = "Could not be confirmed on this run.";
+export const OLDER_AUDIT = "This older audit kept no page text, so this could not be matched.";
 const NOTHING_SEEN = "Nothing of this kind was seen on the pages reached.";
 
 function draft(status: PatternStatus, note: string, extra: Partial<Draft> = {}): Draft {
@@ -144,7 +144,8 @@ function agentQuote(
   return seen(check.quote, check.seenAtStep, note);
 }
 
-function dripPricing({ bill, evidence, stop }: JudgedContext): Draft {
+/** Reads only the bill, so a saved report can answer it after its run is gone. */
+export function dripPricingFromBill(bill: Bill, stop: StopPoint, lastStep: number | null): Draft {
   if (bill.total === null || bill.firstPrice === null) {
     return draft(
       "not_checked",
@@ -166,8 +167,12 @@ function dripPricing({ bill, evidence, stop }: JudgedContext): Draft {
   return draft("found", "Fees were added after the first price.", {
     anchors: fees.map(({ name }) => name),
     amounts: lines.map(({ name, amount }) => ({ label: name, amount })),
-    step: firstSeen.length > 0 ? Math.min(...firstSeen) : (evidence.pages.at(-1)?.step ?? null),
+    step: firstSeen.length > 0 ? Math.min(...firstSeen) : lastStep,
   });
+}
+
+function dripPricing({ bill, evidence, stop }: JudgedContext): Draft {
+  return dripPricingFromBill(bill, stop, evidence.pages.at(-1)?.step ?? null);
 }
 
 function partitionedPricing({ evidence }: JudgedContext): Draft | null {
@@ -240,9 +245,11 @@ function referencePrice({ evidence }: JudgedContext): Draft | null {
   );
 }
 
-function pressureRule(wording: RegExp, note: string) {
+function pressureRule(id: PatternId, wording: RegExp, note: string) {
   return ({ evidence }: JudgedContext): Draft | null => {
-    const message = evidence.pressure.find(({ text }) => wording.test(text));
+    const message = evidence.pressure.find(
+      ({ text, kind }) => kind === id || (!kind && wording.test(text)),
+    );
     return message ? seen(message.text, message.seenAtStep, note) : null;
   };
 }
@@ -354,6 +361,11 @@ function introPriceJump({ evidence }: JudgedContext): Draft | null {
   if (introPrice === null || priceAfterIntro === null || priceAfterIntro <= introPrice) return null;
   const term = termQuote(evidence, "price_after_intro");
   if (!term || term.shownWhere === "main_page") return null;
+  // A later price already crossed out beside the offer is in plain view.
+  const inView = evidence.priceAnchors.some(
+    ({ price, referencePrice: reference }) => price === introPrice && reference === priceAfterIntro,
+  );
+  if (inView) return null;
   return seen(
     term.quote,
     term.seenAtStep,
@@ -442,10 +454,10 @@ function falseHierarchy({ evidence }: JudgedContext): Draft | null {
 }
 
 function confirmshaming({ evidence }: JudgedContext): Draft | null {
-  const decline = evidence.declineWording.find((text) => SHAMING_DECLINE.test(text));
+  const decline = evidence.declineWording.find(({ text }) => SHAMING_DECLINE.test(text));
   if (decline) {
-    const step = evidence.checks.confirmshaming?.seenAtStep ?? null;
-    return seen(decline, step, "The button to decline uses shaming wording.");
+    const step = decline.seenAtStep ?? evidence.checks.confirmshaming?.seenAtStep ?? null;
+    return seen(decline.text, step, "The button to decline uses shaming wording.");
   }
   const nudge = evidence.pressure.find(({ text }) => GUILT_NUDGE.test(text));
   return nudge
@@ -548,7 +560,7 @@ export const PATTERNS: readonly Definition[] = [
     severity: "medium",
     needs: "pages",
     signal: "pressure_messages",
-    rule: pressureRule(COUNTDOWN, "A timer or deadline on the page."),
+    rule: pressureRule("countdown", COUNTDOWN, "A timer or deadline on the page."),
   },
   {
     id: "scarcity_message",
@@ -557,7 +569,7 @@ export const PATTERNS: readonly Definition[] = [
     severity: "medium",
     needs: "pages",
     signal: "pressure_messages",
-    rule: pressureRule(SCARCITY, "The page says few are left."),
+    rule: pressureRule("scarcity_message", SCARCITY, "The page says few are left."),
   },
   {
     id: "high_demand",
@@ -566,7 +578,7 @@ export const PATTERNS: readonly Definition[] = [
     severity: "medium",
     needs: "pages",
     signal: "pressure_messages",
-    rule: pressureRule(HIGH_DEMAND, "The page says this is selling fast."),
+    rule: pressureRule("high_demand", HIGH_DEMAND, "The page says this is selling fast."),
   },
   {
     id: "activity_message",
@@ -575,7 +587,11 @@ export const PATTERNS: readonly Definition[] = [
     severity: "low",
     needs: "pages",
     signal: "pressure_messages",
-    rule: pressureRule(ACTIVITY, "The page reports what other people are doing."),
+    rule: pressureRule(
+      "activity_message",
+      ACTIVITY,
+      "The page reports what other people are doing.",
+    ),
   },
   {
     id: "basket_sneaking",
@@ -771,13 +787,18 @@ function unreachedNote(context: PatternContext, needs: Reach): string {
     : "The run stopped before the page where this appears.";
 }
 
+/** The reach rule guards a clean answer. Words already seen on the way count wherever the run stopped. */
 export function judgePattern(definition: Definition, context: PatternContext): Draft {
   const { evidence, bill } = context;
-  if (!evidence || !bill || !reached(context.reach, definition.needs)) {
+  if (!evidence || !bill) return draft("not_checked", unreachedNote(context, definition.needs));
+
+  const judged = definition.rule({ ...context, evidence, bill });
+  if (judged?.status === "found") return judged;
+  if (!reached(context.reach, definition.needs)) {
     return draft("not_checked", unreachedNote(context, definition.needs));
   }
   if (!evidence.reported.has(definition.signal)) {
     return draft("not_checked", "This run did not look for it.");
   }
-  return definition.rule({ ...context, evidence, bill }) ?? draft("not_found", NOTHING_SEEN);
+  return judged ?? draft("not_found", NOTHING_SEEN);
 }

@@ -1,15 +1,14 @@
 import { randomBytes, randomUUID } from "node:crypto";
 
 import { ApiError } from "../errors.ts";
-import { judgeRun, RULES_VERSION } from "../judge/judge.ts";
-import type { Flow, PatternFinding, SafetyFlag, SiteReport } from "../judge/types.ts";
+import { judgeRun, judgeSavedReport, RULES_VERSION } from "../judge/judge.ts";
+import type { Flow, SafetyFlag, SiteReport } from "../judge/types.ts";
 import { countryName, proxyCountry } from "../plan/country.ts";
 import type { DriveClient, DriveOutcome } from "../runner/drive.ts";
 import { driveRun, RunStartError } from "../runner/drive.ts";
 import type { RunQueue } from "../runner/queue.ts";
 import { QueueCancelledError } from "../runner/queue.ts";
 import type { AuditStore } from "../store/auditStore.ts";
-import { PATTERNS } from "../judge/patterns.ts";
 import { budgetSeconds, buildGoal, detectFlow } from "./goals.ts";
 import { OUTPUT_SCHEMA } from "./outputSchema.ts";
 import { collectPageText } from "./pageCapture.ts";
@@ -75,24 +74,6 @@ function missing(): ApiError {
 
 function hostOf(url: string): string {
   return new URL(url).hostname.replace(/^www\./, "");
-}
-
-/** A saved report whose run is gone keeps its pages and bill but claims no pattern any more. */
-function withoutClaims(report: SiteReport): SiteReport {
-  const patterns: PatternFinding[] = PATTERNS.map(({ id, label, group, severity }) => ({
-    id,
-    label,
-    group,
-    severity,
-    status: "not_checked",
-    soFar: false,
-    step: null,
-    quote: null,
-    amounts: [],
-    screenshot: null,
-    note: "This older run can no longer be read again.",
-  }));
-  return { ...report, rules: RULES_VERSION, patterns };
 }
 
 function screenshotsOf({ report }: SiteRun): string[] {
@@ -197,7 +178,7 @@ export class AuditService {
         ],
       };
     } catch {
-      site.report = withoutClaims(saved);
+      site.report = judgeSavedReport(saved);
     }
     this.#publish(audit);
   }

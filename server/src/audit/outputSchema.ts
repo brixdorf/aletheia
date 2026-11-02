@@ -1,3 +1,5 @@
+import { TERM_NAMES } from "../judge/types.ts";
+
 const nullableString = { type: "string", nullable: true } as const;
 const nullableNumber = { type: "number", nullable: true } as const;
 const nullableInteger = { type: "integer", nullable: true } as const;
@@ -11,8 +13,19 @@ function arrayOf<const I>(items: I) {
   return { type: "array", items } as const;
 }
 
+/**
+ * A signal the agent must answer for. An empty list could mean "looked, saw none" or "never
+ * looked"; only the first earns a clean result, so the agent has to say which.
+ */
+function signalOf<const I>(items: I) {
+  return objectOf({
+    status: { type: "string", enum: ["seen", "none_seen"] },
+    items: arrayOf(items),
+  });
+}
+
 /** The patterns only the agent can spot. Every other pattern comes from the lists below. */
-const AGENT_PATTERNS = [
+export const AGENT_PATTERNS = [
   "partitioned_pricing",
   "bait_and_switch",
   "free_claim",
@@ -22,6 +35,27 @@ const AGENT_PATTERNS = [
   "trick_question",
   "disguised_ad",
 ] as const;
+
+const term = objectOf({
+  quote: nullableString,
+  shown_where: {
+    type: "string",
+    enum: ["main_page", "fine_print", "info_icon", "faq", "later_page", "not_shown"],
+  },
+  seen_at_step: nullableInteger,
+});
+
+const patternCheck = objectOf({
+  status: { type: "string", enum: ["seen", "none_seen"] },
+  quote: nullableString,
+  seen_at_step: nullableInteger,
+  note: nullableString,
+});
+
+function keyed<const K extends string, V>(names: readonly K[], value: V) {
+  const entries = names.map((name) => [name, value]);
+  return objectOf(Object.fromEntries(entries) as Record<K, V>);
+}
 
 const properties = {
   stopped_at: {
@@ -56,7 +90,7 @@ const properties = {
       note: nullableString,
     }),
   ),
-  fees: arrayOf(
+  fees: signalOf(
     objectOf({
       name: { type: "string" },
       amount: nullableNumber,
@@ -64,7 +98,7 @@ const properties = {
       included_in_first_price: nullableBoolean,
     }),
   ),
-  pre_ticked_options: arrayOf(
+  pre_ticked_options: signalOf(
     objectOf({
       label: { type: "string" },
       cost: nullableNumber,
@@ -72,44 +106,26 @@ const properties = {
       seen_at_step: nullableInteger,
     }),
   ),
-  added_without_asking: arrayOf(
+  added_without_asking: signalOf(
     objectOf({
       name: { type: "string" },
       cost: nullableNumber,
       seen_at_step: nullableInteger,
     }),
   ),
-  pressure_messages: arrayOf(objectOf({ text: { type: "string" }, seen_at_step: nullableInteger })),
-  decline_wording: arrayOf({ type: "string" }),
-  consent_text: arrayOf(
+  pressure_messages: signalOf(
+    objectOf({ text: { type: "string" }, seen_at_step: nullableInteger }),
+  ),
+  decline_wording: signalOf(objectOf({ text: { type: "string" }, seen_at_step: nullableInteger })),
+  consent_text: signalOf(
     objectOf({
       text: { type: "string" },
       seen_at_step: nullableInteger,
       can_decline_separately: nullableBoolean,
     }),
   ),
-  terms: arrayOf(
-    objectOf({
-      term: {
-        type: "string",
-        enum: [
-          "trial",
-          "renewal",
-          "price_after_intro",
-          "cancellation",
-          "cancellation_fee",
-          "trial_card",
-        ],
-      },
-      quote: nullableString,
-      shown_where: {
-        type: "string",
-        enum: ["main_page", "fine_print", "info_icon", "faq", "later_page", "not_shown"],
-      },
-      seen_at_step: nullableInteger,
-    }),
-  ),
-  plan_options: arrayOf(
+  terms: keyed(TERM_NAMES, term),
+  plan_options: signalOf(
     objectOf({
       label: { type: "string" },
       price: nullableNumber,
@@ -120,7 +136,7 @@ const properties = {
       first_seen_at_step: nullableInteger,
     }),
   ),
-  price_anchors: arrayOf(
+  price_anchors: signalOf(
     objectOf({
       quote: { type: "string" },
       price: { type: "number" },
@@ -128,32 +144,24 @@ const properties = {
       seen_at_step: nullableInteger,
     }),
   ),
-  cookie_banners: arrayOf(
+  cookie_banners: signalOf(
     objectOf({
       accept_label: nullableString,
       reject_label: nullableString,
       seen_at_step: nullableInteger,
     }),
   ),
-  emphasis_pairs: arrayOf(
+  emphasis_pairs: signalOf(
     objectOf({
       prominent: { type: "string" },
       muted: { type: "string" },
       seen_at_step: nullableInteger,
     }),
   ),
-  repeated_prompts: arrayOf(
+  repeated_prompts: signalOf(
     objectOf({ text: { type: "string" }, seen_at_steps: arrayOf({ type: "integer" }) }),
   ),
-  pattern_checks: arrayOf(
-    objectOf({
-      pattern: { type: "string", enum: AGENT_PATTERNS },
-      status: { type: "string", enum: ["found"] },
-      quote: nullableString,
-      seen_at_step: nullableInteger,
-      note: nullableString,
-    }),
-  ),
+  pattern_checks: keyed(AGENT_PATTERNS, patternCheck),
 } as const;
 
 /** One generic schema for every site and flow: fields a flow has no use for come back null. */

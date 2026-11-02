@@ -120,13 +120,16 @@ export interface Bill {
   multiple: number | null;
 }
 
-export type TermName =
-  | "trial"
-  | "renewal"
-  | "price_after_intro"
-  | "cancellation"
-  | "cancellation_fee"
-  | "trial_card";
+export const TERM_NAMES = [
+  "trial",
+  "trial_card",
+  "renewal",
+  "price_after_intro",
+  "cancellation",
+  "cancellation_fee",
+] as const;
+
+export type TermName = (typeof TERM_NAMES)[number];
 
 export type ShownWhere =
   | "main_page"
@@ -194,6 +197,8 @@ export interface Page {
 export interface SiteReport {
   /** The version of the rules that wrote this report. Saved reports below it are judged again. */
   rules: number;
+  /** Saved before page text was kept, so quotes could not be matched to a page. */
+  older: boolean;
   url: string;
   host: string;
   flow: Flow;

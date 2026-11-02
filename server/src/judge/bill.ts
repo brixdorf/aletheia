@@ -6,7 +6,8 @@ const SUBTOTAL_LINE =
 const CHARGE_WORD =
   /fee|charge|tax|gst|cess|delivery|handling|surge|packaging|convenience|platform/i;
 const DISCOUNT_LINE = /discount|coupon|saving|promo|cashback/i;
-const ORDER_PAGE = /cart|\bbag\b|basket|checkout|order|\bbill\b|verify|review|summary/i;
+const ORDER_PAGE =
+  /cart|\bbag\b|basket|checkout|order|\bbill\b|verify|review|summary|your details|guest details|traveller details|passenger|reservation|book(ing)? details/i;
 const NOT_AN_ORDER = /log ?in|sign[ -]?in|terms|faq|polic/i;
 const CURRENCY_MARK = String.raw`(?:₹|\$|£|€|rs\.?|inr|usd|gbp|eur)`;
 const STATED_TOTAL = new RegExp(

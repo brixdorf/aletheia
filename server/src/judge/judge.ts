@@ -2,10 +2,19 @@ import type { RunRecord } from "../tinyfish/types.ts";
 import { buildBill } from "./bill.ts";
 import type { Evidence } from "./evidence.ts";
 import { parseEvidence } from "./evidence.ts";
+import type { PageSignals } from "./pageSignals.ts";
+import type { PageTerm } from "./pageTerms.ts";
+import { MONEY } from "./pageWords.ts";
 import type { PageCapture } from "./pageText.ts";
-import { locateQuote } from "./pageText.ts";
+import { comparable, locateQuote } from "./pageText.ts";
 import type { Draft } from "./patterns.ts";
-import { judgePattern, PATTERNS, UNCONFIRMED } from "./patterns.ts";
+import {
+  dripPricingFromBill,
+  judgePattern,
+  OLDER_AUDIT,
+  PATTERNS,
+  UNCONFIRMED,
+} from "./patterns.ts";
 import { scanSafety } from "./safety.ts";
 import { locateScreenshots } from "./screenshots.ts";
 import { resolveReach, resolveStop } from "./stop.ts";
@@ -18,10 +27,13 @@ import type {
   Screenshot,
   SiteReport,
   StopPoint,
+  Term,
+  TermName,
 } from "./types.ts";
+import { TERM_NAMES } from "./types.ts";
 
 /** Raised when the rules change, so reports saved under older ones are judged again. */
-export const RULES_VERSION = 3;
+export const RULES_VERSION = 4;
 
 export interface JudgeInput {
   flow: Flow;
@@ -51,6 +63,17 @@ const EMPTY_BILL: Bill = {
   multiple: null,
 };
 
+const MONEY_IN_TEXT = new RegExp(MONEY, "gi");
+
+/** Signals the pages answer on their own, so a page without them counts as looked at. */
+const PAGE_READ_SIGNALS = [
+  "pressure_messages",
+  "decline_wording",
+  "price_anchors",
+  "cookie_banners",
+  "pre_ticked_options",
+];
+
 const STOP_WORDS = /\b(add|one|the|to|cart|bag|basket|click|select|item|first)\b/gi;
 
 /** An item the agent added itself is the agent's mistake, not the site's. */
@@ -65,6 +88,101 @@ function dropOwnAdds(evidence: Evidence, actions: readonly string[]): Evidence {
     return !own;
   });
   return { ...evidence, added };
+}
+
+/**
+ * Adds what the saved pages say to what the agent wrote down, which can leave out lines that are
+ * plainly there. These come off the page itself, so they pass the same gate as the agent's words.
+ */
+function withPageSignals(
+  flow: Flow,
+  evidence: Evidence,
+  captures: readonly PageCapture[],
+): Evidence {
+  const read = captures.flatMap(({ signals }) => (signals ? [signals] : []));
+  if (read.length === 0) return evidence;
+
+  const refused = evidence.cookieBanners.some(({ reject }) => reject);
+  const accept = refused ? null : read.find(({ cookieAccept }) => cookieAccept)?.cookieAccept;
+  const split = read.flatMap(({ splitPrices }) => splitPrices)[0];
+  const seenInRun = { seenAtStep: null };
+
+  return {
+    ...evidence,
+    pressure: [
+      ...evidence.pressure,
+      ...read.flatMap(({ pressure }) =>
+        pressure.map(({ kind, text }) => ({ text, kind, ...seenInRun })),
+      ),
+    ],
+    declineWording: [
+      ...evidence.declineWording,
+      ...read.flatMap(({ declines }) => declines.map((text) => ({ text, ...seenInRun }))),
+    ],
+    priceAnchors: [
+      ...evidence.priceAnchors,
+      ...read.flatMap(({ anchors }) => anchors.map((anchor) => ({ ...anchor, ...seenInRun }))),
+    ],
+    preTicked: [
+      ...evidence.preTicked,
+      ...read.flatMap(({ preticked }) =>
+        preticked.map((label) => ({ label, cost: null, includedInTotal: null, ...seenInRun })),
+      ),
+    ],
+    cookieBanners: accept
+      ? [...evidence.cookieBanners, { accept, reject: null, ...seenInRun }]
+      : evidence.cookieBanners,
+    checks:
+      split && evidence.checks.partitioned_pricing?.status !== "found"
+        ? {
+            ...evidence.checks,
+            partitioned_pricing: { status: "found", quote: split, note: null, ...seenInRun },
+          }
+        : evidence.checks,
+    reported: new Set([...evidence.reported, ...PAGE_READ_SIGNALS]),
+    ...(flow === "subscription" ? termsFromPages(evidence, read) : {}),
+  };
+}
+
+/** The page's own line for a term, plain wording first since that is what a shopper sees. */
+function pageTerm(terms: readonly PageTerm[], name: TermName): PageTerm | null {
+  const lines = terms.filter(({ term }) => term === name);
+  return lines.find(({ place }) => place === null) ?? lines[0] ?? null;
+}
+
+/**
+ * An agent can answer "not shown" for a line that is there, and can call small print the main
+ * page. The page's own markup settles both.
+ */
+function termsFromPages(
+  evidence: Evidence,
+  read: readonly PageSignals[],
+): Pick<Evidence, "terms" | "introPrice" | "priceAfterIntro"> {
+  const lines = read.flatMap(({ terms }) => terms);
+  const merged = TERM_NAMES.flatMap((name): Term[] => {
+    const told = evidence.terms.find(({ term, quote, shownWhere }) => {
+      return term === name && quote !== null && shownWhere !== "not_shown";
+    });
+    const line = pageTerm(lines, name);
+    const undersold = told?.shownWhere === "main_page" && line?.place;
+    if (told && !undersold) return [told];
+    if (!line) return evidence.terms.filter(({ term }) => term === name);
+    return [
+      { term: name, quote: line.quote, shownWhere: line.place ?? "main_page", seenAtStep: null },
+    ];
+  });
+
+  const after = pageTerm(lines, "price_after_intro");
+  const [first, then] = [...(after?.quote.matchAll(MONEY_IN_TEXT) ?? [])].map(([money]) =>
+    Number(money.replace(/[^\d.]/g, "")),
+  );
+  const unknown = evidence.introPrice === null || evidence.priceAfterIntro === null;
+  const offerShown = unknown && first !== undefined && then !== undefined;
+  return {
+    terms: merged,
+    introPrice: offerShown ? first : evidence.introPrice,
+    priceAfterIntro: offerShown ? then : evidence.priceAfterIntro,
+  };
 }
 
 function priceLabel(stop: StopPoint, bill: Bill): PriceLabel {
@@ -130,6 +248,22 @@ interface RunPages {
   shots: ReadonlyMap<number, Screenshot>;
 }
 
+type Confirmed = Draft & { screenshot: Screenshot | null };
+
+/** What an older run kept of each step: the agent's own action and its notes on the page. */
+function stepWords(
+  steps: RunPages["steps"],
+  pages: Evidence["pages"],
+  shots: RunPages["shots"],
+): PageCapture[] {
+  const words = new Map(steps.map(({ id, action }) => [id, action ?? ""]));
+  for (const { step, name, note } of pages) {
+    const stepId = shots.get(step)?.stepId;
+    if (stepId) words.set(stepId, `${words.get(stepId) ?? ""} ${name} ${note ?? ""}`);
+  }
+  return [...words].map(([stepId, text]) => ({ stepId, text: comparable(text) }));
+}
+
 function pageOfStep({ steps, shots }: RunPages, stepId: string): number | null {
   const position = (id: string) => steps.findIndex((step) => step.id === id);
   const at = position(stepId);
@@ -144,16 +278,18 @@ function pageOfStep({ steps, shots }: RunPages, stepId: string): number | null {
  * The last word on what a reader may see. A claim whose words are not on a saved page with a
  * screenshot goes no further, and the page that holds the words picks the screenshot.
  */
-function confirmed(draft: Draft, pages: RunPages): Draft & { screenshot: Screenshot | null } {
+function confirmed(draft: Draft, pages: RunPages, words: readonly PageCapture[]): Confirmed {
   const { steps, captures, shots } = pages;
+  const older = captures.length === 0;
+  const pagesToRead = older ? words : captures;
   const named = draft.step === null ? null : (shots.get(draft.step)?.stepId ?? null);
   if (draft.status !== "found") {
     return { ...draft, screenshot: draft.step === null ? null : (shots.get(draft.step) ?? null) };
   }
 
   for (const anchor of draft.anchors) {
-    const stepId = locateQuote(anchor, captures, named);
-    const page = captures.find((capture) => capture.stepId === stepId);
+    const stepId = locateQuote(anchor, pagesToRead, named);
+    const page = pagesToRead.find((capture) => capture.stepId === stepId);
     const step = steps.find((entry) => entry.id === stepId);
     if (!stepId || !page || !step?.screenshot) continue;
     if (draft.alongside.some((words) => locateQuote(words, [page]) === null)) continue;
@@ -163,13 +299,17 @@ function confirmed(draft: Draft, pages: RunPages): Draft & { screenshot: Screens
       screenshot: { stepId, action: step.action },
     };
   }
+  // A sum needs no words on a page, so an older run can still show it beside its screenshot.
+  const shot = older && named !== null && draft.quote === null ? shots.get(draft.step ?? 0) : null;
+  if (shot && draft.amounts.length > 0) return { ...draft, screenshot: shot };
+
   return {
     ...draft,
     status: "not_checked",
     quote: null,
     step: null,
     amounts: [],
-    note: UNCONFIRMED,
+    note: older ? OLDER_AUDIT : UNCONFIRMED,
     screenshot: null,
   };
 }
@@ -183,7 +323,7 @@ export function judgeRun({
 }: JudgeInput): SiteReport {
   const actions = run.steps.map((step) => step.action ?? "");
   const parsed = parseEvidence(run.result);
-  const evidence = parsed && dropOwnAdds(parsed, actions);
+  const evidence = parsed && withPageSignals(flow, dropOwnAdds(parsed, actions), captures);
 
   const stop = resolveStop(run, evidence);
   const bill = evidence ? buildBill(flow, evidence) : EMPTY_BILL;
@@ -194,10 +334,12 @@ export function judgeRun({
 
   const context = { flow, evidence, bill, stop, reach, captures };
   const pages = { steps: run.steps, captures, shots };
+  const words = stepWords(run.steps, evidence?.pages ?? [], shots);
   const patterns: PatternFinding[] = PATTERNS.map((definition) => {
     const { status, quote, step, amounts, note, screenshot } = confirmed(
       judgePattern(definition, context),
       pages,
+      words,
     );
     return {
       id: definition.id,
@@ -219,6 +361,7 @@ export function judgeRun({
 
   return {
     rules: RULES_VERSION,
+    older: captures.length === 0,
     url,
     host: hostOf(url),
     flow,
@@ -249,4 +392,33 @@ export function judgeRun({
       offerSignIn: wall && !signedIn && !termsSettled(flow, evidence),
     },
   };
+}
+
+/**
+ * For a saved report whose run can no longer be read. The bill was checked when it was saved, so
+ * its sum still stands; every other claim rested on words that cannot be read again.
+ */
+export function judgeSavedReport(saved: SiteReport): SiteReport {
+  const lastStep = saved.pages.at(-1)?.step ?? null;
+  const drip = dripPricingFromBill(saved.bill, saved.stop.at, lastStep);
+  const screenshot = saved.pages.find(({ step }) => step === drip.step)?.screenshot ?? null;
+  const kept = drip.status === "found" && screenshot !== null;
+
+  const patterns: PatternFinding[] = PATTERNS.map(({ id, label, group, severity }) => {
+    const shown = kept && id === "drip_pricing";
+    return {
+      id,
+      label,
+      group,
+      severity,
+      status: shown ? "found" : "not_checked",
+      soFar: false,
+      step: shown ? drip.step : null,
+      quote: null,
+      amounts: shown ? drip.amounts : [],
+      screenshot: shown ? screenshot : null,
+      note: shown ? drip.note : OLDER_AUDIT,
+    };
+  });
+  return { ...saved, rules: RULES_VERSION, older: true, patterns };
 }

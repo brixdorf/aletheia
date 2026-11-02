@@ -1,5 +1,5 @@
 import type { PageCapture } from "../judge/pageText.ts";
-import { htmlToText } from "../judge/pageText.ts";
+import { capturePage } from "../judge/pageText.ts";
 import type { RunRecord } from "../tinyfish/types.ts";
 
 const CONCURRENT_FETCHES = 4;
@@ -22,12 +22,14 @@ export async function collectPageText(
   for (let start = 0; start < captured.length; start += CONCURRENT_FETCHES) {
     const batch = captured.slice(start, start + CONCURRENT_FETCHES);
     const results = await Promise.allSettled(
-      batch.map((step) => client.getStepHtml(runId, step.id)),
+      batch.map((step) =>
+        client.getStepHtml(runId, step.id).catch(() => client.getStepHtml(runId, step.id)),
+      ),
     );
     results.forEach((result, index) => {
       const stepId = batch[index]?.id;
       if (stepId && result.status === "fulfilled") {
-        pages.push({ stepId, text: htmlToText(result.value) });
+        pages.push(capturePage(stepId, result.value));
       }
     });
   }
