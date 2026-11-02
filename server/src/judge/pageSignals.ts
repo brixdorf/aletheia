@@ -49,7 +49,7 @@ const WAS_NOW = new RegExp(
   String.raw`\b(?:original price|was|list price|regular price|mrp)\b[:\s]*(${MONEY})[.,]?[\s|]*(?:current price|now|sale price|offer price)\b[:\s]*(${MONEY})`,
   "gi",
 );
-const AFTER_STRUCK = new RegExp(String.raw`^[\s|]*(${MONEY})`, "i");
+const AFTER_STRUCK = new RegExp(String.raw`^[\s|]*((?:[A-Z]{2,3})?${MONEY})`);
 const SPLIT_PRICE = new RegExp(
   String.raw`${MONEY}\s*(?:\+|\bplus\b)\s*(?:${MONEY}\s+)?(?:[a-z-]+\s+){0,3}?(?:fees?|charges?|surcharges?)\b`,
   "gi",
@@ -74,6 +74,8 @@ const ARIA_LABEL = /\baria-label\s*=\s*"([^"]*)"/i;
 const HIDDEN_TAG =
   /<([a-z][\w-]*)\b(?=[^>]*(?:\shidden\b|style\s*=\s*["'][^"']*(?:display:\s*none|visibility:\s*hidden)|class\s*=\s*["'][^"']*\b(?:modal-hide|is-hidden|d-none|sr-only|visually-hidden)\b))[^>]*>/gi;
 
+const STRUCK_TAG =
+  /<(?:(s|del|strike)\b[^>]*|([a-z][\w-]*)\b(?=[^>]*(?:class|data-template)\s*=\s*["'][^"']*(?:strike|line-through))[^>]*)>/gi;
 const STRUCK_START = "\u0001";
 const STRUCK_END = "\u0002";
 
@@ -107,6 +109,10 @@ function withoutHidden(html: string): string {
   return kept.join(" ");
 }
 
+function words(text: string): string {
+  return text.replaceAll("|", " ").replace(/\s+/g, " ").trim();
+}
+
 function amountOf(money: string): number {
   return Number(money.replace(/[^\d.]/g, ""));
 }
@@ -121,15 +127,30 @@ function messagesIn(text: string): PageMessage[] {
   );
 }
 
+/** Marks what the page crosses out, whether by a tag or by a class on an element. */
+function markStruck(html: string): string {
+  const kept: string[] = [];
+  let at = 0;
+  for (const { 0: tag, 1: plainTag, 2: styledTag = "", index } of html.matchAll(STRUCK_TAG)) {
+    if (index < at) continue;
+    const start = index + tag.length;
+    const end = closingIndex(html, plainTag ?? styledTag, start);
+    kept.push(html.slice(at, index), STRUCK_START, html.slice(start, end), STRUCK_END);
+    at = end;
+  }
+  kept.push(html.slice(at));
+  return kept.join("");
+}
+
 function struckAnchors(marked: string): PageAnchor[] {
   const pieces = marked.split(STRUCK_START).slice(1);
   return pieces.flatMap((piece) => {
     const [struck = "", rest = ""] = piece.split(STRUCK_END);
-    const reference = new RegExp(MONEY, "i").exec(struck)?.[0];
+    const reference = new RegExp(MONEY, "i").exec(words(struck))?.[0];
     const after = AFTER_STRUCK.exec(rest)?.[1];
     if (!reference || !after) return [];
     const anchor = {
-      quote: `${struck.trim()} ${after}`,
+      quote: `${words(struck)} ${after}`,
       referencePrice: amountOf(reference),
       price: amountOf(after),
     };
@@ -183,12 +204,7 @@ export function readSignals(html: string): PageSignals {
     html.replace(/<(script|style|noscript|template)\b[\s\S]*?<\/\1>/gi, " "),
   );
   const text = plain(visible);
-  const marked = plain(
-    visible.replace(
-      /<(s|del|strike)\b[^>]*>([\s\S]{0,120}?)<\/\1>/gi,
-      (_tag, _name, inner: string) => `${STRUCK_START}${inner}${STRUCK_END}`,
-    ),
-  );
+  const marked = plain(markStruck(visible));
   const controls = controlsIn(visible);
 
   return {

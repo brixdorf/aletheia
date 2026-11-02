@@ -15,7 +15,7 @@ function decoded(text: string): string {
 
 /** A page's words, with a mark wherever one block of the page ends and the next begins. */
 export function plain(html: string): string {
-  return decoded(html.replace(INLINE_TAG, " ").replace(/<[^>]*>/g, BLOCK_END));
+  return decoded(html.replace(INLINE_TAG, "").replace(/<[^>]*>/g, BLOCK_END));
 }
 
 /** The words of a short piece of html, whatever blocks hold them. */

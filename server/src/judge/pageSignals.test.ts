@@ -78,6 +78,18 @@ describe("readSignals", () => {
     ]);
   });
 
+  it("reads a price built from inline pieces as one price", () => {
+    const price = (amount: string) =>
+      `<span><span>US$</span><span>${amount}</span><span>.</span><span>99</span><span>/mo</span></span>`;
+    const { anchors } = readSignals(
+      `<div><span class="price-strikethrough">${price("69")}</span> ${price("34")}</div>`,
+    );
+
+    expect(anchors).toEqual([
+      { quote: "US$69.99/mo US$34.99", referencePrice: 69.99, price: 34.99 },
+    ]);
+  });
+
   it("does not call a struck word or a lower struck price an anchor", () => {
     const { anchors } = readSignals("<s>old copy</s><p>$20</p><s>$10</s><p>$20</p>");
 

@@ -79,7 +79,7 @@ function blocksOf(html: string): Block[] {
   let at = 0;
 
   const flush = () => {
-    const words = label(pieces.join(" "));
+    const words = label(pieces.join(""));
     if (words) blocks.push({ words, place: piecesPlace });
     pieces = [];
   };
@@ -88,10 +88,10 @@ function blocksOf(html: string): Block[] {
     const { 0: tag, 1: slash, 2: rawName = "", index } = match;
     const text = html.slice(at, index);
     at = index + tag.length;
-    if (text.trim()) {
+    if (text) {
       const place = open.findLast((entry) => entry.place)?.place ?? null;
-      if (place !== piecesPlace) flush();
-      piecesPlace = place;
+      if (text.trim() && place !== piecesPlace) flush();
+      if (text.trim()) piecesPlace = place;
       pieces.push(text);
     }
 

@@ -99,6 +99,14 @@ describe("locateQuote", () => {
     expect(locateQuote("Only 2 left", [other, named], "named")).toBe("named");
   });
 
+  it("ignores punctuation an agent adds at the ends of a quote", () => {
+    const page = [{ stepId: "page", text: htmlToText("<p>Fee applies after Nov 16</p>") }];
+
+    expect(locateQuote("Fee applies after Nov 16.", page)).toBe("page");
+    expect(locateQuote('"Fee applies after Nov 16"', page)).toBe("page");
+    expect(locateQuote("Fee applies after Nov 17.", page)).toBeNull();
+  });
+
   it("does not accept a paraphrase", () => {
     expect(locateQuote("a fee of half the remaining commitment", pages)).toBeNull();
   });

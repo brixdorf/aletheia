@@ -5,6 +5,7 @@ import type { RunRecord } from "../tinyfish/types.ts";
 import { judgeRun, judgeSavedReport, RULES_VERSION } from "./judge.ts";
 import type { PageCapture } from "./pageText.ts";
 import { capturePage, htmlToText } from "./pageText.ts";
+import { isNoCommitment } from "./patterns.ts";
 import type { Flow, PatternId, SiteReport } from "./types.ts";
 import { PATTERN_IDS } from "./types.ts";
 
@@ -857,6 +858,20 @@ describe("terms the saved pages show, whatever the agent said", () => {
     expect(finding.amounts.map(({ amount }) => amount)).toEqual([4, 30]);
   });
 
+  it("takes the page's own line when the agent tidied its quote off the page", () => {
+    const report = subscription(LEGAL, {
+      renewal: {
+        quote: "Charged $4 every 4 weeks, then $30",
+        shown_where: "fine_print",
+        seen_at_step: 1,
+      },
+    });
+    const finding = pattern(report, "renewal_small_print");
+
+    expect(finding.status).toBe("found");
+    expect(finding.quote).toContain("automatically charged");
+  });
+
   it("does not call a price jump hidden when the later price is crossed out in view", () => {
     const html = `${LEGAL}<p><del>$30.00</del> <b>$4.00</b></p>`;
     const report = subscription(html, { price_after_intro: notShown });
@@ -1051,6 +1066,37 @@ describe("an older audit, saved before pages were kept", () => {
 
       expect(pattern(judgeSavedReport(saved), "drip_pricing").status).toBe("not_checked");
     });
+  });
+});
+
+describe("a plan with no commitment", () => {
+  it.each([
+    [null, true],
+    ["None", true],
+    ["No commitment", true],
+    ["Cancel anytime, no fee", true],
+    ["No refund if you cancel after Nov 16", false],
+    ["12 months", false],
+  ])("reads %s as %s", (commitment, expected) => {
+    expect(isNoCommitment(commitment)).toBe(expected);
+  });
+});
+
+describe("a page saved without a screenshot", () => {
+  it("is passed over for the page that has one", () => {
+    const run = loadRun("adobe-subscription");
+    const terms = run.result?.["terms"] as { term: string; quote: string | null }[];
+    const quote = terms.find(({ term }) => term === "cancellation_fee")?.quote ?? "";
+    const [first, second] = run.steps;
+    if (!first || !second) throw new Error("no steps");
+    first.screenshot = null;
+    const captures = [
+      { stepId: first.id, text: htmlToText(`<p>${quote}</p>`) },
+      { stepId: second.id, text: htmlToText(`<p>Some header words.</p><p>${quote}</p>`) },
+    ];
+    const report = judgeRun({ flow: "subscription", url: "https://example.test/", run, captures });
+
+    expect(pattern(report, "cancellation_fee").screenshot?.stepId).toBe(second.id);
   });
 });
 

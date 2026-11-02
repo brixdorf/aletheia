@@ -281,7 +281,8 @@ function preselectedExtra({ evidence, bill }: JudgedContext): Draft | null {
 }
 
 export function isNoCommitment(commitment: string | null): boolean {
-  return commitment === null || /^(none|no\b|n\/a)/i.test(commitment.trim());
+  if (commitment === null) return true;
+  return /^(none|no (commitment|contract|term)|n\/a)|cancel any ?time/i.test(commitment.trim());
 }
 
 function preselectedPlan({ evidence }: JudgedContext): Draft | null {

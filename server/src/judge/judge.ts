@@ -92,7 +92,8 @@ function dropOwnAdds(evidence: Evidence, actions: readonly string[]): Evidence {
 
 /**
  * Adds what the saved pages say to what the agent wrote down, which can leave out lines that are
- * plainly there. These come off the page itself, so they pass the same gate as the agent's words.
+ * plainly there. These come off the page itself, so they go first and pass the same gate as the
+ * agent's words, and a line the agent reworded cannot hide one that is really on the page.
  */
 function withPageSignals(
   flow: Flow,
@@ -110,24 +111,24 @@ function withPageSignals(
   return {
     ...evidence,
     pressure: [
-      ...evidence.pressure,
       ...read.flatMap(({ pressure }) =>
         pressure.map(({ kind, text }) => ({ text, kind, ...seenInRun })),
       ),
+      ...evidence.pressure,
     ],
     declineWording: [
-      ...evidence.declineWording,
       ...read.flatMap(({ declines }) => declines.map((text) => ({ text, ...seenInRun }))),
+      ...evidence.declineWording,
     ],
     priceAnchors: [
-      ...evidence.priceAnchors,
       ...read.flatMap(({ anchors }) => anchors.map((anchor) => ({ ...anchor, ...seenInRun }))),
+      ...evidence.priceAnchors,
     ],
     preTicked: [
-      ...evidence.preTicked,
       ...read.flatMap(({ preticked }) =>
         preticked.map((label) => ({ label, cost: null, includedInTotal: null, ...seenInRun })),
       ),
+      ...evidence.preTicked,
     ],
     cookieBanners: accept
       ? [...evidence.cookieBanners, { accept, reject: null, ...seenInRun }]
@@ -140,7 +141,7 @@ function withPageSignals(
           }
         : evidence.checks,
     reported: new Set([...evidence.reported, ...PAGE_READ_SIGNALS]),
-    ...(flow === "subscription" ? termsFromPages(evidence, read) : {}),
+    ...(flow === "subscription" ? termsFromPages(evidence, read, captures) : {}),
   };
 }
 
@@ -151,12 +152,13 @@ function pageTerm(terms: readonly PageTerm[], name: TermName): PageTerm | null {
 }
 
 /**
- * An agent can answer "not shown" for a line that is there, and can call small print the main
- * page. The page's own markup settles both.
+ * An agent can answer "not shown" for a line that is there, tidy a quote until it is no longer on
+ * the page, and call small print the main page. The page's own markup settles all three.
  */
 function termsFromPages(
   evidence: Evidence,
   read: readonly PageSignals[],
+  captures: readonly PageCapture[],
 ): Pick<Evidence, "terms" | "introPrice" | "priceAfterIntro"> {
   const lines = read.flatMap(({ terms }) => terms);
   const merged = TERM_NAMES.flatMap((name): Term[] => {
@@ -165,7 +167,9 @@ function termsFromPages(
     });
     const line = pageTerm(lines, name);
     const undersold = told?.shownWhere === "main_page" && line?.place;
-    if (told && !undersold) return [told];
+    const onPage = told?.quote && locateQuote(told.quote, captures) !== null;
+    if (told && onPage && !undersold) return [told];
+    if (told && !line) return [told];
     if (!line) return evidence.terms.filter(({ term }) => term === name);
     return [
       { term: name, quote: line.quote, shownWhere: line.place ?? "main_page", seenAtStep: null },
@@ -281,7 +285,8 @@ function pageOfStep({ steps, shots }: RunPages, stepId: string): number | null {
 function confirmed(draft: Draft, pages: RunPages, words: readonly PageCapture[]): Confirmed {
   const { steps, captures, shots } = pages;
   const older = captures.length === 0;
-  const pagesToRead = older ? words : captures;
+  const stepsWithShots = new Set(steps.filter(({ screenshot }) => screenshot).map(({ id }) => id));
+  const pagesToRead = (older ? words : captures).filter(({ stepId }) => stepsWithShots.has(stepId));
   const named = draft.step === null ? null : (shots.get(draft.step)?.stepId ?? null);
   if (draft.status !== "found") {
     return { ...draft, screenshot: draft.step === null ? null : (shots.get(draft.step) ?? null) };

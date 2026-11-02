@@ -30,6 +30,7 @@ const NAMED_ENTITIES: Record<string, string> = {
 const SPOKEN_ATTRIBUTE = /\b(?:value|aria-label|alt)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
 const HIDDEN_FIELD = /\btype\s*=\s*["']?hidden/i;
 const ELLIPSIS = /\.{3,}|…/;
+const EDGE_PUNCTUATION = /^["'“”‘’(\s]+|["'“”‘’).,;:!\s]+$/g;
 
 function decode(entity: string): string {
   const number = /^&#(x?)([0-9a-f]+);$/i.exec(entity);
@@ -83,7 +84,10 @@ function positionOf(text: string, parts: readonly string[]): number {
 }
 
 function quoteParts(quote: string): string[] | null {
-  const parts = quote.split(ELLIPSIS).map(comparable).filter(Boolean);
+  const parts = quote
+    .split(ELLIPSIS)
+    .map((part) => comparable(part.replace(EDGE_PUNCTUATION, "")))
+    .filter(Boolean);
   if (parts.join("").length < MIN_QUOTE_LENGTH) return null;
   const elided = parts.length > 1;
   return elided && parts.some((part) => part.length < MIN_ELIDED_PART_LENGTH) ? null : parts;
