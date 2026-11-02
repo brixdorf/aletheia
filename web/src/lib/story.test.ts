@@ -175,7 +175,7 @@ describe("story", () => {
       badge: "Drip pricing, found",
       lead: "Drip pricing",
       accent: "seen",
-      tail: "with proof.",
+      tail: ".",
     });
   });
 
@@ -198,7 +198,7 @@ describe("story", () => {
       badge: "3 patterns found",
       lead: "3 dark patterns",
       accent: "seen",
-      tail: "with proof.",
+      tail: ".",
       body: "Drip pricing, false urgency and subscription trap.",
     });
   });

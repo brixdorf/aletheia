@@ -128,15 +128,6 @@ export function billLines(bill: Bill): BillLine[] {
   ];
 }
 
-export function proofLabel({ proof, quoteCheck }: PatternFinding): string {
-  if (proof === "verified") return "Verified by arithmetic";
-  if (quoteCheck === "matched") return "Seen, with proof. The quote matches the page text.";
-  if (quoteCheck === "not_matched") {
-    return "Seen, with proof. The quote was not found in the captured page text, so check the screenshot.";
-  }
-  return "Seen, with proof";
-}
-
 export function stopSummary({ stop, login }: SiteReport): string {
   switch (stop.at) {
     case "payment_page":

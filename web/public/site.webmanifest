@@ -1,7 +1,7 @@
 {
   "name": "Aletheia",
   "short_name": "Aletheia",
-  "description": "Find the dark patterns on any website, with proof.",
+  "description": "Find the dark patterns on any website.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

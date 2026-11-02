@@ -112,7 +112,7 @@ export interface Story {
 }
 
 function foundStory(report: SiteReport, findings: readonly PatternFinding[]): Story {
-  const seen = { tone: "found", accent: "seen", tail: "with proof." } as const;
+  const seen = { tone: "found", accent: "seen", tail: "." } as const;
   const [only] = findings;
   if (only && findings.length === 1) {
     const name = patternName(only.label);
@@ -135,7 +135,7 @@ function foundStory(report: SiteReport, findings: readonly PatternFinding[]): St
   };
 }
 
-/** The headline and wash of a report, all of it taken from what the run proved. */
+/** The headline and wash of a report, all of it taken from what the run saw. */
 export function story(report: SiteReport): Story {
   const findings = foundPatterns(report);
   if (findings.length > 0) return foundStory(report, findings);

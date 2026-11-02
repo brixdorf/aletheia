@@ -294,8 +294,8 @@ export function PastAudits() {
               </Link>
             }
           >
-            Name a site and a flow. Aletheia walks it like a customer, stops before payment and
-            reports every dark pattern it saw, with proof.
+            Say what you want to buy or sign up for. Aletheia walks the site like a customer, stops
+            before payment and reports every dark pattern it saw.
           </Notice>
         ) : null}
 

@@ -9,8 +9,8 @@ const READY_MS = 7000;
 function readyLine({ host, report }: SiteView): string {
   const found = report?.patterns.filter((entry) => entry.status === "found").length ?? 0;
   const name = siteName(host);
-  if (found === 0) return `No banned pattern found on ${name} so far.`;
-  return `${found} ${found === 1 ? "pattern" : "patterns"} found on ${name}, with proof.`;
+  if (found === 0) return `No dark pattern found on ${name} so far.`;
+  return `${found} ${found === 1 ? "pattern" : "patterns"} found on ${name}.`;
 }
 
 /** The write-up can take minutes, so these say what is going on without taking the page over. */
@@ -43,9 +43,7 @@ export function AuditToasts({ audit }: { audit: AuditPublic }) {
       {writing ? (
         <div className="toast-in card w-full px-[18px] py-4">
           <p className="font-semibold text-ink">Writing up the report...</p>
-          <p className="text-[13px] text-mute">
-            Checking every quote against the page. This can take a few minutes.
-          </p>
+          <p className="text-[13px] text-mute">This can take a few minutes.</p>
         </div>
       ) : null}
       {ready.map(({ id, text }) => (

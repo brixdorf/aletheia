@@ -1,7 +1,6 @@
 import type { ReportScope } from "../lib/api.ts";
 import { screenshotUrl } from "../lib/api.ts";
 import { money } from "../lib/format.ts";
-import { proofLabel } from "../lib/report.ts";
 import { billNote, foundPatterns, patternName, showsBill, story } from "../lib/story.ts";
 import type { Story } from "../lib/story.ts";
 import type { PatternFinding, SiteReport } from "../lib/types.ts";
@@ -57,7 +56,7 @@ export function FindingsSummary({ report, siteId }: { report: SiteReport; siteId
   );
 }
 
-interface ProofProps {
+interface FindingDetailProps {
   finding: PatternFinding;
   currency: string | null;
   screenshot: string | null;
@@ -65,7 +64,7 @@ interface ProofProps {
   showAmounts: boolean;
 }
 
-function Proof({ finding, currency, screenshot, showAmounts }: ProofProps) {
+function FindingDetail({ finding, currency, screenshot, showAmounts }: FindingDetailProps) {
   const { quote, amounts, note, step, label } = finding;
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:gap-8">
@@ -89,10 +88,7 @@ function Proof({ finding, currency, screenshot, showAmounts }: ProofProps) {
           </ul>
         ) : null}
         {note ? <p className="max-w-prose text-body">{note}</p> : null}
-        <p className="text-[13px] text-body">
-          {step === null ? null : <span className="num">Step {step}. </span>}
-          {proofLabel(finding)}
-        </p>
+        {step === null ? null : <p className="num text-[13px] text-body">Step {step}</p>}
       </div>
       {screenshot ? (
         <div className="shrink-0">
@@ -114,7 +110,7 @@ interface FindingsProps {
   Heading: "h2" | "h3";
 }
 
-/** The proof for each finding. Drip pricing, or any price rise, also gets the bill beside it. */
+/** The detail of each finding. Drip pricing, or any price rise, also gets the bill beside it. */
 export function Findings({ report, siteId, scope, Heading }: FindingsProps) {
   const findings = foundPatterns(report);
   const note = billNote(report);
@@ -136,8 +132,8 @@ export function Findings({ report, siteId, scope, Heading }: FindingsProps) {
         const shot = finding.screenshot
           ? screenshotUrl(scope, siteId, finding.screenshot.stepId)
           : null;
-        const proof = (
-          <Proof
+        const detail = (
+          <FindingDetail
             finding={finding}
             currency={currency}
             screenshot={shot}
@@ -155,12 +151,12 @@ export function Findings({ report, siteId, scope, Heading }: FindingsProps) {
               <div className="grid items-center gap-6 lg:grid-cols-2 lg:gap-10">
                 {bill}
                 <div className="flex min-w-0 flex-col gap-3">
-                  {proof}
+                  {detail}
                   {note ? <p className="max-w-prose text-body">{note}</p> : null}
                 </div>
               </div>
             ) : (
-              proof
+              detail
             )}
           </li>
         );

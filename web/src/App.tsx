@@ -121,8 +121,8 @@ export function App() {
 
       <footer className="mx-auto w-full max-w-[1180px] px-4 pb-8 text-[13px] text-mute sm:px-7">
         <p>
-          Checks for drip pricing, false urgency, confirm shaming, subscription traps and the other
-          patterns in India's CCPA dark pattern guidelines. The agent stops before payment.
+          Checks for drip pricing, urgency, shaming wording, subscription traps and many other dark
+          patterns. The agent stops before payment.
         </p>
       </footer>
     </div>

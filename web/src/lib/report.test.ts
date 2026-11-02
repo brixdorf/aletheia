@@ -6,7 +6,6 @@ import {
   counts,
   logoutNote,
   orderedPatterns,
-  proofLabel,
   signInOffer,
   stopSummary,
 } from "./report.ts";
@@ -99,30 +98,6 @@ describe("billLines", () => {
 
   it("is empty when no price was seen", () => {
     expect(billLines(bill())).toEqual([]);
-  });
-});
-
-describe("proofLabel", () => {
-  it("names arithmetic proof", () => {
-    expect(proofLabel(finding({ proof: "verified" }))).toBe("Verified by arithmetic");
-  });
-
-  it("says when a quote matched the captured page", () => {
-    expect(proofLabel(finding({ proof: "seen", quoteCheck: "matched" }))).toBe(
-      "Seen, with proof. The quote matches the page text.",
-    );
-  });
-
-  it("says when a quote could not be matched", () => {
-    expect(proofLabel(finding({ proof: "seen", quoteCheck: "not_matched" }))).toBe(
-      "Seen, with proof. The quote was not found in the captured page text, so check the screenshot.",
-    );
-  });
-
-  it("stays plain when no page text was captured", () => {
-    expect(proofLabel(finding({ proof: "seen", quoteCheck: "unavailable" }))).toBe(
-      "Seen, with proof",
-    );
   });
 });
 
