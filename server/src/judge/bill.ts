@@ -227,7 +227,8 @@ export function buildBill(flow: Flow, evidence: Evidence): Bill {
     extras,
     total,
     addsUp,
-    unexplained: addsUp === false ? unexplainedPaise / 100 : null,
+    unexplained: addsUp === false && unexplainedPaise > 0 ? unexplainedPaise / 100 : null,
+    linesOverTotal: addsUp === false && unexplainedPaise < 0 ? -unexplainedPaise / 100 : null,
     increase: total !== null && listed !== null ? (paise(total) - paise(listed)) / 100 : null,
     multiple: total !== null && listed !== null && listed > 0 ? total / listed : null,
   };

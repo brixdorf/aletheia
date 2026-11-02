@@ -305,6 +305,20 @@ describe("login walls", () => {
 
     expect(report.bill.notInTotal).toEqual([]);
     expect(report.bill.addsUp).toBe(false);
+    expect(report.bill.unexplained).toBeNull();
+    expect(report.bill.linesOverTotal).toBe(13);
+  });
+
+  it("never calls lines above the total an amount on no line", () => {
+    const report = judge("blinkit-2", "checkout", (run) => {
+      if (!run.result) return;
+      run.result["final_price"] = 70;
+    });
+
+    expect(report.bill.addsUp).toBe(false);
+    expect(report.bill.unexplained).toBeNull();
+    expect(report.bill.linesOverTotal).toBe(11);
+    expect(pattern(report, "drip_pricing").note).toMatch(/lines .*11 more than the total/);
   });
 
   it("does not treat a cart's item price as a total when no total was stated", () => {

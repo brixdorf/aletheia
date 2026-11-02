@@ -86,7 +86,10 @@ export interface Bill {
   extras: Charge[];
   total: number | null;
   addsUp: boolean | null;
+  /** What the total holds beyond its lines. Always above zero when set. */
   unexplained: number | null;
+  /** What the lines hold beyond the total, a different fault with a different meaning. */
+  linesOverTotal: number | null;
   increase: number | null;
   multiple: number | null;
 }

@@ -111,11 +111,15 @@ function dripPricing({ bill, evidence, stop }: JudgedContext): Draft {
       step,
     });
   }
-  return draft(
-    "found",
-    `The total is above the first price, but ${bill.unexplained ?? "an amount"} of it is not on any line of the bill.`,
-    { proof: "seen", amounts, step },
-  );
+  const mismatch =
+    bill.linesOverTotal === null
+      ? `${bill.unexplained ?? "an amount"} of it is not on any line of the bill`
+      : `the lines on the bill come to ${bill.linesOverTotal} more than the total`;
+  return draft("found", `The total is above the first price, but ${mismatch}.`, {
+    proof: "seen",
+    amounts,
+    step,
+  });
 }
 
 function basketSneaking({ bill }: JudgedContext): Draft | null {

@@ -41,6 +41,7 @@ const EMPTY_BILL: Bill = {
   total: null,
   addsUp: null,
   unexplained: null,
+  linesOverTotal: null,
   increase: null,
   multiple: null,
 };
