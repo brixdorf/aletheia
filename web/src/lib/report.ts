@@ -1,4 +1,5 @@
 import { money } from "./format.ts";
+import { PATTERN_IDS } from "./types.ts";
 import type {
   Bill,
   PatternStatus,
@@ -11,7 +12,7 @@ import type {
 type Term = SubscriptionSummary["terms"][number];
 
 /** Every run answers for each pattern, so this is the strip of a run with no results yet. */
-export const NOT_YET: readonly PatternStatus[] = Array<PatternStatus>(13).fill("not_checked");
+export const NOT_YET: readonly PatternStatus[] = PATTERN_IDS.map(() => "not_checked");
 
 const PAID_LABEL: Record<SiteReport["priceLabel"], string> = {
   final: "You pay",
@@ -41,6 +42,7 @@ export const TERM_LABEL: Record<Term["term"], string> = {
   price_after_intro: "Price after the offer",
   cancellation: "Cancellation",
   cancellation_fee: "Cancellation fee",
+  trial_card: "Card for the trial",
 };
 
 export const SHOWN_WHERE_LABEL: Record<Term["shownWhere"], string> = {
@@ -52,9 +54,7 @@ export const SHOWN_WHERE_LABEL: Record<Term["shownWhere"], string> = {
   not_shown: "Not shown at all",
 };
 
-function proofRank({ proof }: PatternFinding): number {
-  return proof === "verified" ? 0 : 1;
-}
+const SEVERITY_RANK: Record<PatternFinding["severity"], number> = { high: 0, medium: 1, low: 2 };
 
 const STATUS_RANK: Record<PatternFinding["status"], number> = {
   found: 0,
@@ -62,10 +62,12 @@ const STATUS_RANK: Record<PatternFinding["status"], number> = {
   not_found: 2,
 };
 
-/** Found first, because that is the question the report answers. Clean rows go last. */
+/** Found first, worst first, because that is the question the report answers. Clean rows last. */
 export function orderedPatterns({ patterns }: SiteReport): PatternFinding[] {
   return patterns.toSorted(
-    (a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || proofRank(a) - proofRank(b),
+    (a, b) =>
+      STATUS_RANK[a.status] - STATUS_RANK[b.status] ||
+      SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
   );
 }
 

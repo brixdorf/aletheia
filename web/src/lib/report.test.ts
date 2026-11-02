@@ -9,24 +9,25 @@ import {
   signInOffer,
   stopSummary,
 } from "./report.ts";
+import { PATTERN_IDS } from "./types.ts";
 
 describe("orderedPatterns", () => {
-  it("puts found first, proven by arithmetic ahead of quotes, and clean rows last", () => {
+  it("puts found first, the most serious ahead, and clean rows last", () => {
     const rows = orderedPatterns(
       report({
         patterns: [
-          finding({ id: "nagging", label: "Nagging", status: "found", proof: "seen" }),
+          finding({ id: "nagging", label: "Nagging", status: "found" }),
           finding({
             id: "drip_pricing",
-            label: "Drip Pricing",
+            label: "Drip pricing",
+            severity: "high",
             status: "found",
-            proof: "verified",
           }),
-          finding({ id: "trick_question", label: "Trick Question", status: "not_checked" }),
+          finding({ id: "trick_question", label: "Trick question", status: "not_checked" }),
         ],
       }),
     );
-    expect(rows).toHaveLength(13);
+    expect(rows).toHaveLength(PATTERN_IDS.length);
     expect(rows.slice(0, 3).map((row) => row.id)).toEqual([
       "drip_pricing",
       "nagging",
@@ -46,7 +47,7 @@ describe("counts", () => {
         ],
       }),
     );
-    expect(summary).toEqual({ found: 1, notChecked: 1, notFound: 11 });
+    expect(summary).toEqual({ found: 1, notChecked: 1, notFound: PATTERN_IDS.length - 2 });
   });
 });
 

@@ -1,5 +1,4 @@
 import { orderedPatterns } from "../lib/report.ts";
-import { patternName } from "../lib/story.ts";
 import type { PatternFinding, SiteReport } from "../lib/types.ts";
 import { findingAnchor } from "./Findings.tsx";
 import { Chevron } from "./icons.tsx";
@@ -41,7 +40,7 @@ export function PatternList({ report, siteId, press }: PatternListProps) {
                   href={`#${findingAnchor(siteId, row.id)}`}
                   className={`flex font-medium text-text transition-colors hover:text-ink ${ROW} ${ROW_TINT.found}`}
                 >
-                  <span className="min-w-0">{patternName(row.label)}</span>
+                  <span className="min-w-0">{row.label}</span>
                   {pill}
                 </a>
               ) : (
@@ -49,7 +48,7 @@ export function PatternList({ report, siteId, press }: PatternListProps) {
                   <summary
                     className={`flex font-medium text-text transition-colors hover:text-ink ${ROW}`}
                   >
-                    <span className="min-w-0">{patternName(row.label)}</span>
+                    <span className="min-w-0">{row.label}</span>
                     <span className="flex shrink-0 items-center gap-1.5">
                       {pill}
                       <span

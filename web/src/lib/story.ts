@@ -2,12 +2,6 @@ import { money, plural } from "./format.ts";
 import { counts, orderedPatterns, stopSummary } from "./report.ts";
 import type { AuditPublic, AuditSummary, PatternFinding, SiteReport } from "./types.ts";
 
-/** Writes "Drip Pricing" as "Drip pricing". Only the first word keeps its capitals, as in SaaS. */
-export function patternName(label: string): string {
-  const [first = "", ...rest] = label.split(" ");
-  return [first, ...rest.map((word) => word.toLowerCase())].join(" ");
-}
-
 export function foundPatterns(report: SiteReport): PatternFinding[] {
   return orderedPatterns(report).filter(({ status }) => status === "found");
 }
@@ -115,7 +109,7 @@ function foundStory(report: SiteReport, findings: readonly PatternFinding[]): St
   const seen = { tone: "found", accent: "seen", tail: "." } as const;
   const [only] = findings;
   if (only && findings.length === 1) {
-    const name = patternName(only.label);
+    const name = only.label;
     return {
       ...seen,
       badge: `${name}, found`,
@@ -123,10 +117,9 @@ function foundStory(report: SiteReport, findings: readonly PatternFinding[]): St
       body: only.note || (only.quote ?? stopSummary(report)),
     };
   }
-  const names = findings.map(({ label }, index) => {
-    const name = patternName(label);
-    return index === 0 ? name : name.charAt(0).toLowerCase() + name.slice(1);
-  });
+  const names = findings.map(({ label }, index) =>
+    index === 0 ? label : label.charAt(0).toLowerCase() + label.slice(1),
+  );
   return {
     ...seen,
     badge: `${findings.length} patterns found`,
@@ -264,7 +257,7 @@ function findingPills(report: SiteReport): Pill[] {
   const findings = foundPatterns(report);
   const named = findings
     .slice(0, NAMED_PILLS)
-    .map(({ label }): Pill => ({ tone: "found", text: patternName(label) }));
+    .map(({ label }): Pill => ({ tone: "found", text: label }));
   const rest = findings.length - named.length;
   return rest > 0 ? [...named, { tone: "found", text: `${rest} more` }] : named;
 }

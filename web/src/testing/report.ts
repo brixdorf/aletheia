@@ -1,31 +1,18 @@
+import { PATTERN_IDS } from "../lib/types.ts";
 import type { Bill, PatternFinding, SiteReport, SubscriptionSummary } from "../lib/types.ts";
 
-const PATTERNS: readonly [PatternFinding["id"], string][] = [
-  ["false_urgency", "False Urgency"],
-  ["basket_sneaking", "Basket Sneaking"],
-  ["confirm_shaming", "Confirm Shaming"],
-  ["forced_action", "Forced Action"],
-  ["subscription_trap", "Subscription Trap"],
-  ["interface_interference", "Interface Interference"],
-  ["bait_and_switch", "Bait and Switch"],
-  ["drip_pricing", "Drip Pricing"],
-  ["disguised_advertisement", "Disguised Advertisement"],
-  ["nagging", "Nagging"],
-  ["trick_question", "Trick Question"],
-  ["saas_billing", "SaaS Billing"],
-  ["rogue_malware", "Rogue Malware"],
-];
+const PATTERNS: readonly PatternFinding["id"][] = PATTERN_IDS;
 
 export function finding(overrides: Partial<PatternFinding> = {}): PatternFinding {
   return {
-    id: "false_urgency",
-    label: "False Urgency",
+    id: "countdown",
+    label: "Countdown or deadline",
+    group: "urgency",
+    severity: "medium",
     status: "not_found",
-    proof: null,
     soFar: false,
     step: null,
     quote: null,
-    quoteCheck: null,
     amounts: [],
     screenshot: null,
     note: "",
@@ -79,6 +66,7 @@ export function report(
 ): SiteReport {
   const { patterns = [], ...rest } = overrides;
   return {
+    rules: 2,
     url: "https://shop.test",
     host: "shop.test",
     flow: "checkout",
@@ -97,9 +85,9 @@ export function report(
     login: { wallAt: null, hidesFees: false, offerSignIn: false },
     ...rest,
     patterns: PATTERNS.map(
-      ([id, label]) =>
+      (id) =>
         patterns.find((entry) => entry.id === id) ??
-        finding({ id, label, status: "not_found", note: "Not seen." }),
+        finding({ id, label: id, status: "not_found", note: "Not seen." }),
     ),
   };
 }

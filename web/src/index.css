@@ -234,11 +234,12 @@
   /* The signature: one small square per pattern. */
   .strip {
     display: inline-flex;
-    gap: 4px;
+    flex-wrap: wrap;
+    gap: 3px;
   }
 
   .strip-cell {
-    @apply size-3 rounded-[4px] bg-[#e8eaee];
+    @apply size-2.5 rounded-[3px] bg-[#e8eaee];
   }
 
   .strip-cell-found {

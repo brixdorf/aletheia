@@ -1,7 +1,7 @@
 import type { ReportScope } from "../lib/api.ts";
 import { screenshotUrl } from "../lib/api.ts";
 import { money } from "../lib/format.ts";
-import { billNote, foundPatterns, patternName, showsBill, story } from "../lib/story.ts";
+import { billNote, foundPatterns, showsBill, story } from "../lib/story.ts";
 import type { Story } from "../lib/story.ts";
 import type { PatternFinding, SiteReport } from "../lib/types.ts";
 import { Receipt } from "./Receipt.tsx";
@@ -35,7 +35,7 @@ export function FindingsSummary({ report, siteId }: { report: SiteReport; siteId
                   href={`#${findingAnchor(siteId, id)}`}
                   className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-xl bg-peach px-3.5 py-2 font-medium text-ink transition-colors hover:bg-peach-line"
                 >
-                  <span className="min-w-0">{patternName(label)}</span>
+                  <span className="min-w-0">{label}</span>
                   {step === null ? null : (
                     <span className="num shrink-0 text-[13px] font-normal text-body">
                       Step {step}
@@ -70,7 +70,7 @@ function FindingDetail({ finding, currency, screenshot, showAmounts }: FindingDe
     <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:gap-8">
       <div className="flex min-w-0 flex-col gap-3">
         <div className="w-fit">
-          <StatusPill status="found" label={patternName(label)} />
+          <StatusPill status="found" label={label} />
         </div>
         {quote ? (
           <blockquote className="max-w-prose border-l-2 border-found py-0.5 pl-3.5 font-serif text-[22px]/[1.3] text-ink italic">

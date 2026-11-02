@@ -14,6 +14,7 @@ export type {
 } from "../../../server/src/judge/types.ts";
 
 export type { Flow } from "../../../server/src/judge/types.ts";
+export { PATTERN_IDS } from "../../../server/src/judge/types.ts";
 
 export type PlanView = AuditPlan;
 export type AuditView = ReturnType<typeof ownerView>;

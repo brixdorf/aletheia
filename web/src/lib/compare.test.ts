@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { bill, finding, report } from "../testing/report.ts";
 import { buildComparison, hiddenCostLabel } from "./compare.ts";
 import type { AuditPublic, SiteView } from "./types.ts";
+import { PATTERN_IDS } from "./types.ts";
 
 function site(host: string, reportOverrides: Parameters<typeof report>[0] = {}): SiteView {
   return {
@@ -133,19 +134,19 @@ describe("buildComparison", () => {
         sites: [
           site("a.test", {
             bill: bill({ firstPrice: 24, total: 81, increase: 57 }),
-            patterns: [finding({ id: "drip_pricing", label: "Drip Pricing", status: "found" })],
+            patterns: [finding({ id: "drip_pricing", label: "Drip pricing", status: "found" })],
           }),
           site("b.test", {
             patterns: [
-              finding({ id: "drip_pricing", label: "Drip Pricing", status: "not_checked" }),
+              finding({ id: "drip_pricing", label: "Drip pricing", status: "not_checked" }),
             ],
           }),
         ],
       }),
     ]);
     const drip = view.patternRows.find((entry) => entry.id === "drip_pricing");
-    expect(view.patternRows).toHaveLength(13);
-    expect(drip?.label).toBe("Drip Pricing");
+    expect(view.patternRows).toHaveLength(PATTERN_IDS.length);
+    expect(drip?.label).toBe("Drip pricing");
     expect(drip?.statuses).toEqual(["found", "not_checked"]);
   });
 

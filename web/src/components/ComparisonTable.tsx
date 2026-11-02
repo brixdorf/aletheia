@@ -3,7 +3,7 @@ import { useState } from "react";
 import { hiddenCostLabel, type CompareColumn, type ComparisonView } from "../lib/compare.ts";
 import { stopSummary } from "../lib/report.ts";
 import { siteName } from "../lib/sites.ts";
-import { foundPatterns, patternName } from "../lib/story.ts";
+import { foundPatterns } from "../lib/story.ts";
 import { Link, Money, PatternStrip, SiteAvatar, StatusPill } from "./ui.tsx";
 
 function Price({ amount, currency }: { amount: number | null; currency: string | null }) {
@@ -120,7 +120,7 @@ export function ComparisonTable({
                       <ul className="flex flex-col gap-1">
                         {findings.map(({ id, label }) => (
                           <li key={id} className="font-medium text-peach-ink">
-                            {patternName(label)}
+                            {label}
                           </li>
                         ))}
                       </ul>
@@ -180,7 +180,7 @@ export function ComparisonTable({
               ? patternRows.map((row) => (
                   <tr key={row.id}>
                     <th scope="row" className={headCell}>
-                      {patternName(row.label)}
+                      {row.label}
                     </th>
                     {row.statuses.map((status, index) => (
                       <td key={columns[index]?.key} className={cell}>

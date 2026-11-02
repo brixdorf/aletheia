@@ -6,7 +6,6 @@ import {
   billNote,
   billPill,
   foundPatterns,
-  patternName,
   priceChange,
   renewalNote,
   rowPills,
@@ -18,9 +17,9 @@ import {
 
 const drip = finding({
   id: "drip_pricing",
-  label: "Drip Pricing",
+  label: "Drip pricing",
+  severity: "high",
   status: "found",
-  proof: "verified",
   step: 4,
   amounts: [
     { label: "Delivery charge", amount: 25 },
@@ -51,13 +50,12 @@ const checkout = report({
 });
 
 const trap = finding({
-  id: "subscription_trap",
-  label: "Subscription Trap",
+  id: "cancellation_fee",
+  label: "Cancellation fee",
+  severity: "high",
   status: "found",
-  proof: "seen",
   step: 2,
   quote: "Fee applies of half your remaining annual commitment",
-  quoteCheck: "matched",
   screenshot: { stepId: "s2", action: null },
 });
 
@@ -76,30 +74,20 @@ const adobe = report({
 });
 
 const urgency = finding({
-  id: "false_urgency",
-  label: "False Urgency",
+  id: "scarcity_message",
+  label: "Scarcity message",
   status: "found",
-  proof: "seen",
   step: 3,
   quote: "Only 2 left",
-  quoteCheck: "matched",
   note: "Countdown beside the price.",
 });
 
 const flat = bill({ firstPrice: 549, total: 549, increase: 0 });
 
-describe("patternName", () => {
-  it("writes labels in sentence case and keeps SaaS as it is", () => {
-    expect(patternName("Drip Pricing")).toBe("Drip pricing");
-    expect(patternName("Bait and Switch")).toBe("Bait and switch");
-    expect(patternName("SaaS Billing")).toBe("SaaS billing");
-  });
-});
-
 describe("foundPatterns", () => {
-  it("lists only what was found, proven by arithmetic first", () => {
+  it("lists only what was found, the most serious first", () => {
     const both = report({ patterns: [urgency, drip] });
-    expect(foundPatterns(both).map(({ id }) => id)).toEqual(["drip_pricing", "false_urgency"]);
+    expect(foundPatterns(both).map(({ id }) => id)).toEqual(["drip_pricing", "scarcity_message"]);
   });
 });
 
@@ -199,12 +187,12 @@ describe("story", () => {
       lead: "3 dark patterns",
       accent: "seen",
       tail: ".",
-      body: "Drip pricing, false urgency and subscription trap.",
+      body: "Drip pricing, cancellation fee and scarcity message.",
     });
   });
 
   it("puts a subscription's findings ahead of its renewal price", () => {
-    expect(story(adobe)).toMatchObject({ lead: "Subscription trap", accent: "seen" });
+    expect(story(adobe)).toMatchObject({ lead: "Cancellation fee", accent: "seen" });
   });
 
   it("says when a login hid the fees", () => {
@@ -240,7 +228,7 @@ describe("story", () => {
     const stopped = report({
       patterns: [
         finding({ id: "nagging", label: "Nagging", status: "not_checked" }),
-        finding({ id: "drip_pricing", label: "Drip Pricing", status: "not_checked" }),
+        finding({ id: "drip_pricing", label: "Drip pricing", status: "not_checked" }),
       ],
     });
     expect(story(stopped)).toMatchObject({ tone: "open", lead: "2 patterns", accent: "not" });
@@ -369,7 +357,7 @@ describe("rowPills on a run that saw no bill", () => {
 
 describe("rowPills", () => {
   const summary = { state: "done" as const, found: 1, notChecked: 0, total: 81 };
-  const nagging = finding({ id: "nagging", label: "Nagging", status: "found", proof: "seen" });
+  const nagging = finding({ id: "nagging", label: "Nagging", status: "found" });
 
   it("names each finding once the report is known", () => {
     expect(rowPills(summary, checkout)).toEqual([{ tone: "found", text: "Drip pricing" }]);
@@ -380,7 +368,7 @@ describe("rowPills", () => {
     const three = report({ patterns: [urgency, drip, nagging] });
     expect(rowPills({ ...summary, found: 3 }, three)).toEqual([
       { tone: "found", text: "Drip pricing" },
-      { tone: "found", text: "False urgency" },
+      { tone: "found", text: "Scarcity message" },
       { tone: "found", text: "1 more" },
     ]);
   });
