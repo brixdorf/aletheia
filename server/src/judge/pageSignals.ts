@@ -51,7 +51,7 @@ const WAS_NOW = new RegExp(
 );
 const AFTER_STRUCK = new RegExp(String.raw`^[\s|]*((?:[A-Z]{2,3})?${MONEY})`);
 const SPLIT_PRICE = new RegExp(
-  String.raw`${MONEY}\s*(?:\+|\bplus\b)\s*(?:${MONEY}\s+)?(?:[a-z-]+\s+){0,3}?(?:fees?|charges?|surcharges?)\b`,
+  String.raw`(?:${MONEY}[\s|]*(?:\+|\bplus\b)\s*(?:${MONEY}\s+)?|\+\s*${MONEY}\s+)(?:[a-z&-]+\s+){0,3}?(?:fees?|charges?|surcharges?)\b`,
   "gi",
 );
 const INCLUDED_AFTER = /^\s*(?:are |is )?included\b/i;
@@ -167,8 +167,8 @@ function wordedAnchors(text: string): PageAnchor[] {
 
 function splitPrices(text: string): string[] {
   return [...text.matchAll(SPLIT_PRICE)]
-    .filter(({ 0: words, index }) => !INCLUDED_AFTER.test(text.slice(index + words.length)))
-    .map(([words]) => words);
+    .filter(({ 0: split, index }) => !INCLUDED_AFTER.test(text.slice(index + split.length)))
+    .map(([split]) => words(split));
 }
 
 function controlsIn(html: string): string[] {

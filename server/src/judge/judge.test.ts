@@ -675,6 +675,12 @@ describe("signals only the new agent reports", () => {
     expect(pattern(fresh(force("Add the insurance to continue")), "forced_action").status).toBe(
       "found",
     );
+    expect(
+      pattern(
+        fresh(force("By proceeding, you agree to our T&C and Privacy policy")),
+        "forced_action",
+      ).status,
+    ).toBe("not_found");
   });
 
   it("wants a negative or an opt-out in a trick question", () => {

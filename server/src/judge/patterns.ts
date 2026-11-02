@@ -70,6 +70,8 @@ const GUILT_NUDGE =
   /malnutrition|brighten their day|help us|help (them|feed)|feed (a|the)|hungry|don'?t let|you'?ll regret/i;
 const ACCOUNT_REQUIREMENT =
   /account|sign[ -]?(in|up)|log ?in|e-?mail|mobile number|phone|credential|authenticat/i;
+// Terms of use are the price of any sale, so agreeing to them forces nothing extra.
+const PLAIN_TERMS = /\b(t&c|terms|conditions|privacy|policy)\b/i;
 const MARKETING_CONSENT =
   /market|promot|personali[sz]ed|newsletter|keep me informed|special offers|\boffers\b|third part/i;
 const FEE_WORD = /\bfees?\b|\bcharges?\b|penalt|remaining|lump sum|early terminat/i;
@@ -429,7 +431,7 @@ function priceBehindSignIn({ flow, stop, bill, evidence }: JudgedContext): Draft
 
 function forcedAction({ evidence }: JudgedContext): Draft | null {
   const check = agentCheck(evidence, "forced_action");
-  if (!check || ACCOUNT_REQUIREMENT.test(check.quote)) return null;
+  if (!check || ACCOUNT_REQUIREMENT.test(check.quote) || PLAIN_TERMS.test(check.quote)) return null;
   return seen(check.quote, check.seenAtStep, "This must be done before the flow goes on.");
 }
 

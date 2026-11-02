@@ -118,6 +118,21 @@ describe("readSignals", () => {
     ]);
   });
 
+  it("reads taxes and fees written with an ampersand", () => {
+    expect(readSignals("<p>₹5,958 + ₹745 taxes &amp; fees</p>").splitPrices).toEqual([
+      "₹5,958 + ₹745 taxes & fees",
+    ]);
+  });
+
+  it("reads a fee set in the block under its price", () => {
+    expect(
+      readSignals("<p>₹5,958</p><p>+ ₹745 taxes &amp; fees, per night</p>").splitPrices,
+    ).toEqual(["₹5,958 + ₹745 taxes & fees"]);
+    expect(readSignals("<div>+ ₹745 taxes &amp; fees</div>").splitPrices).toEqual([
+      "+ ₹745 taxes & fees",
+    ]);
+  });
+
   it("does not count tax on its own as a split fee", () => {
     expect(readSignals("<p>$120 + tax</p><p>$99 plus GST</p>").splitPrices).toEqual([]);
   });

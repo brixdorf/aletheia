@@ -33,7 +33,7 @@ import type {
 import { TERM_NAMES } from "./types.ts";
 
 /** Raised when the rules change, so reports saved under older ones are judged again. */
-export const RULES_VERSION = 6;
+export const RULES_VERSION = 7;
 
 export interface JudgeInput {
   flow: Flow;
@@ -134,13 +134,12 @@ function withPageSignals(
     cookieBanners: accept
       ? [...evidence.cookieBanners, { accept, reject: null, ...seenInRun }]
       : evidence.cookieBanners,
-    checks:
-      split && evidence.checks.partitioned_pricing?.status !== "found"
-        ? {
-            ...evidence.checks,
-            partitioned_pricing: { status: "found", quote: split, note: null, ...seenInRun },
-          }
-        : evidence.checks,
+    checks: split
+      ? {
+          ...evidence.checks,
+          partitioned_pricing: { status: "found", quote: split, note: null, ...seenInRun },
+        }
+      : evidence.checks,
     reported: new Set([...evidence.reported, ...PAGE_READ_SIGNALS]),
     ...(flow === "subscription" ? termsFromPages(evidence, read, captures) : {}),
   };
