@@ -31,7 +31,7 @@ const firstName = (sites: readonly Site[] | undefined) => sites?.[0]?.name ?? ""
 
 const KINDS: readonly ExampleKind[] = [
   { words: () => "Sign up for Spotify Premium", proven: true },
-  { words: () => "Sign up for Adobe Creative Cloud", proven: false },
+  { words: () => "Sign up for Adobe Creative Cloud", proven: true },
   {
     words: ({ market }) => `Order dinner on ${firstName(market.categories.food_delivery)}`,
     proven: true,
@@ -40,8 +40,8 @@ const KINDS: readonly ExampleKind[] = [
     words: ({ market }) => `Buy concert tickets on ${firstName(market.categories.movies_events)}`,
     proven: false,
   },
-  { words: ({ home, away }) => `Book a flight from ${home} to ${away}`, proven: false },
-  { words: ({ away }) => `Book a hotel in ${away} for this weekend`, proven: false },
+  { words: ({ home, away }) => `Book a flight from ${home} to ${away}`, proven: true },
+  { words: ({ away }) => `Book a hotel in ${away} for this weekend`, proven: true },
   {
     words: ({ market }) => `Buy a laptop on ${firstName(market.categories.electronics)}`,
     proven: true,

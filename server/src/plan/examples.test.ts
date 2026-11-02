@@ -33,7 +33,15 @@ describe("examplesFor", () => {
   });
 
   it("shows only kinds that have run on the live site", () => {
-    expect(allOf("IN").join(" ")).not.toMatch(/flight|hotel|mobile plan|Adobe|Netflix/);
+    expect(allOf("IN").join(" ")).not.toMatch(/concert tickets|mobile plan|Netflix/);
+  });
+
+  it("offers the kinds that gave a useful report as a guest", () => {
+    const examples = allOf("IN");
+
+    expect(examples).toContain("Sign up for Adobe Creative Cloud");
+    expect(examples).toContain("Book a flight from Mumbai to Delhi");
+    expect(examples).toContain("Book a hotel in Delhi for this weekend");
   });
 
   it("never offers groceries or jokes", () => {
