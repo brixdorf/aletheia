@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { ago, clock, dateTime, duration, money, moneyParts, plural } from "./format.ts";
+import { ago, clock, dateTime, duration, money, moneyParts, perPeriod, plural } from "./format.ts";
 
 describe("moneyParts", () => {
   it("splits off the paise so they can be drawn lighter", () => {
@@ -54,6 +54,20 @@ describe("money", () => {
 
   it("shows the bare number when no currency was seen", () => {
     expect(money(79, null)).toBe("79");
+  });
+});
+
+describe("perPeriod", () => {
+  it("writes one slash whatever form the agent gave", () => {
+    expect(perPeriod("/mo")).toBe("/mo");
+    expect(perPeriod("month")).toBe("/mo");
+    expect(perPeriod("per year")).toBe("/yr");
+    expect(perPeriod("/yr")).toBe("/yr");
+    expect(perPeriod("2 months")).toBe("/2 months");
+  });
+
+  it("writes nothing when there is no period", () => {
+    expect(perPeriod(null)).toBe("");
   });
 });
 

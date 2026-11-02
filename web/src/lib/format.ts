@@ -21,6 +21,15 @@ export function moneyParts(
   return { main, minor: `.${paise}` };
 }
 
+/** One suffix for a billing period, however the agent wrote it or a saved report kept it. */
+export function perPeriod(period: string | null): string {
+  const bare = period?.replace(/^\s*(\/|per\b)\s*/i, "").trim();
+  if (!bare) return "";
+  if (/^(mo|month)$/i.test(bare)) return "/mo";
+  if (/^(yr|year)$/i.test(bare)) return "/yr";
+  return `/${bare}`;
+}
+
 export function duration(fromIso: string, toIso: string): string {
   const seconds = Math.round((Date.parse(toIso) - Date.parse(fromIso)) / 1000);
   const minutes = Math.floor(seconds / 60);

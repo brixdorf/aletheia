@@ -1,4 +1,4 @@
-import { money } from "../lib/format.ts";
+import { money, perPeriod } from "../lib/format.ts";
 import { SHOWN_WHERE_LABEL, TERM_LABEL } from "../lib/report.ts";
 import type { SubscriptionSummary } from "../lib/types.ts";
 
@@ -58,7 +58,7 @@ export function SubscriptionFacts({ subscription, currency }: SubscriptionFactsP
                     {option.price === null ? null : (
                       <span className="num shrink-0">
                         {money(option.price, currency)}
-                        {option.period ? `/${option.period}` : ""}
+                        {perPeriod(option.period)}
                       </span>
                     )}
                   </div>
