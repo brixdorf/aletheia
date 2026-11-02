@@ -7,9 +7,6 @@ import { ComparePage } from "./pages/ComparePage.tsx";
 import { Home } from "./pages/Home.tsx";
 import { PastAudits } from "./pages/PastAudits.tsx";
 
-/** The saved Adobe India report, read-only so it opens for every visitor. */
-const ANNOUNCEMENT = "/shared/q8aPAT7kZTCAZPsqW5iDd6LhNcV5gdNx";
-
 function NotFound() {
   usePageTitle("Page not found");
   return (
@@ -88,16 +85,6 @@ export function App() {
             Aletheia
           </Link>
 
-          <Link
-            href={ANNOUNCEMENT}
-            className="hidden min-w-0 items-center gap-2 text-sm font-medium text-ink hover:underline hover:underline-offset-4 lg:flex"
-          >
-            <span className="pill pill-info">New</span>
-            <span className="truncate">
-              Adobe India audited: a fee for cancelling after 14 days
-            </span>
-          </Link>
-
           <nav aria-label="Main">
             <ul className="flex items-center gap-3 sm:gap-[18px]">
               <li>
@@ -132,17 +119,11 @@ export function App() {
         <Page />
       </main>
 
-      <footer className="mx-auto flex w-full max-w-[1180px] flex-wrap items-center justify-between gap-x-8 gap-y-1 px-4 pb-8 text-[13px] text-mute sm:px-7">
+      <footer className="mx-auto w-full max-w-[1180px] px-4 pb-8 text-[13px] text-mute sm:px-7">
         <p>
-          Checks the 13 dark patterns in India's 2023 CCPA guidelines. The agent stops before
-          payment.
+          Checks for drip pricing, false urgency, confirm shaming, subscription traps and the other
+          patterns in India's CCPA dark pattern guidelines. The agent stops before payment.
         </p>
-        <a
-          className="link inline-flex min-h-11 items-center"
-          href="https://github.com/brixdorf/aletheia"
-        >
-          Source on GitHub
-        </a>
       </footer>
     </div>
   );
