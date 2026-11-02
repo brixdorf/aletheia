@@ -16,7 +16,7 @@ Aletheia walks a site's checkout or sign-up flow like a customer, stops before p
 
 - **Pricing:** drip pricing, partitioned pricing, bait and switch, a free claim with a charge, crossed-out prices.
 - **Urgency and scarcity:** countdowns and deadlines, scarcity messages, high demand messages.
-- **Social proof:** activity messages about what other people are doing.
+- **Crowd pressure:** activity messages about what other people are doing.
 - **Sneaking and preselection:** items sneaked into the basket, pre-selected extras, longer plans pre-selected, hidden subscriptions.
 - **Subscriptions and cancellation:** a card needed for a free trial, renewal in the small print, intro prices that jump, cancellation fees, sign-ups that are hard to cancel, missing cancellation terms.
 - **Obstruction and forced action:** a price behind sign-in, forced actions, forced marketing consent.
