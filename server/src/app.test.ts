@@ -47,6 +47,20 @@ describe("createApp", () => {
     expect(await response.text()).toContain("bundle");
   });
 
+  it("answers a missing file at the root with 404, so a cache cannot keep the shell as it", async () => {
+    const response = await createApp({ webRoot }).request("/favicon.svg");
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).not.toContain("app shell");
+  });
+
+  it("still opens client routes from the app shell", async () => {
+    const response = await createApp({ webRoot }).request("/audits/3f9a-77/");
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("app shell");
+  });
+
   it("answers missing assets with 404, never the app shell", async () => {
     const response = await createApp({ webRoot }).request("/assets/missing.js");
 

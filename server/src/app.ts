@@ -3,6 +3,8 @@ import { Hono } from "hono";
 
 import type { ApiEnv } from "./api/routes.ts";
 
+const FILE_PATH = /\.[a-z0-9]+$/i;
+
 export interface AppOptions {
   webRoot: string;
   api?: Hono<ApiEnv>;
@@ -17,6 +19,7 @@ export function createApp({ webRoot, api }: AppOptions): Hono {
 
   app.use("*", serveStatic({ root: webRoot }));
   app.get("/assets/*", (c) => c.notFound());
+  app.get("*", (c, next) => (FILE_PATH.test(c.req.path) ? c.notFound() : next()));
   app.get("*", serveStatic({ root: webRoot, path: "index.html" }));
 
   return app;
