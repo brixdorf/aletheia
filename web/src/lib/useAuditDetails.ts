@@ -7,8 +7,8 @@ const finishedSites = ({ sites }: AuditSummary) =>
   sites.filter((site) => site.state === "done").length;
 
 /**
- * The list endpoint gives counts only, so each row's pattern strip and first price come from
- * the full audit. A row refetches when another of its sites finishes.
+ * The list endpoint gives counts only, so the patterns named on each row and its first price come
+ * from the full audit. A row refetches when another of its sites finishes.
  */
 export function useAuditDetails(audits: readonly AuditSummary[]): Record<string, AuditView> {
   const [details, setDetails] = useState<Record<string, AuditView>>({});

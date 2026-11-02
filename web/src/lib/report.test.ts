@@ -9,8 +9,23 @@ import {
   signInOffer,
   stopSummary,
   olderAuditNote,
+  tallyLine,
 } from "./report.ts";
 import { PATTERN_IDS } from "./types.ts";
+
+describe("tallyLine", () => {
+  it("says what was found and what was not checked", () => {
+    expect(tallyLine({ found: 1, notChecked: 4 })).toBe("1 found, 4 not checked");
+  });
+
+  it("leaves out not checked when every pattern was checked", () => {
+    expect(tallyLine({ found: 2, notChecked: 0 })).toBe("2 found");
+  });
+
+  it("still says so when nothing was found", () => {
+    expect(tallyLine({ found: 0, notChecked: 3 })).toBe("0 found, 3 not checked");
+  });
+});
 
 describe("orderedPatterns", () => {
   it("puts found first, the most serious ahead, and clean rows last", () => {

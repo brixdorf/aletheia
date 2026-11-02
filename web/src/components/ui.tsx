@@ -56,36 +56,6 @@ export function StatusPill({ status, popOrder, label }: StatusPillProps) {
   );
 }
 
-const CELL_POP_MS = 90;
-
-function stripLabel(statuses: readonly PatternStatus[]): string {
-  const of = (status: PatternStatus) => statuses.filter((entry) => entry === status).length;
-  return `${of("found")} found, ${of("not_checked")} not checked, ${of("not_found")} not found`;
-}
-
-interface PatternStripProps {
-  statuses: readonly PatternStatus[];
-  /** True when the results have just arrived, so the cells fill in one by one. */
-  fill?: boolean;
-  className?: string;
-}
-
-export function PatternStrip({ statuses, fill = false, className = "" }: PatternStripProps) {
-  return (
-    <span role="img" aria-label={stripLabel(statuses)} className={`strip ${className}`}>
-      {statuses.map((status, index) => (
-        <i
-          key={index}
-          className={`strip-cell strip-cell-${status} ${fill ? "pop-in" : ""}`}
-          style={
-            fill ? ({ "--pop-delay": `${index * CELL_POP_MS}ms` } as CSSProperties) : undefined
-          }
-        />
-      ))}
-    </span>
-  );
-}
-
 interface MoneyProps {
   amount: number;
   currency: string | null;

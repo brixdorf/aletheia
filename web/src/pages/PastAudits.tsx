@@ -8,14 +8,13 @@ import {
   Loading,
   Money,
   Notice,
-  PatternStrip,
   Pill,
   SiteAvatar,
   usePageTitle,
 } from "../components/ui.tsx";
 import { deleteAudit, listAudits } from "../lib/api.ts";
 import { dateTime, plural } from "../lib/format.ts";
-import { NOT_YET } from "../lib/report.ts";
+import { tallyLine } from "../lib/report.ts";
 import { siteName } from "../lib/sites.ts";
 import { priceChange, rowPills } from "../lib/story.ts";
 import type { AuditSummary, AuditView, SiteReport, SiteView } from "../lib/types.ts";
@@ -64,7 +63,6 @@ interface SiteRowProps {
 
 function SiteRow({ audit, site, detail, controls, showTask }: SiteRowProps) {
   const report = detail?.report ?? null;
-  const statuses = report?.patterns.map(({ status }) => status) ?? NOT_YET;
   const href = `/audits/${audit.id}${detail && !showTask ? `#site-${detail.id}` : ""}`;
   const who = report ? (report.signedIn ? "signed in" : "guest") : null;
   const line = showTask
@@ -86,13 +84,13 @@ function SiteRow({ audit, site, detail, controls, showTask }: SiteRowProps) {
         </Link>
         <p className="text-[13px] wrap-anywhere text-mute">{line.filter(Boolean).join(" · ")}</p>
       </div>
-      <div className="row-strip">
-        <PatternStrip statuses={statuses} />
-      </div>
       <div className="row-status">
         {rowPills(site, report).map((pill) => (
           <Pill key={pill.text} {...pill} />
         ))}
+        {site.state === "done" ? (
+          <span className="num w-full text-[13px] text-mute">{tallyLine(site)}</span>
+        ) : null}
       </div>
       <Change report={report} />
       <div className="row-delete">{controls ? <DeleteRow {...controls} /> : null}</div>
@@ -269,14 +267,9 @@ export function PastAudits() {
     <div className="flex flex-col">
       <section aria-labelledby="audits-title" className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 id="audits-title" className="text-[28px]/[1.1] sm:text-[34px]/[1.1]">
-              Past audits
-            </h1>
-            <p className="mt-1.5 text-mute">
-              Each row shows every pattern: orange found, grey not found, dashed not checked.
-            </p>
-          </div>
+          <h1 id="audits-title" className="text-[28px]/[1.1] sm:text-[34px]/[1.1]">
+            Past audits
+          </h1>
           {audits.length > 0 ? <CompareSelected audits={pickedAudits} /> : null}
         </div>
 
@@ -294,8 +287,8 @@ export function PastAudits() {
               </Link>
             }
           >
-            Say what you want to buy or sign up for. Aletheia walks the site like a customer, stops
-            before payment and reports every dark pattern it saw.
+            Say what you want to buy or sign up for, and Aletheia reports every dark pattern it
+            sees.
           </Notice>
         ) : null}
 

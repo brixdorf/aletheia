@@ -1,10 +1,10 @@
 import { useState } from "react";
 
 import { hiddenCostLabel, type CompareColumn, type ComparisonView } from "../lib/compare.ts";
-import { stopSummary } from "../lib/report.ts";
+import { counts, stopSummary, tallyLine } from "../lib/report.ts";
 import { siteName } from "../lib/sites.ts";
 import { foundPatterns } from "../lib/story.ts";
-import { Link, Money, PatternStrip, SiteAvatar, StatusPill } from "./ui.tsx";
+import { Link, Money, SiteAvatar, StatusPill } from "./ui.tsx";
 
 function Price({ amount, currency }: { amount: number | null; currency: string | null }) {
   if (amount === null) return <span className="text-mute">Not reached</span>;
@@ -62,25 +62,24 @@ export function ComparisonTable({
           <thead>
             <tr className="border-b border-line">
               <td className={headCell} />
-              {columns.map((column) => {
-                const statuses = column.report.patterns.map(({ status }) => status);
-                return (
-                  <th key={column.key} scope="col" className={`${cell} min-w-56 text-left`}>
-                    <div className="flex items-center gap-3">
-                      <SiteAvatar host={column.host} />
-                      <div>
-                        <Link
-                          className="inline-flex min-h-6 items-center text-base font-semibold text-ink hover:underline hover:underline-offset-4"
-                          href={linkFor(column)}
-                        >
-                          {siteName(column.host)}
-                        </Link>
-                      </div>
+              {columns.map((column) => (
+                <th key={column.key} scope="col" className={`${cell} min-w-56 text-left`}>
+                  <div className="flex items-center gap-3">
+                    <SiteAvatar host={column.host} />
+                    <div>
+                      <Link
+                        className="inline-flex min-h-6 items-center text-base font-semibold text-ink hover:underline hover:underline-offset-4"
+                        href={linkFor(column)}
+                      >
+                        {siteName(column.host)}
+                      </Link>
+                      <p className="num text-[13px] font-normal text-mute">
+                        {tallyLine(counts(column.report))}
+                      </p>
                     </div>
-                    <PatternStrip statuses={statuses} className="mt-3" />
-                  </th>
-                );
-              })}
+                  </div>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-line">

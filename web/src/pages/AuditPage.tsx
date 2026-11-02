@@ -19,9 +19,6 @@ import { useAudit } from "../lib/useAudit.ts";
 import { useLoad } from "../lib/useLoad.ts";
 import { navigate } from "../lib/useRoute.ts";
 
-/** Long enough for every cell of the live strip to fill in before the report takes over. */
-const REVEAL_MS = 2200;
-
 function useShare(audit: AuditView) {
   const [link, setLink] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -179,7 +176,6 @@ interface SiteSlotProps {
   onChanged: () => void;
 }
 
-/** A report that lands while the page is open first fills the live strip, then takes over. */
 function DeleteReport({
   site,
   auditId,
@@ -214,17 +210,8 @@ function DeleteReport({
 
 function SiteSlot({ site, audit, scope, owned, arrivedLive, onChanged }: SiteSlotProps) {
   const { report } = site;
-  const [revealed, setRevealed] = useState(!arrivedLive);
-  const hold = report !== null && !revealed;
 
-  useEffect(() => {
-    if (!hold) return;
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const timer = setTimeout(() => setRevealed(true), still ? 0 : REVEAL_MS);
-    return () => clearTimeout(timer);
-  }, [hold]);
-
-  if (report && revealed) {
+  if (report) {
     return (
       <div className="flex flex-col items-end gap-3">
         <div className="w-full">

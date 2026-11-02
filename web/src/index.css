@@ -231,25 +231,6 @@
     @apply rounded-card border border-line bg-white shadow-card;
   }
 
-  /* The signature: one small square per pattern. */
-  .strip {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: 3px;
-  }
-
-  .strip-cell {
-    @apply size-2.5 rounded-[3px] bg-[#e8eaee];
-  }
-
-  .strip-cell-found {
-    background: var(--color-found);
-  }
-
-  .strip-cell-not_checked {
-    @apply border border-dashed border-dash bg-white;
-  }
-
   .avatar {
     @apply grid size-11 shrink-0 place-items-center rounded-[14px] text-lg font-semibold;
   }
@@ -361,7 +342,6 @@
     display: grid;
     grid-template-areas:
       "pick avatar name delete"
-      "strip strip strip strip"
       "status status status status"
       "amount amount amount amount";
     grid-template-columns: 36px 44px minmax(0, 1fr) 44px;
@@ -389,11 +369,6 @@
     grid-area: name;
   }
 
-  .row-strip {
-    @apply flex pl-2;
-    grid-area: strip;
-  }
-
   /* On a phone the findings take a line, and a price change, when there is one, the next. */
   .row-amount {
     @apply pl-2 empty:hidden;
@@ -413,15 +388,10 @@
 
   @media (min-width: 1024px) {
     .audit-row {
-      grid-template-areas: "pick avatar name strip status amount delete";
-      grid-template-columns: 30px 44px minmax(0, 1fr) 204px 328px 136px 40px;
+      grid-template-areas: "pick avatar name status amount delete";
+      grid-template-columns: 30px 44px minmax(0, 1fr) 400px 136px 40px;
       gap: 14px;
       padding: 14px 12px 14px 6px;
-    }
-
-    .row-strip,
-    .row-status {
-      @apply pl-0;
     }
 
     .row-amount {
@@ -430,6 +400,7 @@
     }
 
     .row-status {
+      @apply pl-0;
       justify-self: stretch;
     }
   }

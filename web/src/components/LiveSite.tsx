@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { signOut } from "../lib/api.ts";
 import { ago } from "../lib/format.ts";
 import { siteStatus } from "../lib/live.ts";
-import { logoutNote, NOT_YET } from "../lib/report.ts";
+import { logoutNote } from "../lib/report.ts";
 import { newAuditHref } from "../lib/route.ts";
 import { recallSignIn } from "../lib/signInMemory.ts";
 import { siteName } from "../lib/sites.ts";
 import type { SiteView } from "../lib/types.ts";
-import { Link, PatternStrip, SiteAvatar } from "./ui.tsx";
+import { Link, SiteAvatar } from "./ui.tsx";
 
 const TICK_MS = 1000;
 
@@ -167,8 +167,6 @@ export function LiveSite({ site, task, auditId }: LiveSiteProps) {
   const status = siteStatus(site);
   const active = status.tone === "live";
   const logout = logoutNote(site.logout);
-  // The run reports no results until it ends, so the strip stays open and then fills in once.
-  const statuses = site.report?.patterns.map(({ status: value }) => value);
 
   return (
     <article aria-label={`${site.host}, ${status.label}`} className="rise flex flex-col gap-5">
@@ -191,12 +189,6 @@ export function LiveSite({ site, task, auditId }: LiveSiteProps) {
             {active ? <LivePill /> : null}
           </div>
           <Timeline site={site} active={active} />
-          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-3">
-            <PatternStrip statuses={statuses ?? NOT_YET} fill={statuses !== undefined} />
-            <span className="text-xs text-mute">
-              {statuses ? "Results are in" : "Patterns to check"}
-            </span>
-          </div>
         </section>
       </div>
 

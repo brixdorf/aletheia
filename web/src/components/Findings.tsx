@@ -1,12 +1,13 @@
 import type { ReportScope } from "../lib/api.ts";
 import { screenshotUrl } from "../lib/api.ts";
 import { money } from "../lib/format.ts";
+import { counts, tallyLine } from "../lib/report.ts";
 import { billNote, foundPatterns, showsBill, story } from "../lib/story.ts";
 import type { Story } from "../lib/story.ts";
 import type { PatternFinding, SiteReport } from "../lib/types.ts";
 import { Receipt } from "./Receipt.tsx";
 import { Screenshot } from "./Screenshot.tsx";
-import { PatternStrip, Pill, StatusPill } from "./ui.tsx";
+import { Pill, StatusPill } from "./ui.tsx";
 
 export function findingAnchor(siteId: string, id: PatternFinding["id"]): string {
   return `finding-${siteId}-${id}`;
@@ -18,7 +19,7 @@ const PANEL: Record<Story["tone"], string> = {
   clear: "from-[#e4faec] to-[#f2fdf6]",
 };
 
-/** The white card in the report's pastel panel: every pattern at a glance, then what was found. */
+/** The white card in the report's pastel panel: the count, then each pattern found and its step. */
 export function FindingsSummary({ report, siteId }: { report: SiteReport; siteId: string }) {
   const findings = foundPatterns(report);
   return (
@@ -26,9 +27,9 @@ export function FindingsSummary({ report, siteId }: { report: SiteReport; siteId
       className={`overflow-hidden rounded-panel bg-linear-to-b p-4 sm:p-10 ${PANEL[story(report).tone]}`}
     >
       <div className="card px-4 py-5 sm:px-6 sm:py-6">
-        <PatternStrip statuses={report.patterns.map(({ status }) => status)} />
+        <p className="num text-[13px] text-mute">{tallyLine(counts(report))}</p>
         {findings.length > 0 ? (
-          <ul className="mt-4">
+          <ul className="mt-2">
             {findings.map(({ id, label, step }) => (
               <li key={id}>
                 <a
@@ -46,7 +47,7 @@ export function FindingsSummary({ report, siteId }: { report: SiteReport; siteId
             ))}
           </ul>
         ) : (
-          <p className="mt-4 text-mute">
+          <p className="mt-2 text-mute">
             No dark pattern was seen on the pages this run reached. The list below shows what each
             check came to.
           </p>

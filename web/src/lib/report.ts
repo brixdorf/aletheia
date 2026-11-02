@@ -1,18 +1,7 @@
 import { money } from "./format.ts";
-import { PATTERN_IDS } from "./types.ts";
-import type {
-  Bill,
-  PatternStatus,
-  PatternFinding,
-  SiteReport,
-  SiteView,
-  SubscriptionSummary,
-} from "./types.ts";
+import type { Bill, PatternFinding, SiteReport, SiteView, SubscriptionSummary } from "./types.ts";
 
 type Term = SubscriptionSummary["terms"][number];
-
-/** Every run answers for each pattern, so this is the strip of a run with no results yet. */
-export const NOT_YET: readonly PatternStatus[] = PATTERN_IDS.map(() => "not_checked");
 
 const PAID_LABEL: Record<SiteReport["priceLabel"], string> = {
   final: "You pay",
@@ -82,6 +71,11 @@ export function counts({ patterns }: SiteReport) {
   const of = (status: PatternFinding["status"]) =>
     patterns.filter((entry) => entry.status === status).length;
   return { found: of("found"), notChecked: of("not_checked"), notFound: of("not_found") };
+}
+
+/** The one plain line that sums up a run, beside the patterns named in pills or rows. */
+export function tallyLine({ found, notChecked }: { found: number; notChecked: number }): string {
+  return notChecked > 0 ? `${found} found, ${notChecked} not checked` : `${found} found`;
 }
 
 export interface BillLine {
