@@ -9,7 +9,19 @@ const CATEGORY_LABEL: Record<NonNullable<PlanView["category"]>, string> = {
   general: "shopping",
   travel: "travel",
   movies_events: "movies and events",
+  telecom: "mobile and broadband",
+  home: "furniture",
   subscriptions: "software and streaming",
+  streaming: "streaming",
+  music: "music",
+  software: "software",
+  security: "security",
+  cloud: "cloud storage",
+  dating: "dating",
+  fitness: "fitness",
+  gaming: "gaming",
+  learning: "language learning",
+  news: "news",
 };
 
 /** The browser's own idea of where it is, for when the server has no country header. */
@@ -51,6 +63,7 @@ export function planNote({ source, category }: PlanView): string | null {
       return "Found by a web search.";
     case "fallback":
       return "Sites that sell in most countries.";
+    case "question":
     case "none":
       return null;
   }

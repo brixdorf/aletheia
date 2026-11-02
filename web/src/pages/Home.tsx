@@ -271,6 +271,9 @@ export function Home({ prefill }: HomeProps) {
             {failed && !pending ? (
               <span role="status">Could not pick sites yet. Run audit will try again.</span>
             ) : null}
+            {plan?.question && !pinned && !pending ? (
+              <span className="font-medium text-ink">{plan.question.text}</span>
+            ) : null}
             {sites.length < MAX_SITES && !adding ? (
               <button
                 type="button"
@@ -281,6 +284,25 @@ export function Home({ prefill }: HomeProps) {
               </button>
             ) : null}
           </div>
+
+          {plan?.question && !pinned && !pending && sites.length === 0 ? (
+            <ul aria-label="Suggested sites" className="flex flex-wrap justify-center gap-2">
+              {plan.question.suggestions.map(({ url, host }) => (
+                <li key={host}>
+                  <button
+                    type="button"
+                    className="btn btn-soft btn-sm"
+                    onClick={() => {
+                      setRemoved((current) => current.filter((entry) => entry !== host));
+                      setAdded((current) => [...current, { url, host, signInId: null }]);
+                    }}
+                  >
+                    {host}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
           {adding ? (
             <div className="flex w-full max-w-[420px] gap-2">

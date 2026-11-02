@@ -16,6 +16,7 @@ function plan(overrides: Partial<PlanView> = {}): PlanView {
     category: "travel",
     source: "category",
     sites: [ixigo, cleartrip],
+    question: null,
     ...overrides,
   };
 }
