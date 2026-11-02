@@ -8,6 +8,7 @@ import { serve } from "@hono/node-server";
 import { createApi } from "../server/src/api/routes.ts";
 import { createApp } from "../server/src/app.ts";
 import { AuditService } from "../server/src/audit/service.ts";
+import { SitePlanner } from "../server/src/plan/planner.ts";
 import { RunQueue } from "../server/src/runner/queue.ts";
 import { SignInService } from "../server/src/signin/service.ts";
 import { AuditStore } from "../server/src/store/auditStore.ts";
@@ -72,5 +73,6 @@ const signIns = new SignInService({
 const audits = new AuditService({ client, store, domains, queue, signIns });
 
 const webRoot = fileURLToPath(new URL("../web/dist", import.meta.url));
-const api = createApi({ audits, signIns, store, domains, queue, client });
+const planner = new SitePlanner(() => Promise.resolve([]));
+const api = createApi({ audits, signIns, store, domains, queue, client, planner });
 serve({ fetch: createApp({ webRoot, api }).fetch, port: PORT });
