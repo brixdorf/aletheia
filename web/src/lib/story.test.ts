@@ -308,8 +308,39 @@ describe("billPill", () => {
   });
 });
 
+describe("rowPill on a run that saw no bill", () => {
+  const summary = { state: "done", found: 0, notChecked: 13, total: null } as const;
+
+  it("never calls a blocked site clean", () => {
+    const blocked = report({
+      bill: bill({ total: null }),
+      stop: { ...blinkit.stop, at: "blocked" },
+    });
+    expect(rowPill(summary, blocked)).toEqual({ tone: "unchecked", text: "Blocked by the site" });
+  });
+
+  it("says no price was reached for any other run that stopped early", () => {
+    const stopped = report({
+      bill: bill({ total: null }),
+      stop: { ...blinkit.stop, at: "incomplete" },
+    });
+    expect(rowPill(summary, stopped)).toEqual({ tone: "unchecked", text: "No price reached" });
+  });
+
+  it("does not look clean while the report is still loading", () => {
+    expect(rowPill(summary, null)).toEqual({ tone: "unchecked", text: "No price reached" });
+  });
+
+  it("stays clean when a bill was seen and nothing was added", () => {
+    expect(rowPill({ ...summary, total: 449 }, null)).toEqual({
+      tone: "clean",
+      text: "Nothing hidden so far",
+    });
+  });
+});
+
 describe("rowPill", () => {
-  const summary = { state: "done" as const, found: 1, notChecked: 0 };
+  const summary = { state: "done" as const, found: 1, notChecked: 0, total: 81 };
 
   it("names a lone finding once the report is known", () => {
     expect(rowPill(summary, blinkit)).toEqual({ tone: "found", text: "Drip pricing" });
@@ -336,11 +367,11 @@ describe("rowPill", () => {
   });
 
   it("shows the state of a site still in progress", () => {
-    expect(rowPill({ state: "running", found: 0, notChecked: 0 }, null)).toEqual({
+    expect(rowPill({ state: "running", found: 0, notChecked: 0, total: null }, null)).toEqual({
       tone: "live",
       text: "Running",
     });
-    expect(rowPill({ state: "failed", found: 0, notChecked: 0 }, null)).toEqual({
+    expect(rowPill({ state: "failed", found: 0, notChecked: 0, total: null }, null)).toEqual({
       tone: "unchecked",
       text: "Failed",
     });

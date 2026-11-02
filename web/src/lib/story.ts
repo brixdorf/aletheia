@@ -320,7 +320,8 @@ export function rowPill(
     state,
     found: foundCount,
     notChecked,
-  }: Pick<AuditSummary["sites"][number], "state" | "found" | "notChecked">,
+    total,
+  }: Pick<AuditSummary["sites"][number], "state" | "found" | "notChecked" | "total">,
   report: SiteReport | null,
 ): Pill {
   if (state !== "done") return STATE_PILL[state];
@@ -330,6 +331,12 @@ export function rowPill(
   }
   if (foundCount > 1) return { tone: "found", text: `${foundCount} found` };
   if (report?.login.hidesFees) return { tone: "unchecked", text: "Fees behind a login" };
+  // A run that never saw a bill has shown nothing either way, so it must not read as clean.
+  if (total === null) {
+    return report?.stop.at === "blocked"
+      ? { tone: "unchecked", text: "Blocked by the site" }
+      : { tone: "unchecked", text: "No price reached" };
+  }
   if (notChecked > 0) return { tone: "clean", text: "Nothing hidden so far" };
   return { tone: "clean", text: "None of the 13 found" };
 }
