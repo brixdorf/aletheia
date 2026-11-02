@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 
 import { Link, Notice, usePageTitle } from "./components/ui.tsx";
-import { useRoute } from "./lib/useRoute.ts";
+import { navigate, useRoute } from "./lib/useRoute.ts";
 import { AuditPage, SharedPage } from "./pages/AuditPage.tsx";
 import { ComparePage } from "./pages/ComparePage.tsx";
-import { Dashboard } from "./pages/Dashboard.tsx";
-import { NewAudit } from "./pages/NewAudit.tsx";
+import { Home } from "./pages/Home.tsx";
+import { PastAudits } from "./pages/PastAudits.tsx";
 
 /** The saved Adobe India report, read-only so it opens for every visitor. */
 const ANNOUNCEMENT = "/shared/q8aPAT7kZTCAZPsqW5iDd6LhNcV5gdNx";
@@ -18,7 +18,7 @@ function NotFound() {
       level="h1"
       action={
         <Link className="btn btn-soft" href="/">
-          Back to your audits
+          Run an audit
         </Link>
       }
     >
@@ -27,13 +27,21 @@ function NotFound() {
   );
 }
 
+/** Old links keep working, and the old address leaves the browser's history. */
+function Redirect({ to }: { to: string }) {
+  useEffect(() => navigate(to, { replace: true }), [to]);
+  return null;
+}
+
 function Page() {
   const { href, route } = useRoute();
   switch (route.name) {
-    case "dashboard":
-      return <Dashboard />;
-    case "new":
-      return <NewAudit key={href} prefill={route} />;
+    case "home":
+      return <Home key={href} prefill={route} />;
+    case "audits":
+      return <PastAudits />;
+    case "redirect":
+      return <Redirect to={route.to} />;
     case "audit":
       return <AuditPage key={route.id} id={route.id} />;
     case "shared":
@@ -73,7 +81,7 @@ export function App() {
         <div className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-3 rounded-full border border-line bg-white/85 py-1.5 pr-1.5 pl-4 shadow-[0_1px_2px_rgb(0_0_0/0.04)] backdrop-blur-sm sm:py-2 sm:pr-2 sm:pl-[18px]">
           <Link
             href="/"
-            aria-label="Aletheia, your audits"
+            aria-label="Aletheia, run an audit"
             className="inline-flex min-h-11 items-center gap-[9px] text-[19px] font-semibold tracking-[-0.01em] text-ink"
           >
             <span aria-hidden="true" className="logo-mark" />
@@ -94,18 +102,18 @@ export function App() {
             <ul className="flex items-center gap-3 sm:gap-[18px]">
               <li>
                 <Link
-                  href="/"
+                  href="/audits"
                   className="inline-flex min-h-11 items-center text-sm font-medium text-ink hover:underline hover:underline-offset-4 sm:text-[15px]"
-                  aria-current={route.name === "dashboard" ? "page" : undefined}
+                  aria-current={route.name === "audits" ? "page" : undefined}
                 >
-                  Your audits
+                  Past audits
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/new"
+                  href="/"
                   className="btn btn-ring px-4 text-sm sm:px-5 sm:text-[15px]"
-                  aria-current={route.name === "new" ? "page" : undefined}
+                  aria-current={route.name === "home" ? "page" : undefined}
                 >
                   New audit
                 </Link>

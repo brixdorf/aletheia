@@ -86,7 +86,7 @@ function OwnerActions({ audit }: { audit: AuditView }) {
           onClose={() => setConfirming(false)}
           onConfirm={async () => {
             await deleteAudit(audit.id);
-            navigate("/", { replace: true });
+            navigate("/audits", { replace: true });
           }}
         >
           The report, its screenshots and any share link go for good.
@@ -182,8 +182,11 @@ function AuditBody({
     <div className="flex flex-col gap-8">
       <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-          <Link href="/" className="inline-flex min-h-11 items-center text-mute hover:text-ink">
-            Your audits
+          <Link
+            href="/audits"
+            className="inline-flex min-h-11 items-center text-mute hover:text-ink"
+          >
+            Past audits
           </Link>
           <span aria-hidden="true" className="text-mute">
             /
@@ -238,8 +241,8 @@ export function AuditPage({ id }: { id: string }) {
           title="This audit is gone"
           level="h1"
           action={
-            <Link className="btn btn-soft" href="/">
-              Back to your audits
+            <Link className="btn btn-soft" href="/audits">
+              Back to past audits
             </Link>
           }
         >

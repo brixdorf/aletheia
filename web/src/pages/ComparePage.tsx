@@ -19,8 +19,8 @@ export function ComparePage({ ids }: { ids: string[] }) {
   return (
     <div className="flex flex-col gap-5">
       <nav aria-label="Breadcrumb" className="flex items-center gap-2.5">
-        <Link href="/" className="inline-flex min-h-11 items-center text-mute hover:text-ink">
-          Your audits
+        <Link href="/audits" className="inline-flex min-h-11 items-center text-mute hover:text-ink">
+          Past audits
         </Link>
         <span aria-hidden="true" className="text-mute">
           /

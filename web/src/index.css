@@ -253,6 +253,10 @@
     @apply grid size-11 shrink-0 place-items-center rounded-[14px] text-lg font-semibold;
   }
 
+  .avatar-sm {
+    @apply size-7 rounded-full text-[13px];
+  }
+
   .avatar-0 {
     background: #fff6cc;
     color: #7a6000;
@@ -330,7 +334,7 @@
     @apply size-4 animate-spin-soft rounded-full border-2 border-line border-t-ink;
   }
 
-  /* A soft wash behind the hero, wider than the page and clipped by the root. */
+  /* A soft wash behind the prompt, wider than the page and clipped by the root. */
   .aurora {
     position: absolute;
     inset: -14% 50% 0;
@@ -346,79 +350,51 @@
     pointer-events: none;
   }
 
-  /* Pinned to the screen edge rather than the content, so they never cover the hero text. */
-  .float {
-    position: absolute;
-    width: 200px;
-    padding: 14px 16px;
-    text-align: left;
+  /* The box is the page's focal point, so it carries the focus ring for the borderless field. */
+  .prompt-card {
+    @apply mx-auto w-full max-w-[720px] rounded-panel border border-line bg-white p-4 text-left shadow-card sm:p-5;
   }
 
-  .float-1 {
-    top: 120px;
-    left: max(-110px, calc(600px - 50vw));
-    rotate: -7deg;
-  }
-
-  .float-2 {
-    top: 90px;
-    right: max(-110px, calc(600px - 50vw));
-    rotate: 6deg;
-  }
-
-  .float-3 {
-    top: 370px;
-    left: max(-70px, calc(600px - 50vw));
-    rotate: 5deg;
-  }
-
-  .float-4 {
-    top: 380px;
-    right: max(-70px, calc(600px - 50vw));
-    rotate: -5deg;
-  }
-
-  .audit-bar {
-    @apply mx-auto mt-8 flex max-w-[680px] flex-col gap-2 rounded-[28px] border border-line bg-white p-3 text-left shadow-card sm:mt-10 sm:flex-row sm:items-center sm:gap-2.5 sm:rounded-full sm:py-[9px] sm:pr-[9px] sm:pl-[26px];
-  }
-
-  /* The inputs have no border of their own, so the whole bar shows where the focus is. */
-  .audit-bar:has(input:focus-visible) {
+  .prompt-card:has(textarea:focus-visible) {
     outline: 2px solid #2563eb;
     outline-offset: 2px;
   }
 
-  .audit-bar-fields {
-    @apply flex min-w-0 flex-1 flex-col px-2 sm:flex-row sm:items-center sm:px-0;
+  .prompt-field {
+    @apply block w-full resize-none bg-transparent text-lg/snug tracking-[-0.01em] text-ink outline-none placeholder:text-mute sm:text-[22px]/snug;
   }
 
-  .audit-bar-site,
-  .audit-bar-task {
-    @apply min-h-11 min-w-0 bg-transparent text-xl tracking-[-0.01em] text-ink outline-none sm:text-2xl;
+  .site-chip {
+    @apply inline-flex max-w-full items-center gap-2 rounded-full border border-line bg-white py-1 pr-1 pl-1.5 text-sm font-medium text-ink shadow-[0_1px_2px_rgb(0_0_0/0.04)];
   }
 
-  .audit-bar-site {
-    color: var(--color-mute);
+  .site-chip-action {
+    @apply inline-flex min-h-11 items-center px-1 text-[13px] font-medium text-mute underline decoration-dash underline-offset-4 transition-colors hover:text-ink hover:decoration-ink sm:min-h-8;
+  }
+
+  /* Quiet by design: Aletheia has already decided, and these are only there to overrule it. */
+  .choice-pill {
+    @apply relative inline-flex min-h-11 items-center gap-1.5 rounded-full bg-wash py-1 pr-2 pl-3 text-[13px] text-mute transition-colors hover:bg-line sm:min-h-8;
+  }
+
+  .choice-pill:has(select:focus-visible) {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+
+  .choice-pill select {
+    @apply cursor-pointer appearance-none bg-transparent pr-3.5 font-medium text-ink outline-none;
     field-sizing: content;
-    min-width: 5ch;
-    max-width: 50%;
-  }
-
-  .audit-bar-site::placeholder {
-    color: var(--color-mute);
-  }
-
-  .audit-bar-task {
-    flex: 1;
-  }
-
-  .audit-bar-task::placeholder {
-    color: var(--color-ink);
-    opacity: 0.8;
-  }
-
-  .audit-bar-slash {
-    @apply hidden pr-2 text-2xl text-mute sm:block;
+    background-image:
+      linear-gradient(45deg, transparent 50%, currentcolor 50%),
+      linear-gradient(135deg, currentcolor 50%, transparent 50%);
+    background-position:
+      right 5px center,
+      right 1px center;
+    background-size:
+      4px 4px,
+      4px 4px;
+    background-repeat: no-repeat;
   }
 
   .audit-row {

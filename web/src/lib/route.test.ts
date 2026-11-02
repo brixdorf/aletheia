@@ -3,21 +3,30 @@ import { describe, expect, it } from "vite-plus/test";
 import { matchRoute, newAuditHref } from "./route.ts";
 
 describe("matchRoute", () => {
-  it("opens the dashboard at the root", () => {
-    expect(matchRoute("/", "")).toEqual({ name: "dashboard" });
+  it("opens the audit page at the root", () => {
+    expect(matchRoute("/", "")).toEqual({ name: "home", task: "", url: "", signIn: false });
   });
 
-  it("reads a prefilled new audit", () => {
-    expect(matchRoute("/new", "?task=Buy%20milk&url=https%3A%2F%2Fa.test&signIn=1")).toEqual({
-      name: "new",
+  it("reads a prefilled audit", () => {
+    expect(matchRoute("/", "?task=Buy%20milk&url=https%3A%2F%2Fa.test&signIn=1")).toEqual({
+      name: "home",
       task: "Buy milk",
       url: "https://a.test",
       signIn: true,
     });
   });
 
-  it("starts a new audit blank by default", () => {
-    expect(matchRoute("/new", "")).toEqual({ name: "new", task: "", url: "", signIn: false });
+  it("opens past audits on their own page", () => {
+    expect(matchRoute("/audits", "")).toEqual({ name: "audits" });
+    expect(matchRoute("/audits/", "")).toEqual({ name: "audits" });
+  });
+
+  it("sends the old new audit address to the home page with its query", () => {
+    expect(matchRoute("/new", "")).toEqual({ name: "redirect", to: "/" });
+    expect(matchRoute("/new", "?task=Buy%20milk&signIn=1")).toEqual({
+      name: "redirect",
+      to: "/?task=Buy%20milk&signIn=1",
+    });
   });
 
   it("finds an audit by id", () => {
@@ -54,7 +63,7 @@ describe("newAuditHref", () => {
     });
     const url = new URL(href, "https://aletheia.test");
     expect(matchRoute(url.pathname, url.search)).toEqual({
-      name: "new",
+      name: "home",
       task: "Buy milk & eggs",
       url: "https://a.test/x?y=1",
       signIn: true,

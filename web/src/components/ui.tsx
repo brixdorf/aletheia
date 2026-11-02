@@ -104,9 +104,12 @@ export function Money({ amount, currency, suffix = "", plain = false }: MoneyPro
   );
 }
 
-export function SiteAvatar({ host }: { host: string }) {
+export function SiteAvatar({ host, small = false }: { host: string; small?: boolean }) {
   return (
-    <span aria-hidden="true" className={`avatar avatar-${avatarTone(host)}`}>
+    <span
+      aria-hidden="true"
+      className={`avatar avatar-${avatarTone(host)} ${small ? "avatar-sm" : ""}`}
+    >
       {siteName(host).charAt(0)}
     </span>
   );

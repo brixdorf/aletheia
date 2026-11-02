@@ -1,6 +1,7 @@
 export type Route =
-  | { name: "dashboard" }
-  | { name: "new"; task: string; url: string; signIn: boolean }
+  | { name: "home"; task: string; url: string; signIn: boolean }
+  | { name: "audits" }
+  | { name: "redirect"; to: string }
   | { name: "audit"; id: string }
   | { name: "shared"; token: string }
   | { name: "compare"; ids: string[] }
@@ -11,15 +12,16 @@ export function matchRoute(pathname: string, search: string): Route {
   const query = new URLSearchParams(search);
   const [head, id] = parts;
 
-  if (parts.length === 0) return { name: "dashboard" };
-  if (parts.length === 1 && head === "new") {
+  if (parts.length === 0) {
     return {
-      name: "new",
+      name: "home",
       task: query.get("task") ?? "",
       url: query.get("url") ?? "",
       signIn: query.get("signIn") === "1",
     };
   }
+  if (parts.length === 1 && head === "new") return { name: "redirect", to: `/${search}` };
+  if (parts.length === 1 && head === "audits") return { name: "audits" };
   if (parts.length === 1 && head === "compare") {
     return { name: "compare", ids: (query.get("audits") ?? "").split(",").filter(Boolean) };
   }
@@ -39,5 +41,5 @@ export function newAuditHref({
 }): string {
   const query = new URLSearchParams({ task, url });
   if (signIn) query.set("signIn", "1");
-  return `/new?${query}`;
+  return `/?${query}`;
 }

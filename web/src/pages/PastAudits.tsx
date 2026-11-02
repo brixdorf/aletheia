@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
-import { Hero } from "../components/Hero.tsx";
 import { Bin } from "../components/icons.tsx";
 import {
   Failed,
@@ -257,8 +256,8 @@ function CompareSelected({ audits }: { audits: AuditSummary[] }) {
   );
 }
 
-export function Dashboard() {
-  usePageTitle("Your audits");
+export function PastAudits() {
+  usePageTitle("Past audits");
   const { result, refresh } = useLoad("audits", listAudits);
   const [picked, setPicked] = useState<string[]>([]);
   const [deleting, setDeleting] = useState<AuditSummary | null>(null);
@@ -283,14 +282,12 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col">
-      <Hero />
-
-      <section aria-labelledby="audits-title" className="flex flex-col gap-5 pt-6 sm:pt-14">
+      <section aria-labelledby="audits-title" className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 id="audits-title" className="text-[28px]/[1.1] sm:text-[34px]/[1.1]">
-              Your audits
-            </h2>
+            <h1 id="audits-title" className="text-[28px]/[1.1] sm:text-[34px]/[1.1]">
+              Past audits
+            </h1>
             <p className="mt-1.5 text-mute">
               Each row shows the 13 patterns: orange found, grey not found, dashed not checked.
             </p>
@@ -307,13 +304,13 @@ export function Dashboard() {
           <Notice
             title="No audits yet"
             action={
-              <Link className="btn btn-ring" href="/new">
-                Start your first audit
+              <Link className="btn btn-ring" href="/">
+                Run your first audit
               </Link>
             }
           >
-            Give Aletheia a task and a site. The agent walks the site like a customer, stops before
-            payment, and reports which of the 13 banned patterns it saw.
+            Say what you want to buy or subscribe to. Aletheia picks the sites, walks each one like
+            a customer, stops before payment, and reports which of the 13 banned patterns it saw.
           </Notice>
         ) : null}
 
