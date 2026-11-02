@@ -136,7 +136,7 @@ export function stopSummary({ stop, login }: SiteReport): string {
       return "Reached the payment page and stopped there, before paying.";
     case "login_wall":
       return login.hidesFees
-        ? "The site hides its fees behind a login, so the real price is unknown."
+        ? "The site asks for sign-in before it shows its fees, so the full price is unknown."
         : "Stopped at a login. The address or payment step can still add fees.";
     case "contact_required":
       return "Stopped where the site asks for contact details.";

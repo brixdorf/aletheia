@@ -4,7 +4,7 @@ import { Modal } from "./Modal.tsx";
 
 interface ScreenshotProps {
   src: string;
-  /** Says what the picture proves, as its alt text and the viewer's title. */
+  /** Says what the picture shows, as its alt text and the viewer's title. */
   label: string;
 }
 

@@ -66,7 +66,7 @@ export function report(
 ): SiteReport {
   const { patterns = [], ...rest } = overrides;
   return {
-    rules: 2,
+    rules: 3,
     url: "https://shop.test",
     host: "shop.test",
     flow: "checkout",

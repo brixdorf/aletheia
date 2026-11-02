@@ -103,14 +103,14 @@ describe("billLines", () => {
 });
 
 describe("stopSummary", () => {
-  it("says a login hides the fees when no bill was shown", () => {
+  it("says a login comes before the fees when no bill was shown", () => {
     const summary = stopSummary(
       report({
         stop: { at: "login_wall", claimed: "login_wall", note: null, reach: "offer" },
         login: { wallAt: "/login", hidesFees: true, offerSignIn: true },
       }),
     );
-    expect(summary).toContain("hides its fees");
+    expect(summary).toContain("before it shows its fees");
   });
 
   it("warns that later steps can add fees when a bill was shown", () => {
@@ -122,7 +122,7 @@ describe("stopSummary", () => {
 });
 
 describe("signInOffer", () => {
-  it("offers the full price when the site hides its fees", () => {
+  it("offers to check further when the fees sit behind a login", () => {
     const offer = signInOffer(
       report({ login: { wallAt: "/login", hidesFees: true, offerSignIn: true } }),
     );

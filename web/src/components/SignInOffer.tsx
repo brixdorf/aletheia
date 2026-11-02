@@ -36,7 +36,7 @@ export function SignInOffer({ label, report, task, country }: SignInOfferProps) 
   }
 
   return (
-    <div className="flex max-w-[340px] shrink-0 flex-col items-start gap-1.5 sm:items-end sm:text-right">
+    <div className="flex max-w-[440px] shrink-0 flex-col items-start gap-1.5 sm:items-end sm:text-right">
       <button type="button" className="btn btn-dark" onClick={() => setOpen(true)}>
         {label}
       </button>

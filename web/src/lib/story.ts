@@ -139,8 +139,8 @@ export function story(report: SiteReport): Story {
       tone: "open",
       badge: "Fees behind a login",
       lead: "The fees are",
-      accent: "hidden",
-      tail: "behind a login.",
+      accent: "behind",
+      tail: "a login.",
       body: stopSummary(report),
     };
   }
