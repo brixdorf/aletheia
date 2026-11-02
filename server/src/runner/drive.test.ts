@@ -6,7 +6,12 @@ import type { RunRecord } from "../tinyfish/types.ts";
 import type { DriveClient, DriveHandlers } from "./drive.ts";
 import { driveRun, RunStartError } from "./drive.ts";
 
-const request: RunRequest = { url: "https://shop.test", goal: "buy", maxDurationSeconds: 300 };
+const request: RunRequest = {
+  url: "https://shop.test",
+  goal: "buy",
+  maxDurationSeconds: 300,
+  proxyCountry: "IN",
+};
 const fast = { hardTimeoutMs: 5000, pollMs: 1, quietMs: 10_000 };
 
 function handlers() {

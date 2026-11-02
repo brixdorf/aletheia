@@ -8,7 +8,7 @@ import { TinyFishError } from "../tinyfish/client.ts";
 import type { Frame, OpenScreen, RemoteScreen } from "./remoteScreen.ts";
 
 export interface SignInClient {
-  createProfile(name: string): Promise<string>;
+  createProfile(name: string, proxyCountry: string | null): Promise<string>;
   deleteProfile(profileId: string): Promise<void>;
   startSetup(profileId: string, url: string): Promise<SetupSession>;
   saveSetup(profileId: string, sessionId: string, site: string): Promise<void>;
@@ -25,6 +25,7 @@ interface SignInRecord {
   sessionId: string;
   url: string;
   host: string;
+  proxyCountry: string | null;
   state: SignInState;
   expiresAt: string;
   savedAt: number | null;
@@ -42,7 +43,7 @@ export interface SignInDeps {
   client: SignInClient;
   openScreen: OpenScreen;
   /** Runs a short agent with the profile that logs out of the site. True if it logged out. */
-  runLogout: (profileId: string, url: string) => Promise<boolean>;
+  runLogout: (profileId: string, url: string, proxyCountry: string | null) => Promise<boolean>;
   dataDir: string;
   now?: () => number;
 }
@@ -75,10 +76,14 @@ export class SignInService {
     this.#stopCheck = stopCheck;
   }
 
-  async start(visitorId: string, url: string): Promise<SignInView> {
+  async start(
+    visitorId: string,
+    url: string,
+    proxyCountry: string | null = null,
+  ): Promise<SignInView> {
     const { client, openScreen } = this.#deps;
     const host = hostOf(url);
-    const profileId = await client.createProfile(`Aletheia one check ${host}`);
+    const profileId = await client.createProfile(`Aletheia one check ${host}`, proxyCountry);
 
     let session: SetupSession | undefined;
     try {
@@ -91,6 +96,7 @@ export class SignInService {
         sessionId: session.sessionId,
         url,
         host,
+        proxyCountry,
         state: "setting_up",
         expiresAt: session.expiresAt,
         savedAt: null,
@@ -225,7 +231,9 @@ export class SignInService {
       if (record.state === "setting_up") {
         await client.cancelSetup(record.profileId, record.sessionId).catch(() => undefined);
       } else {
-        loggedOut = await runLogout(record.profileId, record.url).catch(() => false);
+        loggedOut = await runLogout(record.profileId, record.url, record.proxyCountry).catch(
+          () => false,
+        );
       }
     } finally {
       await client.deleteProfile(record.profileId).catch(() => undefined);

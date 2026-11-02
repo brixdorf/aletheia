@@ -9,7 +9,7 @@ import { TinyFishClient, TinyFishError } from "./client.ts";
 type Handler = (req: IncomingMessage, res: ServerResponse, body: string) => void;
 
 const KEY = "test-key";
-const request = { url: "https://example.test", goal: "buy milk" };
+const request = { url: "https://example.test", goal: "buy milk", proxyCountry: "IN" };
 
 describe("TinyFishClient", () => {
   let server: Server;
@@ -112,6 +112,24 @@ describe("TinyFishClient", () => {
     });
   });
 
+  it("leaves the country out of the proxy when there is none to give", async () => {
+    handler = (_req, res) => {
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      res.end();
+    };
+
+    for await (const event of client().streamRun({
+      ...request,
+      maxDurationSeconds: 300,
+      proxyCountry: null,
+    })) {
+      expect(event).toBeDefined();
+    }
+
+    expect(JSON.parse(seen[0]?.body ?? "{}")).toMatchObject({ proxy_config: { enabled: true } });
+    expect(seen[0]?.body).not.toContain("country_code");
+  });
+
   it("attaches a saved sign-in only when there is one", async () => {
     handler = (_req, res) => {
       res.writeHead(200, { "content-type": "text/event-stream" });
@@ -197,7 +215,7 @@ describe("TinyFishClient", () => {
 
   it("creates and deletes a profile", async () => {
     handler = json(200, { id: "prof_1", name: "x" });
-    const id = await client().createProfile("Aletheia one check");
+    const id = await client().createProfile("Aletheia one check", "IN");
     handler = (_req, res) => {
       res.writeHead(204);
       res.end();
@@ -210,6 +228,12 @@ describe("TinyFishClient", () => {
       proxy_country_code: "IN",
     });
     expect(seen[1]).toMatchObject({ method: "DELETE", path: "/v1/profiles/prof_1" });
+  });
+
+  it("creates a profile with no country when there is none to give", async () => {
+    handler = json(200, { id: "prof_1", name: "x" });
+    await client().createProfile("Aletheia one check", null);
+    expect(JSON.parse(seen[0]?.body ?? "{}")).toEqual({ name: "Aletheia one check" });
   });
 
   it("treats a profile that is already gone as deleted", async () => {

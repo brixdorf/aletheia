@@ -17,12 +17,15 @@ function goal(overrides: Partial<Parameters<typeof buildGoal>[0]> = {}) {
 }
 
 describe("detectFlow", () => {
-  it.each(["subscribe to Creative Cloud", "get the premium plan", "start a free trial"])(
-    "treats %s as a subscription",
-    (task) => {
-      expect(detectFlow(task)).toBe("subscription");
-    },
-  );
+  it.each([
+    "subscribe to Creative Cloud",
+    "get the premium plan",
+    "start a free trial",
+    "a membership that renews yearly",
+    "the one at Rs 199 per month",
+  ])("treats %s as a subscription", (task) => {
+    expect(detectFlow(task)).toBe("subscription");
+  });
 
   it.each(["buy one packet of milk", "one USB-C cable", "flight from Bangalore to Delhi"])(
     "treats %s as a checkout",
@@ -30,6 +33,20 @@ describe("detectFlow", () => {
       expect(detectFlow(task)).toBe("checkout");
     },
   );
+});
+
+describe("delivery location", () => {
+  it("gives the agent an address in the visitor's country", () => {
+    expect(goal({ country: "IN" })).toContain("Koramangala, Bengaluru");
+    expect(goal({ country: "US" })).toContain("New York, NY");
+    expect(goal({ country: "GB" })).toContain("SW1A 1AA");
+  });
+
+  it("names no address for a country we hold none for", () => {
+    const text = goal({ country: "BR" });
+    expect(text).not.toContain("Koramangala");
+    expect(text).toContain("largest city");
+  });
 });
 
 describe("budgets", () => {

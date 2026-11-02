@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { ApiError } from "../errors.ts";
 import { judgeRun } from "../judge/judge.ts";
 import type { Flow } from "../judge/types.ts";
+import { countryName, proxyCountry } from "../plan/country.ts";
 import type { DriveClient, DriveOutcome } from "../runner/drive.ts";
 import { driveRun, RunStartError } from "../runner/drive.ts";
 import type { RunQueue } from "../runner/queue.ts";
@@ -48,6 +49,7 @@ export interface NewAudit {
   visitorId: string;
   task: string;
   flow?: Flow | undefined;
+  country?: string | null | undefined;
   sites: { url: string; signInId?: string | undefined }[];
 }
 
@@ -77,13 +79,14 @@ export class AuditService {
     this.#now = deps.now ?? (() => new Date());
   }
 
-  async create({ visitorId, task, flow, sites }: NewAudit): Promise<Audit> {
+  async create({ visitorId, task, flow, country = null, sites }: NewAudit): Promise<Audit> {
     const id = randomUUID();
     const audit: Audit = {
       id,
       visitorId,
       task,
       flow: flow ?? detectFlow(task),
+      country,
       createdAt: this.#now().toISOString(),
       status: "running",
       shareToken: null,
@@ -232,6 +235,7 @@ export class AuditService {
     const signedIn = site.signInId !== null;
     const budget = budgetSeconds({ task: audit.task, signedIn });
     const profileId = this.#profiles.get(site.id);
+    const country = audit.country ?? null;
 
     const outcome = await driveRun(
       this.#deps.client,
@@ -243,10 +247,12 @@ export class AuditService {
           url: site.url,
           signedIn,
           today: this.#now(),
+          country,
         }),
         maxDurationSeconds: budget,
         outputSchema: OUTPUT_SCHEMA,
         profileId,
+        proxyCountry: proxyCountry(country),
       },
       {
         onRunId: (runId) => {
@@ -300,6 +306,12 @@ export class AuditService {
       signedIn: site.signInId !== null,
       pageText: await collectPageText(this.#deps.client, run),
     });
+    const { country } = audit;
+    if (country && !proxyCountry(country)) {
+      report.missing.push(
+        `TinyFish cannot browse from ${countryName(country)}, so this run came from another country and prices may differ.`,
+      );
+    }
     site.report = scrubPersonal(report);
     site.steps = scrubPersonal(site.steps);
     site.state = "done";

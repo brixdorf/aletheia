@@ -10,7 +10,7 @@ const LOGOUT_HARD_LIMIT_MS = 240_000;
 const ignore = () => undefined;
 
 export function logoutRunner(client: DriveClient, queue: RunQueue, { pollMs }: { pollMs: number }) {
-  return (profileId: string, url: string): Promise<boolean> =>
+  return (profileId: string, url: string, proxyCountry: string | null): Promise<boolean> =>
     queue.enqueue(async () => {
       const { run } = await driveRun(
         client,
@@ -20,6 +20,7 @@ export function logoutRunner(client: DriveClient, queue: RunQueue, { pollMs }: {
           maxDurationSeconds: LOGOUT_BUDGET_SECONDS,
           outputSchema: LOGOUT_SCHEMA,
           profileId,
+          proxyCountry,
         },
         { onRunId: ignore, onLive: ignore, onStep: ignore, onQuiet: ignore },
         { hardTimeoutMs: LOGOUT_HARD_LIMIT_MS, pollMs, quietMs: LOGOUT_HARD_LIMIT_MS },

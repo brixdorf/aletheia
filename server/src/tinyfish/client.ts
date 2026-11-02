@@ -7,6 +7,7 @@ const BASE_URL = "https://agent.tinyfish.ai";
 const SETUP_TIMEOUT_SECONDS = 900;
 // The runner enforces its own deadline. This only stops the sdk cutting a long stream first.
 const SDK_TIMEOUT_MS = 40 * 60 * 1000;
+const SEARCH_TIMEOUT_MS = 6000;
 
 export class TinyFishError extends Error {
   readonly status: number;
@@ -26,6 +27,13 @@ export interface RunRequest {
   maxDurationSeconds: number;
   profileId?: string | undefined;
   outputSchema?: Record<string, unknown> | undefined;
+  /** Null browses from wherever TinyFish chooses. */
+  proxyCountry: string | null;
+}
+
+export interface SearchResult {
+  url: string;
+  title: string;
 }
 
 export type RunEvent =
@@ -63,7 +71,10 @@ export class TinyFishClient {
         url: request.url,
         goal: request.goal,
         browser_profile: "stealth",
-        proxy_config: { enabled: true, country_code: "IN" },
+        proxy_config: {
+          enabled: true,
+          ...(request.proxyCountry ? { country_code: request.proxyCountry } : {}),
+        },
         agent_config: { max_duration_seconds: request.maxDurationSeconds },
         // The page text is what lets a quote be checked rather than taken on trust.
         capture_config: { html: true },
@@ -115,10 +126,27 @@ export class TinyFishClient {
     return response.text();
   }
 
-  async createProfile(name: string): Promise<string> {
+  /** The site search behind the planner, which goes without results rather than wait for long. */
+  async search(query: string, location: string | null): Promise<SearchResult[]> {
+    let timer: NodeJS.Timeout | undefined;
+    const timedOut = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error("Search timed out")), SEARCH_TIMEOUT_MS);
+    });
+    try {
+      const { results } = await Promise.race([
+        this.#sdk.search.query({ query, ...(location ? { location } : {}) }),
+        timedOut,
+      ]);
+      return results.map(({ url, title }) => ({ url, title }));
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async createProfile(name: string, proxyCountry: string | null): Promise<string> {
     const response = await this.#request("POST", "/v1/profiles", {
       name,
-      proxy_country_code: "IN",
+      ...(proxyCountry ? { proxy_country_code: proxyCountry } : {}),
     });
     const { id } = (await response.json()) as { id: string };
     return id;

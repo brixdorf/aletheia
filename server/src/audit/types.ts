@@ -31,6 +31,8 @@ export interface Audit {
   visitorId: string;
   task: string;
   flow: Flow;
+  /** Null for a worldwide audit. Saved audits from before countries have none. */
+  country?: string | null;
   createdAt: string;
   status: "running" | "finished";
   shareToken: string | null;

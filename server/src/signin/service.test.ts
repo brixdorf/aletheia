@@ -48,7 +48,9 @@ describe("SignInService", () => {
   let dataDir: string;
   let client: ReturnType<typeof fakeClient>;
   let screen: ReturnType<typeof fakeScreen>;
-  let runLogout: ReturnType<typeof vi.fn<(profileId: string, url: string) => Promise<boolean>>>;
+  let runLogout: ReturnType<
+    typeof vi.fn<(profileId: string, url: string, country: string | null) => Promise<boolean>>
+  >;
   let time: number;
 
   function service() {
@@ -74,9 +76,9 @@ describe("SignInService", () => {
   });
 
   it("gives each sign-in its own profile and a setup session on the site", async () => {
-    const view = await service().start("visitor", URL_LOGIN);
+    const view = await service().start("visitor", URL_LOGIN, "IN");
 
-    expect(client.createProfile).toHaveBeenCalledWith("Aletheia one check shop.test");
+    expect(client.createProfile).toHaveBeenCalledWith("Aletheia one check shop.test", "IN");
     expect(client.startSetup).toHaveBeenCalledWith("prof_1", URL_LOGIN);
     expect(view).toMatchObject({
       host: "shop.test",
@@ -172,7 +174,7 @@ describe("SignInService", () => {
 
     const loggedOut = await signIns.release(id);
 
-    expect(runLogout).toHaveBeenCalledWith("prof_1", URL_LOGIN);
+    expect(runLogout).toHaveBeenCalledWith("prof_1", URL_LOGIN, null);
     expect(loggedOut).toBe(true);
     expect(client.deleteProfile).toHaveBeenCalledWith("prof_1");
     expect(() => signIns.view("visitor", id)).toThrow(ApiError);

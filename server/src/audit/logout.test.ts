@@ -26,7 +26,7 @@ describe("logoutRunner", () => {
     const fake = client({ logged_out: true, note: null });
     const logout = logoutRunner(fake, new RunQueue(2), timing);
 
-    expect(await logout("prof_1", "https://shop.test/")).toBe(true);
+    expect(await logout("prof_1", "https://shop.test/", "IN")).toBe(true);
     expect(fake.requests[0]).toMatchObject({
       url: "https://shop.test/",
       profileId: "prof_1",
@@ -38,12 +38,12 @@ describe("logoutRunner", () => {
   it("does not claim a logout the agent could not confirm", async () => {
     const logout = logoutRunner(client({ logged_out: false }), new RunQueue(2), timing);
 
-    expect(await logout("prof_1", "https://shop.test/")).toBe(false);
+    expect(await logout("prof_1", "https://shop.test/", "IN")).toBe(false);
   });
 
   it("does not claim a logout from a run with no result", async () => {
     const logout = logoutRunner(client(null), new RunQueue(2), timing);
 
-    expect(await logout("prof_1", "https://shop.test/")).toBe(false);
+    expect(await logout("prof_1", "https://shop.test/", "IN")).toBe(false);
   });
 });

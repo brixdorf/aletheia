@@ -88,6 +88,46 @@ describe("AuditService", () => {
     expect(site?.report?.host).toBe("shop.test");
   });
 
+  it("browses from the audit's country and keeps it on the audit", async () => {
+    const client = clientFor(loadRun("blinkit-2"));
+    const streamRun = vi.fn((request: RunRequest) => client.streamRun(request));
+    const audits = service({ ...client, streamRun });
+
+    const created = await audits.create({
+      visitorId: "visitor",
+      task: "buy one packet of milk",
+      country: "GB",
+      sites: [{ url: SITE }],
+    });
+    const audit = await finished(audits, created.id);
+
+    expect(audit.country).toBe("GB");
+    const [request] = streamRun.mock.calls[0] as unknown as [RunRequest];
+    expect(request.proxyCountry).toBe("GB");
+    expect(request.goal).toContain("SW1A 1AA");
+    expect(audit.sites[0]?.report?.missing.join(" ")).not.toMatch(/browse from/);
+  });
+
+  it("says so in the report when TinyFish cannot browse from the country", async () => {
+    const client = clientFor(loadRun("blinkit-2"));
+    const streamRun = vi.fn((request: RunRequest) => client.streamRun(request));
+    const audits = service({ ...client, streamRun });
+
+    const created = await audits.create({
+      visitorId: "visitor",
+      task: "buy one packet of milk",
+      country: "BR",
+      sites: [{ url: SITE }],
+    });
+    const audit = await finished(audits, created.id);
+
+    const [request] = streamRun.mock.calls[0] as unknown as [RunRequest];
+    expect(request.proxyCountry).toBeNull();
+    expect(audit.sites[0]?.report?.missing).toContain(
+      "TinyFish cannot browse from Brazil, so this run came from another country and prices may differ.",
+    );
+  });
+
   it("checks agent quotes against the page text captured in the run", async () => {
     const run = loadRun("adobe-subscription");
     run.steps[0] = { ...(run.steps[0] as RunRecord["steps"][number]), html: "url" };
