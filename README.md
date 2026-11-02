@@ -1,12 +1,58 @@
-# Aletheia
+<p align="center">
+  <img src="web/public/favicon.svg" alt="" width="72" height="72" />
+</p>
 
-Audits a site's checkout and subscription flows for the 13 dark patterns banned by India's CCPA, and shows the proof.
+<h1 align="center">Aletheia</h1>
 
-Live at [aletheia.romitraj.dev](https://aletheia.romitraj.dev).
+<p align="center">See what a site hides before you pay.</p>
+
+<p align="center"><a href="https://aletheia.romitraj.dev">aletheia.romitraj.dev</a></p>
+
+![The Aletheia home page: one box for the task, with the sites it picked for buying toned milk in India](docs/images/home.png)
+
+## The problem
+
+India's CCPA banned 13 dark patterns in 2023, and they apply to every platform selling to people in India.
+They live deep in a flow: a Rs 27 pack of milk on Blinkit came to Rs 54 in the cart on 2 Nov 2026, and Adobe's fee for leaving early sits one page after its refund promise.
+Nobody can walk every checkout by hand, so Aletheia does it and brings back proof.
+
+## How it works
+
+Say what you want to buy or subscribe to. Aletheia works out the flow and the country, and picks the sites: a brand you named, or the main national sites for that kind of product. You can change any of it, and you never have to.
+
+```mermaid
+flowchart LR
+    A[Your task] --> B[Pick flow, country and sites]
+    B --> C[One TinyFish agent per site]
+    C --> D[Stop before payment]
+    D --> E[Check the evidence]
+    E --> F[Report on all 13 patterns]
+```
+
+Each site gets its own agent, which walks the flow like a customer as a guest. You watch the steps and the browser live.
+
+![A live run on Zepto, with the agent's browser beside its steps](docs/images/live-run.png)
+
+The agent proposes, and our rules decide. Numbers are checked by arithmetic: the lines on a bill must add up to its total. Wording such as false urgency needs the exact quote and a screenshot, and is shown as seen with proof, not as a verdict. A pattern on a page the run never reached is marked not checked, so a login wall never earns a clean report.
+
+![A Blinkit report: milk at Rs 27 comes to Rs 54 once delivery and handling charges are added](docs/images/report.png)
+
+Past audits stay in your browser. Compare sites, share a read-only link, or delete any report.
+
+![Past audits, each row with its 13-cell pattern strip and the price shown against the price reached](docs/images/audits.png)
+
+## How TinyFish is used
+
+- **Agent:** runs each site in a stealth browser from the visitor's country, streams its steps and a live view, and returns structured evidence through an output schema.
+- **Search:** finds a site when the task names one we do not know, or when a country or category is not in our site data.
+- **Screenshots:** every step's screenshot is the report's proof. The server proxies them, so the key never reaches the browser.
+- **Browser profiles:** "Sign in to see more" lets you log in yourself, one-time code included, for one check. The run then logs out and the profile is deleted.
+
+Runs follow TinyFish's run ids, so a dropped stream picks up the same run. The runner enforces its own time limit and cancels a run that overruns.
 
 ## Setup
 
-You need [Vite+](https://viteplus.dev) and Node 26.
+You need [Vite+](https://viteplus.dev), Node 26 and a TinyFish key in `.env` (see `.env.example`).
 
 ```
 git clone https://github.com/brixdorf/aletheia.git
@@ -15,16 +61,10 @@ vp install
 vp run dev
 ```
 
-To use the TinyFish agent, copy `.env.example` to `.env` and add your key.
-
-`vp test` runs the unit tests. `vp run e2e` runs the full flow in a browser on saved runs, so it needs no key.
-
-`vp run wipe` deletes every saved audit, screenshot and sign-in in `DATA_DIR`. Stop the server first.
+`vp test` runs the unit tests. `vp run e2e` runs the full flow in a browser on saved runs and needs no key. `vp run wipe` deletes every saved audit, screenshot and sign-in in `DATA_DIR`; stop the server first.
 
 ## Team
 
 Romit Raj Sahu and Abhijit P, Scaler School of Technology, Bangalore.
-
-## License
 
 The code is source available under the [PolyForm Noncommercial License 1.0.0](LICENSE). Commercial use needs written permission from the authors.
