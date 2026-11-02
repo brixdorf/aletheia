@@ -76,7 +76,7 @@ describe("AuditService", () => {
 
     const created = await audits.create({
       visitorId: "visitor",
-      task: "buy one packet of milk",
+      task: "buy one pair of headphones",
       sites: [{ url: SITE }],
     });
     const audit = await finished(audits, created.id);
@@ -96,7 +96,7 @@ describe("AuditService", () => {
 
     const created = await audits.create({
       visitorId: "visitor",
-      task: "buy one packet of milk",
+      task: "buy one pair of headphones",
       country: "GB",
       sites: [{ url: SITE }],
     });
@@ -116,7 +116,7 @@ describe("AuditService", () => {
 
     const created = await audits.create({
       visitorId: "visitor",
-      task: "buy one packet of milk",
+      task: "buy one pair of headphones",
       country: "BR",
       sites: [{ url: SITE }],
     });
@@ -199,7 +199,7 @@ describe("AuditService", () => {
       const audits = service(client);
       const { id } = await audits.create({
         visitorId: "visitor",
-        task: "buy one packet of milk",
+        task: "buy one pair of headphones",
         sites: [{ url: SITE }],
       });
       return (await finished(audits, id)).sites[0];
@@ -264,7 +264,7 @@ describe("AuditService", () => {
       const audits = service(client);
       const { id } = await audits.create({
         visitorId: "visitor",
-        task: "buy one packet of milk",
+        task: "buy one pair of headphones",
         sites: [{ url: SITE }],
       });
       const seen: string[] = [];
@@ -286,7 +286,7 @@ describe("AuditService", () => {
       const saved = await store.save({
         id: "resumed",
         visitorId: "visitor",
-        task: "buy one packet of milk",
+        task: "buy one pair of headphones",
         flow: "checkout",
         country: null,
         createdAt: "2026-11-02T00:00:00.000Z",
@@ -338,7 +338,7 @@ describe("AuditService", () => {
 
     const created = await audits.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: "https://a.test/" }, { url: "https://b.test/" }],
     });
     await finished(audits, created.id);
@@ -361,7 +361,7 @@ describe("AuditService", () => {
 
     const { id } = await audits.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: SITE }],
     });
     await finished(audits, id);
@@ -375,7 +375,7 @@ describe("AuditService", () => {
 
     const { id } = await audits.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: SITE }],
     });
     const audit = await finished(audits, id);
@@ -389,7 +389,7 @@ describe("AuditService", () => {
 
     const { id } = await audits.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: SITE }],
     });
     audits.subscribe("visitor", id, (audit) => seen.push(audit.status));
@@ -403,7 +403,7 @@ describe("AuditService", () => {
 
     const { id } = await audits.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: "https://www.shop.test/" }],
     });
     await finished(audits, id);
@@ -419,7 +419,7 @@ describe("AuditService", () => {
 
     const { id } = await audits.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: SITE }],
     });
     const audit = await finished(audits, id);
@@ -439,7 +439,7 @@ describe("AuditService", () => {
 
     const { id } = await audits.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: SITE }],
     });
     const audit = await finished(audits, id);
@@ -466,7 +466,7 @@ describe("AuditService", () => {
 
     const { id } = await audits.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: SITE }],
     });
     const audit = await finished(audits, id);
@@ -530,7 +530,7 @@ describe("AuditService", () => {
 
       const { id } = await audits.create({
         visitorId: "visitor",
-        task: "buy milk",
+        task: "buy a laptop",
         sites: [{ url: SITE, signInId: "signin-1" }],
       });
       await finished(audits, id);
@@ -545,7 +545,7 @@ describe("AuditService", () => {
 
       const { id } = await audits.create({
         visitorId: "visitor",
-        task: "buy milk",
+        task: "buy a laptop",
         sites: [{ url: SITE, signInId: "signin-1" }],
       });
       const audit = await finished(audits, id);
@@ -569,7 +569,7 @@ describe("AuditService", () => {
 
       const { id } = await audits.create({
         visitorId: "visitor",
-        task: "buy milk",
+        task: "buy a laptop",
         sites: [{ url: SITE, signInId: "signin-1" }],
       });
       await vi.waitFor(() => {
@@ -596,7 +596,7 @@ describe("AuditService", () => {
     await expect(
       audits.create({
         visitorId: "visitor",
-        task: "buy milk",
+        task: "buy a laptop",
         sites: [
           { url: "https://a.test/", signInId: "good" },
           { url: "https://b.test/", signInId: "bad" },
@@ -616,7 +616,7 @@ describe("AuditService", () => {
     const first = service(client);
     const { id } = await first.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: SITE, signInId: "signin-1" }],
     });
     await finished(first, id);
@@ -647,7 +647,7 @@ describe("AuditService", () => {
 
     const { id } = await audits.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: SITE }],
     });
     await finished(audits, id);
@@ -671,7 +671,7 @@ describe("AuditService", () => {
 
     const { id } = await audits.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: SITE }],
     });
     await vi.waitFor(() => {
@@ -698,7 +698,7 @@ describe("AuditService", () => {
     const first = service(client);
     const { id } = await first.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: SITE }],
     });
     await finished(first, id);
@@ -726,7 +726,7 @@ describe("AuditService", () => {
     const audits = service(clientFor(loadRun("blinkit-2")));
     const { id } = await audits.create({
       visitorId: "visitor",
-      task: "buy milk",
+      task: "buy a laptop",
       sites: [{ url: SITE }],
     });
     await finished(audits, id);

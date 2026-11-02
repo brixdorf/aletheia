@@ -9,7 +9,7 @@ import { TinyFishClient, TinyFishError } from "./client.ts";
 type Handler = (req: IncomingMessage, res: ServerResponse, body: string) => void;
 
 const KEY = "test-key";
-const request = { url: "https://example.test", goal: "buy milk", proxyCountry: "IN" };
+const request = { url: "https://example.test", goal: "buy a laptop", proxyCountry: "IN" };
 
 describe("TinyFishClient", () => {
   let server: Server;
