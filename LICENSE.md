@@ -1,5 +1,7 @@
 Required Notice: Copyright 2026 Romit Raj Sahu and Abhijit P (https://aletheia.romitraj.dev)
 
+---
+
 # PolyForm Noncommercial License 1.0.0
 
 <https://polyformproject.org/licenses/noncommercial/1.0.0>

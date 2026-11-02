@@ -1,7 +1,8 @@
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
-  fmt: {},
+  // The licence must stay word for word, so the Markdown formatter never touches it.
+  fmt: { ignorePatterns: ["LICENSE.md"] },
   lint: {
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
     rules: { "vite-plus/prefer-vite-plus-imports": "error" },
