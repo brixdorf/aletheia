@@ -8,6 +8,7 @@ import {
   orderedPatterns,
   signInOffer,
   stopSummary,
+  olderAuditNote,
 } from "./report.ts";
 import { PATTERN_IDS } from "./types.ts";
 
@@ -145,5 +146,12 @@ describe("logoutNote", () => {
 
   it("says plainly when the logout could not be confirmed", () => {
     expect(logoutNote("not_confirmed")).toContain("could not confirm");
+  });
+});
+
+describe("olderAuditNote", () => {
+  it("speaks only for an older audit", () => {
+    expect(olderAuditNote(report({ older: true }))).toMatch(/before page text was kept/);
+    expect(olderAuditNote(report({ older: false }))).toBeNull();
   });
 });

@@ -32,6 +32,13 @@ export function billMismatch({ unexplained, linesOverTotal, currency }: Bill): s
     : `${money(unexplained, currency)} of the total is on no line of the bill`;
 }
 
+/** Said once at the top of a report, so a quiet report is not read as a clean site. */
+export function olderAuditNote({ older }: SiteReport): string | null {
+  return older
+    ? "This audit ran before page text was kept, so findings that rest on a page's exact words are not shown. Run it again for a full report."
+    : null;
+}
+
 export function paidLabel(priceLabel: SiteReport["priceLabel"]): string {
   return PAID_LABEL[priceLabel];
 }

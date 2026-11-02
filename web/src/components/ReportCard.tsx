@@ -1,7 +1,7 @@
 import type { ReportScope } from "../lib/api.ts";
 import { screenshotUrl } from "../lib/api.ts";
 import { money, plural } from "../lib/format.ts";
-import { counts, logoutNote, signInOffer, stopSummary } from "../lib/report.ts";
+import { counts, logoutNote, olderAuditNote, signInOffer, stopSummary } from "../lib/report.ts";
 import { siteName } from "../lib/sites.ts";
 import type { Story } from "../lib/story.ts";
 import { renewalNote, stats, story } from "../lib/story.ts";
@@ -124,6 +124,7 @@ interface ReportCardProps {
 export function ReportCard({ site, report, task, country, scope, press, solo }: ReportCardProps) {
   const logout = logoutNote(site.logout);
   const told = story(report);
+  const older = olderAuditNote(report);
   const offer = scope.kind === "owner" ? signInOffer(report) : null;
   const unseen = report.missing.length > 0 || offer !== null;
   const detail = [
@@ -162,6 +163,13 @@ export function ReportCard({ site, report, task, country, scope, press, solo }: 
           detail={solo ? detail : null}
         />
       </div>
+
+      {older ? (
+        <p className="rounded-[18px] border border-dashed border-dash p-5 text-body">
+          <span className="pill pill-unchecked mr-2">Older audit</span>
+          {older}
+        </p>
+      ) : null}
 
       <Findings report={report} siteId={site.id} scope={scope} Heading={solo ? "h2" : "h3"} />
 

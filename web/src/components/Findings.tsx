@@ -96,6 +96,11 @@ function FindingDetail({ finding, currency, screenshot, showAmounts }: FindingDe
             src={screenshot}
             label={`${label}${step === null ? "" : `, step ${step}`}: what the agent saw`}
           />
+          {quote ? (
+            <p className="mt-1.5 text-[13px] text-mute">
+              The page at this step. The words may be further down.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>
