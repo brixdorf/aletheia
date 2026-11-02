@@ -43,7 +43,7 @@ describe("every report", () => {
     "zomato-signed-in-2",
     "amazon",
     "ajio",
-  ])("lists all 13 patterns exactly once for %s", (name) => {
+  ])("lists every pattern exactly once for %s", (name) => {
     const ids = judge(name).patterns.map((entry) => entry.id);
 
     expect(ids).toHaveLength(13);
