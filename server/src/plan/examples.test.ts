@@ -4,10 +4,9 @@ import { COVERED_COUNTRIES } from "./country.ts";
 import { examplesFor } from "./examples.ts";
 import { SitePlanner } from "./planner.ts";
 
-const every = (country: string | null, city: string | null = null) =>
-  examplesFor(country, city, () => 0);
+const every = (country: string | null) => examplesFor(country, () => 0);
 
-function allOf(country: string | null, city: string | null = null): string[] {
+function allOf(country: string | null): string[] {
   const seen = new Set<string>();
   let draw = 0;
   const random = () => {
@@ -15,7 +14,7 @@ function allOf(country: string | null, city: string | null = null): string[] {
     return draw / 101;
   };
   for (let round = 0; round < 200; round += 1) {
-    for (const example of examplesFor(country, city, random)) seen.add(example);
+    for (const example of examplesFor(country, random)) seen.add(example);
   }
   return [...seen];
 }
@@ -37,11 +36,17 @@ describe("examplesFor", () => {
   });
 
   it("offers the kinds that gave a useful report as a guest", () => {
-    const examples = allOf("IN");
+    expect(allOf("IN").toSorted()).toEqual([
+      "Buy a laptop on Croma",
+      "Order dinner on Zomato",
+      "Sign up for Adobe Creative Cloud",
+    ]);
+  });
 
-    expect(examples).toContain("Sign up for Adobe Creative Cloud");
-    expect(examples).toContain("Book a flight from Mumbai to Delhi");
-    expect(examples).toContain("Book a hotel in Delhi for this weekend");
+  it("no longer offers Spotify, flights or hotels, in any country or worldwide", () => {
+    for (const country of [...COVERED_COUNTRIES, null]) {
+      expect(allOf(country).join(" ")).not.toMatch(/Spotify|flight|hotel/i);
+    }
   });
 
   it("never offers groceries or jokes", () => {
@@ -51,9 +56,9 @@ describe("examplesFor", () => {
   });
 
   it("shows them in a new order from one visit to the next", () => {
-    const first = examplesFor("IN", null, () => 0.1);
+    const first = examplesFor("IN", () => 0.1);
     const orders = [0.9, 0.1, 0.5];
-    const second = examplesFor("IN", null, () => orders.shift() ?? 0);
+    const second = examplesFor("IN", () => orders.shift() ?? 0);
 
     expect(second).not.toEqual(first);
   });

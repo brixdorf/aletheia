@@ -2,7 +2,6 @@ import type { CountrySites } from "../types.ts";
 
 export const GB_SITES: CountrySites = {
   location: `"Westminster, London" (postcode SW1A 1AA)`,
-  cities: ["London", "Edinburgh"],
   categories: {
     food_delivery: [
       { name: "Deliveroo", url: "https://deliveroo.co.uk/" },

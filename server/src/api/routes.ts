@@ -203,8 +203,7 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
 
   api.post("/examples", async (c) => {
     const body = parsed(z.object(placeSignals), await jsonBody(c));
-    const country = countryOf(c, body);
-    return c.json({ examples: examplesFor(country, cityOf(c, country)) });
+    return c.json({ examples: examplesFor(countryOf(c, body)) });
   });
 
   api.get("/audits", (c) => c.json({ audits: audits.list(c.get("visitorId")).map(summaryView) }));

@@ -3,7 +3,6 @@ import type { CountrySites } from "../types.ts";
 /** Sites from our own test runs come first in each category. */
 export const IN_SITES: CountrySites = {
   location: `"Andheri West, Mumbai" (pincode 400058)`,
-  cities: ["Mumbai", "Delhi"],
   categories: {
     food_delivery: [
       { name: "Zomato", url: "https://www.zomato.com/" },
