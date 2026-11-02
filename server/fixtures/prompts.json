@@ -966,5 +966,17 @@
     "country": "CA",
     "hosts": ["audible.ca"],
     "flow": "subscription"
+  },
+  {
+    "task": "Sign up for Netflix",
+    "country": "IN",
+    "hosts": ["netflix.com"],
+    "flow": "subscription"
+  },
+  {
+    "task": "sign up for spotify premium",
+    "country": "IN",
+    "hosts": ["spotify.com"],
+    "flow": "subscription"
   }
 ]

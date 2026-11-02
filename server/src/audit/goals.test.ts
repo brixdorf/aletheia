@@ -23,6 +23,7 @@ describe("detectFlow", () => {
     "start a free trial",
     "a membership that renews yearly",
     "the one at Rs 199 per month",
+    "sign up for a streaming service",
   ])("treats %s as a subscription", (task) => {
     expect(detectFlow(task)).toBe("subscription");
   });

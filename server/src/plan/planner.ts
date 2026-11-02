@@ -121,7 +121,7 @@ export class SitePlanner {
       };
     }
 
-    const brands: readonly Brand[] = [...brandsOf(country), ...FALLBACK_SITES.brands];
+    const brands: readonly Brand[] = brandsOf(country);
     const named = namedBrands(words, brands);
     const category = inferCategory(words);
     const flow =
@@ -181,7 +181,7 @@ export class SitePlanner {
   }
 
   #localised(sites: readonly Site[], country: string | null): PlannedSite[] {
-    const brands = [...brandsOf(country), ...FALLBACK_SITES.brands];
+    const brands = brandsOf(country);
     return sites.map((site) => {
       const brand = brands.find(({ name }) => name === site.name);
       return planned(brand ? forCountry(brand, country) : site);

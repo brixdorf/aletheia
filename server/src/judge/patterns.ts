@@ -86,6 +86,8 @@ const RECURRING_ITEM = /member|subscri|renew|recurr|monthly|annual|trial/i;
 const NEEDED_ANYWAY = /delivery|shipping/i;
 const INSURED_DELIVERY = /insur|protect|assur/i;
 const COOKIE_PROMPT = /cookie/i;
+// A bare "Got it" only closes a notice, so there is no choice to refuse.
+const ACCEPT_WORD = /accept|agree|allow|consent/i;
 const CARD_WORD = /\bcard\b|payment (method|details|information)|billing (details|information)/i;
 const RENEWAL_WORD =
   /renew|auto|recurr|until (you )?cancel|each (month|year)|every (month|year)|billed/i;
@@ -477,7 +479,9 @@ function disguisedAd({ evidence }: JudgedContext): Draft | null {
 }
 
 function noCookieReject({ evidence }: JudgedContext): Draft | null {
-  const banner = evidence.cookieBanners.find(({ accept, reject }) => accept && !reject);
+  const banner = evidence.cookieBanners.find(
+    ({ accept, reject }) => accept && !reject && ACCEPT_WORD.test(accept),
+  );
   if (!banner?.accept) return null;
   return seen(
     banner.accept,

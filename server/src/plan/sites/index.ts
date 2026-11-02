@@ -1,4 +1,5 @@
 import type { Brand, CountrySites } from "../types.ts";
+import { FALLBACK_SITES } from "./fallback.ts";
 import { MARKETS } from "./markets.ts";
 
 /** Everyday words that also name a shop or network, so only a brand entry may claim them. */
@@ -32,11 +33,12 @@ export function coveredCountries(): string[] {
 /** Naming any site on a country's shelves counts, so a data file need not list it twice. */
 export function brandsOf(country: string | null): Brand[] {
   const market = sitesFor(country);
-  if (!market) return [];
+  if (!market) return [...FALLBACK_SITES.brands];
   const shelves = Object.values(market.categories).flatMap((sites) =>
     sites
       .filter(({ name }) => name.length >= SHORTEST_NAME && !COMMON_NAMES.has(name.toLowerCase()))
       .map((site) => ({ ...site, aliases: [site.name.toLowerCase()] })),
   );
-  return [...market.brands, ...shelves];
+  // Shelves come last, since an alias goes to the first brand holding it and a shelf knows less.
+  return [...market.brands, ...FALLBACK_SITES.brands, ...shelves];
 }

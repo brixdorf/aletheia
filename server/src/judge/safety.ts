@@ -2,7 +2,8 @@ import type { StepRecord } from "../tinyfish/types.ts";
 import type { Evidence } from "./evidence.ts";
 import type { SafetyFlag } from "./types.ts";
 
-const ENTRY_VERB = /\b(type[ds]?|enter(ed|s)?|fill(ed|s)?|input|provide[ds]?)\b/i;
+// "Input" is left out: agents write "the page with the mobile number input" when they only look.
+const ENTRY_VERB = /\b(type[ds]?|enter(ed|s)?|fill(ed|s)?|provide[ds]?)\b/i;
 const CONTACT_FIELD = /\b(e-?mail|phone|mobile|contact|otp|one[- ]time|card|cvv|upi)\b/i;
 const CONTACT_VALUE = /[\w.+-]+@[\w-]+\.\w+|(?<!\d)\d{10}(?!\d)/;
 const CLICK_VERB = /\b(click|press|tap|select|choose|pick)\w*\b/i;

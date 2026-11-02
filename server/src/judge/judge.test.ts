@@ -600,6 +600,14 @@ describe("signals only the new agent reports", () => {
     expect(pattern(fresh(banner("Reject all")), "no_cookie_reject").status).toBe("not_found");
   });
 
+  it("does not count a cookie notice that only closes", () => {
+    const notice = {
+      cookie_banners: [{ accept_label: "Delivery charge", reject_label: null, seen_at_step: 1 }],
+    };
+
+    expect(pattern(fresh(notice), "no_cookie_reject").status).toBe("not_found");
+  });
+
   it("needs a prompt to come back on a second step before calling it nagging", () => {
     const nag = (steps: number[]) => ({
       repeated_prompts: [{ text: "Get the app for a better deal", seen_at_steps: steps }],
@@ -1203,6 +1211,9 @@ describe("safety scan", () => {
   it("leaves location entry and reading a form alone", () => {
     expect(withAction("Type delivery location Andheri with pincode").flags).toEqual([]);
     expect(withAction("Check email entry page details").flags).toEqual([]);
+    expect(
+      withAction("See full details of the sign-up page with mobile number input").flags,
+    ).toEqual([]);
     expect(withAction("Close the payment offer popup").flags).toEqual([]);
   });
 });
