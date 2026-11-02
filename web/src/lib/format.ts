@@ -25,8 +25,8 @@ export function moneyParts(
 export function perPeriod(period: string | null): string {
   const bare = period?.replace(/^\s*(\/|per\b)\s*/i, "").trim();
   if (!bare) return "";
-  if (/^(mo|month)$/i.test(bare)) return "/mo";
-  if (/^(yr|year)$/i.test(bare)) return "/yr";
+  if (/^(mo|month|monthly)$|billed monthly/i.test(bare)) return "/mo";
+  if (/^(yr|year|yearly|annual|annually)$|prepaid/i.test(bare)) return "/yr";
   return `/${bare}`;
 }
 

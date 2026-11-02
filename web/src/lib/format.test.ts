@@ -66,6 +66,13 @@ describe("perPeriod", () => {
     expect(perPeriod("2 months")).toBe("/2 months");
   });
 
+  it("reads the way plans name their billing", () => {
+    expect(perPeriod("Monthly")).toBe("/mo");
+    expect(perPeriod("Annual, billed monthly")).toBe("/mo");
+    expect(perPeriod("Annual, prepaid")).toBe("/yr");
+    expect(perPeriod("Yearly")).toBe("/yr");
+  });
+
   it("writes nothing when there is no period", () => {
     expect(perPeriod(null)).toBe("");
   });
