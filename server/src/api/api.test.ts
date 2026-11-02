@@ -8,7 +8,6 @@ import { RunQueue } from "../runner/queue.ts";
 import type { Frame, RemoteScreen } from "../signin/remoteScreen.ts";
 import { SignInService } from "../signin/service.ts";
 import { AuditStore } from "../store/auditStore.ts";
-import { DomainMemory } from "../store/domainMemory.ts";
 import { SitePlanner } from "../plan/planner.ts";
 import { loadRun, pageOf, withSavedPages } from "../testing/fixtures.ts";
 import type { RunEvent } from "../tinyfish/client.ts";
@@ -43,7 +42,6 @@ describe("api", () => {
   let run: RunRecord;
   let getScreenshot: ReturnType<typeof vi.fn<() => Promise<Uint8Array>>>;
   let screen: ReturnType<typeof fakeScreen>;
-  let domains: DomainMemory;
   let limits: Partial<ApiLimits>;
 
   function build() {
@@ -74,9 +72,7 @@ describe("api", () => {
   async function setup() {
     const { client } = build();
     const store = new AuditStore(dataDir);
-    domains = new DomainMemory(dataDir);
     await store.load();
-    await domains.load();
     const queue = new RunQueue(2);
     const signIns = new SignInService({
       client,
@@ -87,13 +83,12 @@ describe("api", () => {
     const audits = new AuditService({
       client,
       store,
-      domains,
       queue,
       signIns,
       timing: { pollMs: 1, quietMs: 10_000, graceMs: 5000 },
     });
     const planner = new SitePlanner(() => Promise.resolve([]));
-    api = createApi({ audits, signIns, store, domains, queue, client, planner, limits });
+    api = createApi({ audits, signIns, store, queue, client, planner, limits });
   }
 
   beforeEach(async () => {
@@ -452,6 +447,16 @@ describe("api", () => {
     });
   });
 
+  it("gives three examples for the visitor's country", async () => {
+    const response = await alice()("/examples", {
+      ...post({}),
+      headers: { "cf-ipcountry": "DE" },
+    });
+    const { examples } = (await response.json()) as { examples: string[] };
+
+    expect(examples).toHaveLength(3);
+  });
+
   describe("planning", () => {
     interface PlanBody {
       flow: string;
@@ -539,17 +544,6 @@ describe("api", () => {
       expect(response.status).toBe(201);
       return (await response.json()) as { id: string; state: string; expiresAt: string };
     }
-
-    it("offers sign-in up front on a site that needed one", async () => {
-      const as = alice();
-      await createAudit(as);
-
-      const known = await as("/signin/hint?url=https%3A%2F%2Fshop.test%2Fcart");
-      const unknown = await as("/signin/hint?url=https%3A%2F%2Fother.test%2F");
-
-      expect(await known.json()).toEqual({ loginNeeded: true });
-      expect(await unknown.json()).toEqual({ loginNeeded: false });
-    });
 
     it("starts a session and shows its time limit", async () => {
       const signIn = await startSignIn(alice());

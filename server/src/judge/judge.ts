@@ -110,6 +110,16 @@ function describeMissing(
   return missing;
 }
 
+/** A subscription whose terms were all seen by the login wall has nothing more to give. */
+function termsSettled(flow: Flow, evidence: Evidence | null): boolean {
+  if (flow !== "subscription" || !evidence) return false;
+  return (["renewal", "cancellation"] as const).every((name) =>
+    evidence.terms.some(
+      ({ term, quote, shownWhere }) => term === name && quote && shownWhere !== "not_shown",
+    ),
+  );
+}
+
 function hostOf(url: string): string {
   return new URL(url).hostname.replace(/^www\./, "");
 }
@@ -236,7 +246,7 @@ export function judgeRun({
     login: {
       wallAt: wall ? (evidence?.loginWallAt ?? null) : null,
       hidesFees,
-      offerSignIn: wall && !signedIn,
+      offerSignIn: wall && !signedIn && !termsSettled(flow, evidence),
     },
   };
 }

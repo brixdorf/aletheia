@@ -219,6 +219,30 @@ describe("login walls", () => {
     expect(pattern(report, "drip_pricing").note).toMatch(/sign-in/i);
   });
 
+  it("offers no sign-in once a sign-up's terms were all seen before the wall", () => {
+    const edit = (terms: Record<string, string>[]) => (run: RunRecord) => {
+      if (!run.result) return;
+      run.result["stopped_at"] = "login_wall";
+      run.result["terms"] = terms;
+    };
+    const renewal = {
+      term: "renewal",
+      quote: "Renews every month",
+      shown_where: "main_page",
+    };
+    const cancellation = {
+      term: "cancellation",
+      quote: "Cancel anytime",
+      shown_where: "main_page",
+    };
+
+    const settled = judge("spotify-subscription", "subscription", edit([renewal, cancellation]));
+    const open = judge("spotify-subscription", "subscription", edit([renewal]));
+
+    expect(settled.login.offerSignIn).toBe(false);
+    expect(open.login.offerSignIn).toBe(true);
+  });
+
   it("labels an itemised bill behind a login wall as price before sign-in", () => {
     const report = judge("blinkit-2");
 

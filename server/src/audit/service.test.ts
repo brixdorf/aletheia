@@ -7,7 +7,6 @@ import { RULES_VERSION } from "../judge/judge.ts";
 import { RunStartError } from "../runner/drive.ts";
 import { RunQueue } from "../runner/queue.ts";
 import { AuditStore } from "../store/auditStore.ts";
-import { DomainMemory } from "../store/domainMemory.ts";
 import { loadRun } from "../testing/fixtures.ts";
 import type { RunEvent, RunRequest } from "../tinyfish/client.ts";
 import type { RunRecord } from "../tinyfish/types.ts";
@@ -36,13 +35,11 @@ function clientFor(run: RunRecord, overrides: Partial<AuditClient> = {}): AuditC
 describe("AuditService", () => {
   let dataDir: string;
   let store: AuditStore;
-  let domains: DomainMemory;
 
   function service(client: AuditClient, signIns?: AuditSignIns, limit = 2) {
     return new AuditService({
       client,
       store,
-      domains,
       queue: new RunQueue(limit),
       signIns: signIns ?? {
         claim: () => "prof_1",
@@ -63,9 +60,7 @@ describe("AuditService", () => {
   beforeEach(async () => {
     dataDir = await mkdtemp(join(tmpdir(), "aletheia-audit-"));
     store = new AuditStore(dataDir);
-    domains = new DomainMemory(dataDir);
     await store.load();
-    await domains.load();
   });
 
   afterEach(async () => {
@@ -489,20 +484,6 @@ describe("AuditService", () => {
     expect(seen.at(-1)).toBe("finished");
   });
 
-  it("remembers that a domain needed a login", async () => {
-    const audits = service(clientFor(loadRun("blinkit-2")));
-
-    const { id } = await audits.create({
-      visitorId: "visitor",
-      task: "buy a laptop",
-      sites: [{ url: "https://www.shop.test/" }],
-    });
-    await finished(audits, id);
-
-    expect(domains.needsLogin("https://shop.test/cart")).toBe(true);
-    expect(domains.needsLogin("https://other.test/")).toBe(false);
-  });
-
   it("saves no phone number or email the agent wrote down", async () => {
     const run = loadRun("blinkit-2");
     if (run.result) run.result["stop_note"] = "Deliver to 9876543210, mail me@example.com";
@@ -548,7 +529,6 @@ describe("AuditService", () => {
         },
       }),
       store,
-      domains,
       queue: new RunQueue(2),
       signIns: { claim: () => "prof_1", release: () => Promise.resolve(true) },
       timing: { ...timing, graceMs: -299_950 },

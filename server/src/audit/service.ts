@@ -9,7 +9,6 @@ import { driveRun, RunStartError } from "../runner/drive.ts";
 import type { RunQueue } from "../runner/queue.ts";
 import { QueueCancelledError } from "../runner/queue.ts";
 import type { AuditStore } from "../store/auditStore.ts";
-import type { DomainMemory } from "../store/domainMemory.ts";
 import { PATTERNS } from "../judge/patterns.ts";
 import { budgetSeconds, buildGoal, detectFlow } from "./goals.ts";
 import { OUTPUT_SCHEMA } from "./outputSchema.ts";
@@ -40,7 +39,6 @@ export const DEFAULT_TIMING: Timing = { pollMs: 5000, quietMs: 45_000, graceMs: 
 export interface AuditDeps {
   client: AuditClient;
   store: AuditStore;
-  domains: DomainMemory;
   queue: RunQueue;
   signIns: AuditSignIns;
   timing?: Timing;
@@ -435,8 +433,6 @@ export class AuditService {
     site.report = await this.#report(audit, site, stopped);
     site.steps = scrubPersonal(site.steps);
     site.state = "done";
-
-    if (site.report.stop.at === "login_wall") await this.#deps.domains.rememberLogin(site.url);
   }
 
   async #report(audit: Audit, site: SiteRun, run: RunRecord): Promise<SiteReport> {

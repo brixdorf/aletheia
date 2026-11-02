@@ -15,7 +15,6 @@ import { SitePlanner } from "./plan/planner.ts";
 import { openRemoteScreen } from "./signin/remoteScreen.ts";
 import { SignInService } from "./signin/service.ts";
 import { AuditStore } from "./store/auditStore.ts";
-import { DomainMemory } from "./store/domainMemory.ts";
 import { TinyFishClient } from "./tinyfish/client.ts";
 
 import { siteAnswers } from "./plan/probe.ts";
@@ -26,8 +25,7 @@ const SWEEP_INTERVAL_MS = 60_000;
 async function startApi(apiKey: string, { dataDir }: Config) {
   const client = new TinyFishClient({ apiKey });
   const store = new AuditStore(dataDir);
-  const domains = new DomainMemory(dataDir);
-  await Promise.all([store.load(), domains.load()]);
+  await store.load();
 
   const queue = new RunQueue(CONCURRENT_RUNS);
   const signIns = new SignInService({
@@ -36,7 +34,7 @@ async function startApi(apiKey: string, { dataDir }: Config) {
     runLogout: logoutRunner(client, queue, DEFAULT_TIMING),
     dataDir,
   });
-  const audits = new AuditService({ client, store, domains, queue, signIns });
+  const audits = new AuditService({ client, store, queue, signIns });
   signIns.onSignOutDuringCheck((id) => audits.stopCheckUsing(id));
 
   // Audits first: a signed-in check cut off by the restart has to end before its profile goes.
@@ -46,7 +44,7 @@ async function startApi(apiKey: string, { dataDir }: Config) {
   setInterval(() => void signIns.sweep().catch(() => undefined), SWEEP_INTERVAL_MS).unref();
 
   const planner = new SitePlanner((query, country) => client.search(query, country), siteAnswers);
-  return createApi({ audits, signIns, store, domains, queue, client, planner });
+  return createApi({ audits, signIns, store, queue, client, planner });
 }
 
 /** The site still serves without a key, so a missing variable shows up as a clear API answer. */

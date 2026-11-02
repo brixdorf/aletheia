@@ -8,12 +8,12 @@ import { z } from "zod";
 import type { AuditService, NewAudit } from "../audit/service.ts";
 import { ApiError } from "../errors.ts";
 import { proxyCountry, resolveCity, resolveCountry } from "../plan/country.ts";
+import { examplesFor } from "../plan/examples.ts";
 import type { SitePlanner } from "../plan/planner.ts";
 import type { RunQueue } from "../runner/queue.ts";
 import type { Frame } from "../signin/remoteScreen.ts";
 import type { SignInService } from "../signin/service.ts";
 import type { AuditStore } from "../store/auditStore.ts";
-import type { DomainMemory } from "../store/domainMemory.ts";
 import { RateLimiter } from "./rateLimit.ts";
 import { ownerView, sharedView, summaryView } from "./views.ts";
 
@@ -45,7 +45,6 @@ export interface ApiDeps {
   audits: AuditService;
   signIns: SignInService;
   store: AuditStore;
-  domains: DomainMemory;
   queue: RunQueue;
   client: { getScreenshot(runId: string, stepId: string): Promise<Uint8Array> };
   planner: SitePlanner;
@@ -148,7 +147,7 @@ function parsed<T extends z.ZodType>(schema: T, value: unknown): z.infer<T> {
 }
 
 export function createApi(deps: ApiDeps): Hono<ApiEnv> {
-  const { audits, signIns, store, domains, queue, client, planner } = deps;
+  const { audits, signIns, store, queue, client, planner } = deps;
   const limits = { ...DEFAULT_LIMITS, ...deps.limits };
   const byVisitor = new RateLimiter(limits.perVisitor, HOUR_MS);
   const byAddress = new RateLimiter(limits.perAddress, HOUR_MS);
@@ -200,6 +199,12 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
     }
     const country = countryOf(c, body);
     return c.json({ ...(await planner.plan(body.task, country)), city: cityOf(c, country) });
+  });
+
+  api.post("/examples", async (c) => {
+    const body = parsed(z.object(placeSignals), await jsonBody(c));
+    const country = countryOf(c, body);
+    return c.json({ examples: examplesFor(country, cityOf(c, country)) });
   });
 
   api.get("/audits", (c) => c.json({ audits: audits.list(c.get("visitorId")).map(summaryView) }));
@@ -319,11 +324,6 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
     const audit = audits.shared(c.req.param("token"));
     const site = audit.sites.find((entry) => entry.id === c.req.param("siteId"));
     return screenshot(c, audit.id, site?.runId ?? null);
-  });
-
-  api.get("/signin/hint", (c) => {
-    const url = parsed(siteUrl, c.req.query("url"));
-    return c.json({ loginNeeded: domains.needsLogin(url) });
   });
 
   api.post("/signin", async (c) => {
