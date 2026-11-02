@@ -278,6 +278,20 @@ describe("login walls", () => {
     expect(pattern(report, "drip_pricing").status).toBe("not_found");
   });
 
+  it("reads a stated total in dollars or pounds as well as rupees", () => {
+    for (const total of ["$549.00", "£549.00"]) {
+      const report = judge("croma", "checkout", (run) => {
+        if (!run.result) return;
+        run.result["final_price"] = null;
+        const pages = run.result["steps"] as { note: string }[];
+        for (const page of pages) {
+          if (page.note.includes("Total")) page.note = `Order Summary: Total ${total}.`;
+        }
+      });
+      expect(report.bill.total).toBe(549);
+    }
+  });
+
   it("reads the grand total, not the item total, from a cart's note", () => {
     const report = judge("blinkit-2", "checkout", (run) => {
       if (!run.result) return;

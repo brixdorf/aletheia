@@ -8,7 +8,11 @@ const CHARGE_WORD =
 const DISCOUNT_LINE = /discount|coupon|saving|promo|cashback/i;
 const ORDER_PAGE = /cart|\bbag\b|basket|checkout|order|\bbill\b|verify|review|summary/i;
 const NOT_AN_ORDER = /log ?in|sign[ -]?in|terms|faq|polic/i;
-const STATED_TOTAL = /(?<!items?[ -])\btotal\b[^₹\d]{0,12}(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)/gi;
+const CURRENCY_MARK = String.raw`(?:₹|\$|£|€|rs\.?|inr|usd|gbp|eur)`;
+const STATED_TOTAL = new RegExp(
+  String.raw`(?<!items?[ -])\btotal\b[^₹$£€\d]{0,12}${CURRENCY_MARK}\s*(\d[\d,]*(?:\.\d+)?)`,
+  "gi",
+);
 const PAISE_TOLERANCE = 1;
 
 function paise(amount: number): number {
@@ -28,11 +32,11 @@ function urlPath(url: string | null): string {
   }
 }
 
-/** Mentions the amount as money, such as "Rs 192" or the rupee sign, not as any stray number. */
+/** Mentions the amount as money, such as "Rs 192" or "$12", not as any stray number. */
 function mentionsMoney(text: string | null, amount: number): boolean {
   if (!text) return false;
   const digits = String(amount).replace(".", "\\.");
-  const pattern = new RegExp(`(?:₹|rs\\.?|inr)\\s*${digits}(?![\\d,])`, "i");
+  const pattern = new RegExp(`${CURRENCY_MARK}\\s*${digits}(?![\\d,])`, "i");
   return pattern.test(text.replaceAll(",", ""));
 }
 
