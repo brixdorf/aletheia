@@ -9,11 +9,9 @@ import { pickedSites, planNote } from "../lib/plan.ts";
 import { rememberSignIn } from "../lib/signInMemory.ts";
 import type { PlannedSite } from "../lib/sites.ts";
 import { addSite, MAX_SITES, parseSite } from "../lib/sites.ts";
-import type { Flow } from "../lib/types.ts";
 import { useAuditPlan } from "../lib/useAuditPlan.ts";
+import { useRotatingExample } from "../lib/useRotatingExample.ts";
 import { navigate } from "../lib/useRoute.ts";
-
-const FLOW_LABEL: Record<Flow, string> = { checkout: "Checkout", subscription: "Subscription" };
 
 function pinnedSite(url: string): PlannedSite | null {
   if (!url) return null;
@@ -67,8 +65,6 @@ interface HomeProps {
 export function Home({ prefill }: HomeProps) {
   usePageTitle("Aletheia");
   const [task, setTask] = useState(prefill.task);
-  const [countryChoice, setCountryChoice] = useState<string | null>(null);
-  const [flowChoice, setFlowChoice] = useState<Flow | null>(null);
   const [removed, setRemoved] = useState<string[]>([]);
   const [added, setAdded] = useState<PlannedSite[]>(() => {
     const pinned = pinnedSite(prefill.url);
@@ -86,7 +82,8 @@ export function Home({ prefill }: HomeProps) {
     prefill.signIn ? pinnedSite(prefill.url) : null,
   );
 
-  const { plan, pending, failed } = useAuditPlan(task, countryChoice);
+  const { plan, pending, failed } = useAuditPlan(task);
+  const example = useRotatingExample(task.length === 0);
   // A site carried over from a report is the whole audit, so the planner stays out of it.
   const pinned = pinnedSite(prefill.url) !== null;
   const picks = pinned ? [] : (plan?.sites ?? []);
@@ -152,7 +149,7 @@ export function Home({ prefill }: HomeProps) {
     setFormError(null);
 
     const wording = task.trim();
-    const taskProblem = wording.length < 3 ? "Say what you want to buy or subscribe to." : null;
+    const taskProblem = wording.length < 3 ? "Say what to audit." : null;
     setTaskError(taskProblem);
     if (taskProblem) return;
 
@@ -166,11 +163,10 @@ export function Home({ prefill }: HomeProps) {
 
     setBusy(true);
     try {
-      const flow = flowChoice ?? (pending ? null : plan?.flow);
+      const flow = pending ? null : plan?.flow;
       const audit = await startAudit({
         task: wording,
         ...(flow ? { flow } : {}),
-        ...(countryChoice ? { country: countryChoice } : {}),
         ...(letServerPick
           ? {}
           : {
@@ -199,18 +195,18 @@ export function Home({ prefill }: HomeProps) {
 
   const note = plan && !pinned && !edited ? planNote(plan) : null;
   const typed = task.trim().length >= 3;
-  const countryOff =
-    plan && plan.country !== null && !plan.proxied
-      ? `TinyFish cannot browse from ${plan.countryName}, so prices may differ. The report will say so.`
-      : null;
 
   return (
     <div className="relative flex flex-col items-center pt-6 text-center sm:pt-14">
       <div aria-hidden="true" className="aurora" />
 
       <h1 className="max-w-[720px] text-[38px]/[1.06] tracking-[-0.035em] sm:text-[56px]/[1.04]">
-        See what a site hides <span className="accent">before</span> you pay.
+        Find the dark patterns on <span className="accent">any</span> website.
       </h1>
+      <p className="mt-4 max-w-[560px] text-base text-body sm:text-[17px]">
+        Name a site and a flow. An agent walks it like a customer, stops before payment and reports
+        every dark pattern it saw, with proof.
+      </p>
 
       <form
         noValidate
@@ -219,7 +215,7 @@ export function Home({ prefill }: HomeProps) {
       >
         <div className="rise prompt-card">
           <label htmlFor="task" className="text-sm font-medium text-mute">
-            What do you want to buy or subscribe to?
+            What should Aletheia audit?
           </label>
           <textarea
             id="task"
@@ -228,7 +224,7 @@ export function Home({ prefill }: HomeProps) {
             value={task}
             onChange={(event) => setTask(event.target.value)}
             onKeyDown={submitOnEnter}
-            placeholder="Buy a 500 ml pack of toned milk"
+            placeholder={example}
             aria-invalid={taskError !== null}
             aria-describedby={taskError ? "task-error" : undefined}
             className="prompt-field mt-1.5"
@@ -323,38 +319,6 @@ export function Home({ prefill }: HomeProps) {
               {siteError}
             </p>
           ) : null}
-
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {plan ? (
-              <label className="choice-pill">
-                Country
-                <select
-                  value={countryChoice ?? plan.country ?? "ZZ"}
-                  onChange={(event) => setCountryChoice(event.target.value)}
-                >
-                  {plan.countries.map(({ code, name }) => (
-                    <option key={code} value={code}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            <label className="choice-pill">
-              Flow
-              <select
-                value={flowChoice ?? plan?.flow ?? "checkout"}
-                onChange={(event) => setFlowChoice(event.target.value as Flow)}
-              >
-                {(["checkout", "subscription"] as const).map((value) => (
-                  <option key={value} value={value}>
-                    {FLOW_LABEL[value]}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          {countryOff ? <p className="text-[13px] text-mute">{countryOff}</p> : null}
         </div>
 
         {formError ? (
@@ -375,7 +339,7 @@ export function Home({ prefill }: HomeProps) {
         <SignInPanel
           url={signingIn.url}
           host={signingIn.host}
-          country={countryChoice ?? plan?.country ?? null}
+          country={plan?.country ?? null}
           onReady={(signIn) => {
             setSignIns((current) => ({ ...current, [signingIn.host]: signIn.id }));
             setSigningIn(null);

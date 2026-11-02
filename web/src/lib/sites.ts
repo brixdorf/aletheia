@@ -24,7 +24,7 @@ export interface PlannedSite {
 
 type Parsed = { ok: true; url: string; host: string } | { ok: false; message: string };
 
-const NOT_A_SITE = "Enter a site address, such as blinkit.com.";
+const NOT_A_SITE = "Enter a site address, such as adobe.com.";
 
 export function parseSite(input: string): Parsed {
   const text = input.trim();

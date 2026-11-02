@@ -1,7 +1,7 @@
 {
   "name": "Aletheia",
   "short_name": "Aletheia",
-  "description": "See what a site hides before you pay.",
+  "description": "Find the dark patterns on any website, with proof.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -65,7 +65,6 @@ export function getSharedAudit(token: string): Promise<AuditPublic> {
 export interface NewAudit {
   task: string;
   flow?: "checkout" | "subscription";
-  country?: string;
   /** Left out, the server picks the sites itself. */
   sites?: { url: string; signInId?: string }[];
 }
@@ -74,8 +73,8 @@ export function startAudit(audit: NewAudit): Promise<AuditView> {
   return post("/audits", { ...audit, ...browserPlace() });
 }
 
-export function planAudit(task: string, country: string | null): Promise<PlanView> {
-  return post("/plan", { task, ...(country ? { country } : {}), ...browserPlace() });
+export function planAudit(task: string): Promise<PlanView> {
+  return post("/plan", { task, ...browserPlace() });
 }
 
 export function deleteAudit(id: string): Promise<void> {

@@ -41,7 +41,7 @@ describe("parseSite", () => {
   });
 
   it("rejects text that is not a site", () => {
-    expect(parseSite("milk")).toMatchObject({ ok: false });
+    expect(parseSite("laptop")).toMatchObject({ ok: false });
     expect(parseSite("")).toMatchObject({ ok: false });
     expect(parseSite("ftp://files.test")).toMatchObject({ ok: false });
   });

@@ -3,9 +3,9 @@ import { describe, expect, it } from "vite-plus/test";
 import { pickedSites, planNote } from "./plan.ts";
 import type { PlanView } from "./types.ts";
 
-const blinkit = { name: "Blinkit", url: "https://blinkit.com/", host: "blinkit.com" };
-const zepto = { name: "Zepto", url: "https://www.zepto.com/", host: "zepto.com" };
-const croma = { url: "https://www.croma.com/", host: "croma.com", signInId: null };
+const ixigo = { name: "ixigo", url: "https://www.ixigo.com/", host: "ixigo.com" };
+const cleartrip = { name: "Cleartrip", url: "https://www.cleartrip.com/", host: "cleartrip.com" };
+const goibibo = { url: "https://www.goibibo.com/", host: "goibibo.com", signInId: null };
 
 function plan(overrides: Partial<PlanView> = {}): PlanView {
   return {
@@ -13,10 +13,9 @@ function plan(overrides: Partial<PlanView> = {}): PlanView {
     country: "IN",
     countryName: "India",
     proxied: true,
-    category: "groceries",
+    category: "travel",
     source: "category",
-    sites: [blinkit, zepto],
-    countries: [],
+    sites: [ixigo, cleartrip],
     ...overrides,
   };
 }
@@ -25,28 +24,28 @@ describe("pickedSites", () => {
   const none = { removed: [], added: [], signIns: {} };
 
   it("shows what the server picked", () => {
-    expect(pickedSites([blinkit, zepto], none).map(({ host }) => host)).toEqual([
-      "blinkit.com",
-      "zepto.com",
+    expect(pickedSites([ixigo, cleartrip], none).map(({ host }) => host)).toEqual([
+      "ixigo.com",
+      "cleartrip.com",
     ]);
   });
 
   it("leaves out a removed site and keeps an added one after the picks", () => {
-    const sites = pickedSites([blinkit, zepto], {
+    const sites = pickedSites([ixigo, cleartrip], {
       ...none,
-      removed: ["zepto.com"],
-      added: [croma],
+      removed: ["cleartrip.com"],
+      added: [goibibo],
     });
-    expect(sites.map(({ host }) => host)).toEqual(["blinkit.com", "croma.com"]);
+    expect(sites.map(({ host }) => host)).toEqual(["ixigo.com", "goibibo.com"]);
   });
 
   it("does not list a site twice when the server picks one the visitor added", () => {
-    const added = [{ ...blinkit, signInId: null }];
-    expect(pickedSites([blinkit], { ...none, added })).toHaveLength(1);
+    const added = [{ ...ixigo, signInId: null }];
+    expect(pickedSites([ixigo], { ...none, added })).toHaveLength(1);
   });
 
   it("attaches a sign-in to its site", () => {
-    const sites = pickedSites([blinkit], { ...none, signIns: { "blinkit.com": "sign-1" } });
+    const sites = pickedSites([ixigo], { ...none, signIns: { "ixigo.com": "sign-1" } });
     expect(sites[0]?.signInId).toBe("sign-1");
   });
 
@@ -56,7 +55,7 @@ describe("pickedSites", () => {
       host: `${name}.test`,
       signInId: null,
     }));
-    expect(pickedSites([blinkit, zepto], { ...none, added })).toHaveLength(4);
+    expect(pickedSites([ixigo, cleartrip], { ...none, added })).toHaveLength(4);
   });
 });
 
@@ -65,13 +64,13 @@ describe("planNote", () => {
     expect(planNote(plan({ source: "named" }))).toBe("Named in your task.");
   });
 
-  it("names the kind of site and the country", () => {
-    expect(planNote(plan())).toBe("The main groceries and quick commerce sites in India.");
+  it("names the kind of site and never the country, which the report states", () => {
+    expect(planNote(plan())).toBe("The main travel sites where you are.");
   });
 
   it("says when a web search found the sites", () => {
     expect(planNote(plan({ source: "search", countryName: "Brazil" }))).toBe(
-      "Found by a web search for Brazil.",
+      "Found by a web search.",
     );
   });
 

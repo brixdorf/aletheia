@@ -14,7 +14,7 @@ export interface AuditPlanState {
 }
 
 /** Asks the server to plan once typing pauses. A slower older answer never replaces a newer one. */
-export function useAuditPlan(task: string, country: string | null): AuditPlanState {
+export function useAuditPlan(task: string): AuditPlanState {
   const [plan, setPlan] = useState<PlanView | null>(null);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -27,7 +27,7 @@ export function useAuditPlan(task: string, country: string | null): AuditPlanSta
 
     const timer = setTimeout(
       () => {
-        planAudit(ready ? words : "", country).then(
+        planAudit(ready ? words : "").then(
           (next) => {
             if (!current) return;
             setPlan(next);
@@ -48,7 +48,7 @@ export function useAuditPlan(task: string, country: string | null): AuditPlanSta
       current = false;
       clearTimeout(timer);
     };
-  }, [words, country]);
+  }, [words]);
 
   return { plan, pending, failed };
 }

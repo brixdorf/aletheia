@@ -28,13 +28,13 @@ describe("api", () => {
     const fetchMock = vi.fn().mockResolvedValue(reply(201, { id: "a1" }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await startAudit({ task: "Buy milk", sites: [{ url: "https://a.test/" }] });
+    await startAudit({ task: "Buy a laptop", sites: [{ url: "https://a.test/" }] });
 
     const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(path).toBe("/api/audits");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toMatchObject({
-      task: "Buy milk",
+      task: "Buy a laptop",
       sites: [{ url: "https://a.test/" }],
     });
   });
@@ -54,13 +54,12 @@ describe("api", () => {
     const fetchMock = vi.fn().mockResolvedValue(reply(200, { sites: [] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await planAudit("Buy milk", "IN");
+    await planAudit("Buy a laptop");
 
     const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(path).toBe("/api/plan");
     expect(JSON.parse(init.body as string)).toMatchObject({
-      task: "Buy milk",
-      country: "IN",
+      task: "Buy a laptop",
       timeZone: expect.any(String) as string,
       languages: expect.any(Array) as string[],
     });
