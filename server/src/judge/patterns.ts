@@ -124,7 +124,7 @@ function dripPricing({ bill, evidence, stop }: JudgedContext): Draft {
 
 function basketSneaking({ bill }: JudgedContext): Draft | null {
   if (bill.extras.length === 0) return null;
-  return draft("found", "Added without asking, and the amount is proven to be in the total.", {
+  return draft("found", "Added without asking, and its amount is in the total.", {
     proof: "verified",
     amounts: bill.extras.map(({ name, amount }) => ({ label: name, amount })),
     step: bill.extras[0]?.firstSeenAtStep ?? null,
@@ -133,13 +133,7 @@ function basketSneaking({ bill }: JudgedContext): Draft | null {
 
 function falseUrgency({ evidence }: JudgedContext): Draft | null {
   const message = evidence.pressure.find((entry) => URGENCY.test(entry.text));
-  return message
-    ? seen(
-        message.text,
-        message.seenAtStep,
-        "Urgency message on the page. Our rules cannot test whether it is true.",
-      )
-    : null;
+  return message ? seen(message.text, message.seenAtStep, "An urgency message on the page.") : null;
 }
 
 function confirmShaming({ evidence }: JudgedContext): Draft | null {
