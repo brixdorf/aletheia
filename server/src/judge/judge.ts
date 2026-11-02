@@ -33,7 +33,7 @@ import type {
 import { TERM_NAMES } from "./types.ts";
 
 /** Raised when the rules change, so reports saved under older ones are judged again. */
-export const RULES_VERSION = 4;
+export const RULES_VERSION = 5;
 
 export interface JudgeInput {
   flow: Flow;
