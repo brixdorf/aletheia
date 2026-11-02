@@ -55,7 +55,7 @@ export function SubscriptionFacts({ subscription, currency, renewal }: Subscript
               <ul className="mt-1 divide-y divide-line">
                 {options.map((option) => (
                   <li key={option.label} className="py-2">
-                    <div className="flex items-baseline justify-between gap-4">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-4">
                       <span>
                         {option.label}
                         {option.selectedByDefault ? (
@@ -63,7 +63,7 @@ export function SubscriptionFacts({ subscription, currency, renewal }: Subscript
                         ) : null}
                       </span>
                       {option.price === null ? null : (
-                        <span className="num shrink-0">
+                        <span className="num min-w-0 wrap-anywhere">
                           {money(option.price, currency)}
                           {perPeriod(option.period)}
                         </span>
