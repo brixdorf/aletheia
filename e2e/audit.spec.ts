@@ -20,7 +20,6 @@ test("a visitor describes a task, audits the picked sites, compares, shares and 
 
   // Only Blinkit and Croma have saved runs here, so the visitor changes the picks.
   await page.getByRole("button", { name: "Remove zepto.com" }).click();
-  await page.getByRole("button", { name: "Remove bigbasket.com" }).click();
   await page.getByRole("button", { name: "Add a site" }).click();
   await page.getByLabel("Site address").fill("croma.com");
   await page.getByRole("button", { name: "Add site" }).click();
