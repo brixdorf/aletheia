@@ -8,7 +8,7 @@
 
 <p align="center"><a href="https://aletheia.romitraj.dev">aletheia.romitraj.dev</a></p>
 
-<a href="https://aletheia.romitraj.dev"><img src="docs/images/home.png" alt="The Aletheia home page: one box for the task, with adobe.com picked from the words" /></a>
+<a href="https://aletheia.romitraj.dev"><img src="docs/images/home.png" alt="The Aletheia home page: one box for the task, with spotify.com picked from the words" /></a>
 
 Aletheia walks a site's checkout or sign-up flow like a customer, stops before payment and reports the dark patterns it saw. Each finding comes with its quote, its step and a screenshot.
 

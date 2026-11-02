@@ -81,6 +81,7 @@ body {
 
 .strip {
   display: flex;
+  flex-wrap: wrap;
 }
 
 .strip i {
