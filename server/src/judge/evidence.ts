@@ -215,6 +215,11 @@ const CURRENCY_SYMBOLS: readonly (readonly [RegExp, string])[] = [
   [/\u00A3/, "GBP"],
 ];
 
+/** Agents write "month", "/mo" or "per month" for the same thing. */
+function bareBillingPeriod(value: string | null | undefined): string | null {
+  return value?.replace(/^\s*(\/|per\b)\s*/i, "").trim() || null;
+}
+
 /** Agents write the code on some runs and the symbol on others. */
 function currencyCode(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -300,7 +305,7 @@ export function parseEvidence(result: Record<string, unknown> | null): Evidence 
     planOptions: present(raw.plan_options).map((option) => ({
       label: option.label,
       price: option.price ?? null,
-      period: option.period ?? null,
+      period: bareBillingPeriod(option.period),
       commitment: option.commitment ?? null,
       feeLine: option.fee_line ?? null,
       selectedByDefault: option.selected_by_default ?? false,

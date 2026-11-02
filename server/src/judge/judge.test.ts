@@ -321,6 +321,18 @@ describe("login walls", () => {
     expect(pattern(report, "drip_pricing").note).toMatch(/lines .*11 more than the total/);
   });
 
+  it("drops a slash the agent left on a billing period", () => {
+    const report = judge("adobe-subscription", "subscription", (run) => {
+      if (!run.result) return;
+      run.result["plan_options"] = [
+        { label: "Monthly", price: 4071, period: "/mo", first_seen_at_step: 4 },
+        { label: "Prepaid", price: 12999, period: " per year", first_seen_at_step: 4 },
+      ];
+    });
+
+    expect(report.subscription?.options.map((option) => option.period)).toEqual(["mo", "year"]);
+  });
+
   it("does not treat a cart's item price as a total when no total was stated", () => {
     const report = judge("croma", "checkout", (run) => {
       if (!run.result) return;
