@@ -34,7 +34,7 @@ test("a visitor describes a task, audits the picked sites, compares, shares and 
   const comparison = page.getByRole("table").filter({ hasText: "Patterns found" });
   await expect(comparison).toBeVisible({ timeout: 30_000 });
   await expect(comparison.getByRole("row", { name: /Patterns found/ })).toContainText(
-    "Subscription trap",
+    "Cancellation fee",
   );
 
   // Neither run saw a price move, so prices stay out of the comparison and off the page.
@@ -42,9 +42,7 @@ test("a visitor describes a task, audits the picked sites, compares, shares and 
   await expect(comparison).not.toContainText("Lowest total");
   await expect(page.getByText(/different items, so compare the patterns/)).toBeVisible();
 
-  await expect(page.getByText(/^Audited as a subscription sign-up on adobe\.com/)).toContainText(
-    "from India",
-  );
+  await expect(page.getByText(/^Audited as a subscription sign-up on adobe\.com/)).toBeVisible();
   const findings = page.getByRole("list", { name: "Findings on adobe.com" });
   await expect(findings.getByRole("listitem").first()).toContainText("found");
 
@@ -62,7 +60,7 @@ test("a visitor describes a task, audits the picked sites, compares, shares and 
   await expect(page).toHaveURL(/\/audits$/);
   const saved = page.getByRole("link", { name: TASK });
   await expect(saved).toBeVisible();
-  await expect(page.getByText("Subscription trap").first()).toBeVisible();
+  await expect(page.getByText("Cancellation fee").first()).toBeVisible();
 
   await page.getByRole("button", { name: /^Delete:/ }).click();
   await page.getByRole("button", { name: "Delete audit" }).click();

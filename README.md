@@ -14,19 +14,14 @@ Aletheia walks a site's checkout or sign-up flow like a customer, stops before p
 
 ## What it finds
 
-- **Drip pricing:** fees that appear late in the flow, above the price first shown.
-- **Subscription traps:** renewals and exit fees tucked out of sight, and sign-ups that are easy to start and hard to leave.
-- **Confirm shaming:** wording that guilts you out of saying no.
-- **Basket sneaking:** items or fees added to your cart without asking.
-- **False urgency:** countdowns and stock warnings that push a rushed decision.
-- **Forced action:** making you do something extra, such as creating an account you do not need, before you can continue.
-- **Nagging:** the same prompt, again and again.
-- **Trick questions:** confusing wording that steers your answer.
-- **Interface interference:** design that hides the fair choice or dresses up the costly one.
-- **Bait and switch:** advertising one thing and selling another.
-- **Disguised ads:** adverts made to look like content.
-- **SaaS billing:** recurring charges that are hard to notice or stop.
-- **Rogue malware:** pages that push fake warnings or unwanted downloads.
+- **Pricing:** drip pricing, partitioned pricing, bait and switch, a free claim with a charge, crossed-out prices.
+- **Urgency and scarcity:** countdowns and deadlines, scarcity messages, high demand messages.
+- **Social proof:** activity messages about what other people are doing.
+- **Sneaking and preselection:** items sneaked into the basket, pre-selected extras, longer plans pre-selected, hidden subscriptions.
+- **Subscriptions and cancellation:** a card needed for a free trial, renewal in the small print, intro prices that jump, cancellation fees, sign-ups that are hard to cancel, missing cancellation terms.
+- **Obstruction and forced action:** a price behind sign-in, forced actions, forced marketing consent.
+- **Interface and wording:** false hierarchy, confirmshaming, trick questions, nagging, disguised ads.
+- **Privacy and consent:** no cookie reject button, pre-ticked consent.
 
 ## How it works
 

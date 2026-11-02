@@ -13,7 +13,7 @@ import { RunQueue } from "../server/src/runner/queue.ts";
 import { SignInService } from "../server/src/signin/service.ts";
 import { AuditStore } from "../server/src/store/auditStore.ts";
 import { DomainMemory } from "../server/src/store/domainMemory.ts";
-import { loadRun } from "../server/src/testing/fixtures.ts";
+import { loadRun, pageOf, withSavedPages } from "../server/src/testing/fixtures.ts";
 import type { RunEvent, RunRequest } from "../server/src/tinyfish/client.ts";
 
 /** The real app with TinyFish replaced by saved runs, so the test costs nothing and is repeatable. */
@@ -27,12 +27,12 @@ const PORT = Number(process.env["E2E_PORT"] ?? 4173);
 function savedRun(url: string) {
   const name = SAVED_RUNS[new URL(url).hostname.replace(/^www\./, "")];
   if (!name) throw new Error(`No saved run for ${url}`);
-  return loadRun(name);
+  return withSavedPages(loadRun(name));
 }
 
 const runsById = new Map(
   Object.values(SAVED_RUNS).map((name) => {
-    const run = loadRun(name);
+    const run = withSavedPages(loadRun(name));
     return [run.run_id, run];
   }),
 );
@@ -52,7 +52,10 @@ const client = {
     return run;
   },
   cancelRun: () => Promise.resolve(),
-  getStepHtml: () => Promise.resolve(""),
+  getStepHtml: (runId: string) => {
+    const run = runsById.get(runId);
+    return Promise.resolve(run ? pageOf(run) : "");
+  },
   getScreenshot: () => Promise.resolve(JPEG),
   createProfile: () => Promise.reject(new Error("Sign-in is not part of this test.")),
   deleteProfile: () => Promise.resolve(),
