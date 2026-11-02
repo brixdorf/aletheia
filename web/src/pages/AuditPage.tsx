@@ -7,10 +7,11 @@ import { LiveSite } from "../components/LiveSite.tsx";
 import { ReportCard } from "../components/ReportCard.tsx";
 import { Failed, Link, Loading, Notice, usePageTitle } from "../components/ui.tsx";
 import type { ReportScope } from "../lib/api.ts";
-import { deleteAudit, deleteSite, getSharedAudit, shareAudit } from "../lib/api.ts";
+import { deleteAudit, deleteSite, getSharedAudit, shareAudit, startAudit } from "../lib/api.ts";
 import { buildComparison } from "../lib/compare.ts";
 import { dateTime, duration } from "../lib/format.ts";
 import { auditIsLive } from "../lib/live.ts";
+import { countryChoices } from "../lib/plan.ts";
 import { siteName } from "../lib/sites.ts";
 import { auditLine } from "../lib/story.ts";
 import type { AuditPublic, AuditView, SiteView } from "../lib/types.ts";
@@ -94,6 +95,59 @@ function OwnerActions({ audit }: { audit: AuditView }) {
         </ConfirmDialog>
       ) : null}
     </>
+  );
+}
+
+/** The home page never asks where the visitor is, so this is the one place to change it. */
+function ChangeCountry({ audit }: { audit: AuditView }) {
+  const [country, setCountry] = useState(audit.country ?? "ZZ");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function runAgain() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const next = await startAudit({ task: audit.task, flow: audit.flow, country });
+      navigate(`/audits/${next.id}`);
+    } catch (error) {
+      setBusy(false);
+      setMessage(error instanceof Error ? error.message : "The audit could not start.");
+    }
+  }
+
+  return (
+    <details className="-mt-2 w-full text-[13px] text-mute">
+      <summary className="inline-flex min-h-11 cursor-pointer items-center sm:min-h-6">
+        Change country
+      </summary>
+      <div className="mt-1 flex flex-wrap items-center gap-2">
+        <label htmlFor="audit-country" className="sr-only">
+          Country
+        </label>
+        <select
+          id="audit-country"
+          className="field w-auto py-1"
+          value={country}
+          onChange={(event) => setCountry(event.target.value)}
+        >
+          {countryChoices().map(({ code, name }) => (
+            <option key={code} value={code}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="btn btn-soft btn-sm"
+          disabled={busy}
+          onClick={() => void runAgain()}
+        >
+          {busy ? "Starting" : "Run again from here"}
+        </button>
+        {message ? <span role="alert">{message}</span> : null}
+      </div>
+    </details>
   );
 }
 
@@ -245,6 +299,7 @@ function AuditBody({
           <span className="num">{dateTime(audit.createdAt)}</span>
         </p>
         <p className="-mt-3 w-full text-[13px] text-mute">{auditLine(audit)}</p>
+        {owned && !auditIsLive(owned) ? <ChangeCountry audit={owned} /> : null}
       </header>
 
       {comparison.columns.length >= 2 ? (

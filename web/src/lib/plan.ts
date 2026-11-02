@@ -1,3 +1,4 @@
+import { COVERED_COUNTRIES, WORLDWIDE } from "../../../server/src/plan/country.ts";
 import type { PlannedSite } from "./sites.ts";
 import { MAX_SITES } from "./sites.ts";
 import type { PlanView } from "./types.ts";
@@ -30,6 +31,21 @@ export function browserPlace(): { timeZone: string; languages: string[] } {
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     languages: [...navigator.languages],
   };
+}
+
+export interface CountryChoice {
+  code: string;
+  name: string;
+}
+
+/** What a report offers for running an audit again from somewhere else. */
+export function countryChoices(): CountryChoice[] {
+  const names = new Intl.DisplayNames(["en"], { type: "region" });
+  const countries = COVERED_COUNTRIES.map((code) => ({ code, name: names.of(code) ?? code }));
+  return [
+    ...countries.toSorted((a, b) => a.name.localeCompare(b.name)),
+    { code: WORLDWIDE, name: "Worldwide" },
+  ];
 }
 
 export interface SiteEdits {

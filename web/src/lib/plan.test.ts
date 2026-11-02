@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { pickedSites, planNote } from "./plan.ts";
+import { countryChoices, pickedSites, planNote } from "./plan.ts";
 import type { PlanView } from "./types.ts";
 
 const ixigo = { name: "ixigo", url: "https://www.ixigo.com/", host: "ixigo.com" };
@@ -20,6 +20,15 @@ function plan(overrides: Partial<PlanView> = {}): PlanView {
     ...overrides,
   };
 }
+
+describe("countryChoices", () => {
+  it("lists each country by name in order, then worldwide", () => {
+    const choices = countryChoices();
+
+    expect(choices[0]).toEqual({ code: "AU", name: "Australia" });
+    expect(choices.at(-1)).toEqual({ code: "ZZ", name: "Worldwide" });
+  });
+});
 
 describe("pickedSites", () => {
   const none = { removed: [], added: [], signIns: {} };

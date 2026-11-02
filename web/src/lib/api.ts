@@ -65,6 +65,8 @@ export function getSharedAudit(token: string): Promise<AuditPublic> {
 export interface NewAudit {
   task: string;
   flow?: "checkout" | "subscription";
+  /** Left out, the server works it out from the visitor. */
+  country?: string;
   /** Left out, the server picks the sites itself. */
   sites?: { url: string; signInId?: string }[];
 }
