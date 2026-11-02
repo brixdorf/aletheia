@@ -3,11 +3,6 @@ import type { CountrySites } from "../types.ts";
 export const GB_SITES: CountrySites = {
   location: `"Westminster, London" (postcode SW1A 1AA)`,
   categories: {
-    groceries: [
-      { name: "Tesco", url: "https://www.tesco.com/groceries/" },
-      { name: "Sainsbury's", url: "https://www.sainsburys.co.uk/" },
-      { name: "Ocado", url: "https://www.ocado.com/" },
-    ],
     food_delivery: [
       { name: "Deliveroo", url: "https://deliveroo.co.uk/" },
       { name: "Uber Eats", url: "https://www.ubereats.com/gb" },
@@ -45,7 +40,7 @@ export const GB_SITES: CountrySites = {
     ],
   },
   brands: [
-    { name: "Tesco", url: "https://www.tesco.com/groceries/", aliases: ["tesco"] },
+    { name: "Tesco", url: "https://www.tesco.com/", aliases: ["tesco"] },
     { name: "Sainsbury's", url: "https://www.sainsburys.co.uk/", aliases: ["sainsbury's"] },
     { name: "Ocado", url: "https://www.ocado.com/", aliases: ["ocado"] },
     { name: "Deliveroo", url: "https://deliveroo.co.uk/", aliases: ["deliveroo"] },

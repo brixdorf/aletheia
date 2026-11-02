@@ -4,8 +4,6 @@ import { inferCategory } from "./category.ts";
 
 describe("inferCategory", () => {
   it.each([
-    ["buy a 500 ml pack of toned milk", "groceries"],
-    ["a dozen eggs and some bread", "groceries"],
     ["order a chicken biryani for dinner", "food_delivery"],
     ["get a large pizza delivered", "food_delivery"],
     ["buy boAt Bassheads 300C earphones", "electronics"],

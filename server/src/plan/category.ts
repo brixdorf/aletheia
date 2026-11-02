@@ -1,7 +1,6 @@
 import type { Category } from "./types.ts";
 
 export const CATEGORIES = [
-  "groceries",
   "food_delivery",
   "electronics",
   "fashion",
@@ -30,10 +29,6 @@ const CATEGORY_WORDS: readonly (readonly [Category, RegExp])[] = [
     /\b(pizzas?|burgers?|biryani|sushi|takeaway|takeout|meals?|lunch|dinner|restaurant|food delivery|order food|noodles|momos|thali|dosa)\b/i,
   ],
   [
-    "groceries",
-    /\b(milk|bread|eggs?|rice|atta|flour|sugar|salt|butter|paneer|curd|yogurt|yoghurt|cheese|vegetables?|veggies|fruits?|onions?|potato(es)?|tomato(es)?|bananas?|apples?|cooking oil|ghee|dal|tea|coffee|snacks|biscuits|groceries|grocery|detergent|shampoo|toothpaste)\b/i,
-  ],
-  [
     "electronics",
     /\b(earphones?|earbuds?|headphones?|headsets?|i?phones?|smartphones?|laptops?|macbook|tablets?|ipad|chargers?|charging cable|cables?|power ?banks?|speakers?|cameras?|monitors?|keyboards?|mouse|ssd|routers?|smartwatch(es)?|printers?|tvs?|television|fridge|refrigerator|washing machine)\b/i,
   ],
@@ -48,7 +43,6 @@ export function inferCategory(task: string): Category | null {
 }
 
 const CATEGORY_LABELS: Record<Category, string> = {
-  groceries: "groceries and quick commerce",
   food_delivery: "food delivery",
   electronics: "electronics",
   fashion: "fashion",

@@ -7,8 +7,8 @@ const names = (task: string) => namedBrands(task, IN_SITES.brands).map(({ name }
 
 describe("namedBrands", () => {
   it("finds a brand in any case", () => {
-    expect(names("buy milk on blinkit")).toEqual(["Blinkit"]);
-    expect(names("Buy milk on BLINKIT")).toEqual(["Blinkit"]);
+    expect(names("buy a laptop on blinkit")).toEqual(["Blinkit"]);
+    expect(names("Buy a laptop on BLINKIT")).toEqual(["Blinkit"]);
   });
 
   it("finds a brand from its product", () => {
@@ -27,11 +27,11 @@ describe("namedBrands", () => {
 
   it("prefers the longer name", () => {
     expect(names("Amazon Prime membership")).toEqual(["Amazon Prime"]);
-    expect(names("Swiggy Instamart milk")).toEqual(["Swiggy Instamart"]);
+    expect(names("Swiggy Instamart order")).toEqual(["Swiggy Instamart"]);
   });
 
   it("lists a brand once however many times it is named", () => {
-    expect(names("blinkit milk, blinkit bread")).toEqual(["Blinkit"]);
+    expect(names("blinkit gift, blinkit card")).toEqual(["Blinkit"]);
   });
 
   it("does not match inside a longer word", () => {
@@ -50,7 +50,7 @@ describe("domainsIn", () => {
   });
 
   it("does not read decimals or sizes as addresses", () => {
-    expect(domainsIn("buy 1.5 l of milk, e.g. toned")).toEqual([]);
+    expect(domainsIn("buy a 1.5 m cable, e.g. braided")).toEqual([]);
   });
 });
 
@@ -66,7 +66,7 @@ describe("unknownSiteIn", () => {
   });
 
   it("leaves out ordinary phrases", () => {
-    expect(unknownSiteIn("buy milk on sale")).toBeNull();
+    expect(unknownSiteIn("buy a laptop on sale")).toBeNull();
     expect(unknownSiteIn("buy a shirt on monday")).toBeNull();
     expect(unknownSiteIn("buy a phone on EMI")).toBeNull();
     expect(unknownSiteIn("buy earphones")).toBeNull();

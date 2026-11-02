@@ -127,7 +127,7 @@ describe("api", () => {
   }
 
   const alice = () => visitor("00000000-0000-4000-8000-00000000000a");
-  const task = { task: "buy one packet of milk", sites: [{ url: "https://shop.test/" }] };
+  const task = { task: "buy one pair of headphones", sites: [{ url: "https://shop.test/" }] };
 
   function post(body: unknown): RequestInit {
     return { method: "POST", body: JSON.stringify(body) };
@@ -207,7 +207,7 @@ describe("api", () => {
       const response = await as(
         "/audits",
         post({
-          task: "buy milk",
+          task: "buy a laptop",
           flow: "checkout",
           sites: [{ url: "https://a.test/" }, { url: "https://b.test/" }],
         }),
@@ -275,12 +275,12 @@ describe("api", () => {
 
   it.each([
     ["no task", { sites: [{ url: "https://shop.test/" }] }],
-    ["no sites", { task: "buy milk", sites: [] }],
-    ["too many sites", { task: "buy milk", sites: Array(5).fill({ url: "https://a.test/" }) }],
-    ["a non-web url", { task: "buy milk", sites: [{ url: "file:///etc/passwd" }] }],
-    ["a local url", { task: "buy milk", sites: [{ url: "http://localhost:3000/" }] }],
-    ["a private address", { task: "buy milk", sites: [{ url: "http://192.168.1.1/" }] }],
-    ["an unknown flow", { task: "buy milk", flow: "x", sites: [{ url: "https://a.test/" }] }],
+    ["no sites", { task: "buy a laptop", sites: [] }],
+    ["too many sites", { task: "buy a laptop", sites: Array(5).fill({ url: "https://a.test/" }) }],
+    ["a non-web url", { task: "buy a laptop", sites: [{ url: "file:///etc/passwd" }] }],
+    ["a local url", { task: "buy a laptop", sites: [{ url: "http://localhost:3000/" }] }],
+    ["a private address", { task: "buy a laptop", sites: [{ url: "http://192.168.1.1/" }] }],
+    ["an unknown flow", { task: "buy a laptop", flow: "x", sites: [{ url: "https://a.test/" }] }],
   ])("rejects %s", async (_name, body) => {
     expect((await alice()("/audits", post(body))).status).toBe(400);
   });
@@ -331,7 +331,7 @@ describe("api", () => {
     const response = await as(
       "/audits",
       post({
-        task: "buy milk",
+        task: "buy a laptop",
         sites: [{ url: "https://a.test/" }, { url: "https://b.test/" }],
       }),
     );
@@ -418,7 +418,6 @@ describe("api", () => {
       flow: string;
       country: string | null;
       sites: { host: string }[];
-      countries: { code: string; name: string }[];
     }
 
     async function planFor(body: unknown, headers: Record<string, string> = {}) {
@@ -432,18 +431,20 @@ describe("api", () => {
     }
 
     it("picks the sites and the flow for a task, from Cloudflare's country", async () => {
-      const plan = await planFor({ task: "buy toned milk" }, { "CF-IPCountry": "IN" });
+      const plan = await planFor({ task: "buy two movie tickets" }, { "CF-IPCountry": "IN" });
       expect(plan.flow).toBe("checkout");
       expect(plan.country).toBe("IN");
-      expect(plan.sites[0]?.host).toBe("blinkit.com");
-      expect(plan.countries).toContainEqual({ code: "IN", name: "India" });
+      expect(plan.sites[0]?.host).toBe("district.in");
     });
 
     it("lets the visitor's choice and the browser stand in for the header", async () => {
-      const chosen = await planFor({ task: "buy milk", country: "GB" }, { "CF-IPCountry": "IN" });
+      const chosen = await planFor(
+        { task: "buy a laptop", country: "GB" },
+        { "CF-IPCountry": "IN" },
+      );
       expect(chosen.country).toBe("GB");
 
-      const browser = await planFor({ task: "buy milk", timeZone: "America/Chicago" });
+      const browser = await planFor({ task: "buy a laptop", timeZone: "America/Chicago" });
       expect(browser.country).toBe("US");
     });
 
@@ -454,13 +455,13 @@ describe("api", () => {
     });
 
     it("refuses a malformed country", async () => {
-      const response = await alice()("/plan", post({ task: "buy milk", country: "india" }));
+      const response = await alice()("/plan", post({ task: "buy a laptop", country: "india" }));
       expect(response.status).toBe(400);
     });
 
     it("picks the sites itself when an audit names none", async () => {
       const as = alice();
-      const request = post({ task: "buy toned milk" });
+      const request = post({ task: "buy two movie tickets" });
       const response = await as("/audits", {
         ...request,
         headers: { ...(request.headers as Record<string, string>), "CF-IPCountry": "IN" },
@@ -470,13 +471,15 @@ describe("api", () => {
       const audit = (await response.json()) as {
         id: string;
         country: string;
+        countryName: string;
         flow: string;
         sites: { host: string }[];
       };
       await finished(as, audit.id);
       expect(audit.country).toBe("IN");
+      expect(audit.countryName).toBe("India");
       expect(audit.flow).toBe("checkout");
-      expect(audit.sites.map(({ host }) => host)).toEqual(["blinkit.com", "zepto.com"]);
+      expect(audit.sites.map(({ host }) => host)).toEqual(["district.in", "in.bookmyshow.com"]);
     });
 
     it("works out the flow for sites the visitor chose", async () => {
@@ -562,12 +565,12 @@ describe("api", () => {
 
       const early = await as(
         "/audits",
-        post({ task: "buy milk", sites: [{ url: "https://shop.test/", signInId }] }),
+        post({ task: "buy a laptop", sites: [{ url: "https://shop.test/", signInId }] }),
       );
       await as(`/signin/${signInId}/done`, { method: "POST" });
       const elsewhere = await as(
         "/audits",
-        post({ task: "buy milk", sites: [{ url: "https://other.test/", signInId }] }),
+        post({ task: "buy a laptop", sites: [{ url: "https://other.test/", signInId }] }),
       );
 
       expect(early.status).toBe(409);

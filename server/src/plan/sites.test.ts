@@ -32,7 +32,6 @@ describe.each(FILES)("the %s data file", (_name, sites) => {
 
 describe("the India data file", () => {
   it("leads each tested category with the sites that worked in testing", () => {
-    expect(IN_SITES.categories.groceries[0]?.name).toBe("Blinkit");
     expect(IN_SITES.categories.electronics[0]?.name).toBe("Croma");
     expect(IN_SITES.categories.fashion[0]?.name).toBe("Myntra");
     expect(IN_SITES.categories.food_delivery[0]?.name).toBe("Zomato");

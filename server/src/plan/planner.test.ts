@@ -14,21 +14,45 @@ const hosts = async (result: ReturnType<typeof plan>) =>
   (await result).sites.map(({ host }) => host);
 
 describe("SitePlanner", () => {
-  it("picks quick commerce sites for milk in India", async () => {
-    const result = await plan("buy a 500 ml pack of toned milk");
+  it("picks ticket sites for a booking in India", async () => {
+    const result = await plan("buy two movie tickets for Saturday");
     expect(result.flow).toBe("checkout");
-    expect(result.category).toBe("groceries");
+    expect(result.category).toBe("movies_events");
     expect(result.source).toBe("category");
-    expect(result.sites.map(({ host }) => host)).toEqual(["blinkit.com", "zepto.com"]);
+    expect(result.sites.map(({ host }) => host)).toEqual(["district.in", "in.bookmyshow.com"]);
+  });
+
+  it.each([
+    [
+      "Sign up for Adobe Creative Cloud and read the cancellation terms",
+      "subscription",
+      "adobe.com",
+    ],
+    ["Book a hotel room in Goa on MakeMyTrip and stop at payment", "checkout", "makemytrip.com"],
+    ["Start a Spotify Premium trial", "subscription", "spotify.com"],
+    ["Buy two movie tickets on BookMyShow", "checkout", "in.bookmyshow.com"],
+    ["Choose a broadband plan on Airtel", "subscription", "airtel.in"],
+  ])("plans the home page example %s", async (task, flow, host) => {
+    const result = await plan(task);
+    expect(result).toMatchObject({ flow, source: "named" });
+    expect(result.sites.map((site) => site.host)).toEqual([host]);
+  });
+
+  it("keeps no shelf of everyday shops, so a task nothing places goes to a search", async () => {
+    const search = vi.fn(() => Promise.resolve([hit("https://www.example-shop.in/toned")]));
+    const result = await plan("a pack of ghee", "IN", search);
+    expect(search).toHaveBeenCalled();
+    expect(result.category).toBeNull();
+    expect(result.source).toBe("search");
   });
 
   it("still audits BigBasket when the task names it", async () => {
-    expect(await hosts(plan("buy milk on BigBasket"))).toEqual(["bigbasket.com"]);
+    expect(await hosts(plan("buy a laptop on BigBasket"))).toEqual(["bigbasket.com"]);
   });
 
   it("picks each country's own sites for the same task", async () => {
-    expect(await hosts(plan("buy milk", "US"))).toContain("instacart.com");
-    expect(await hosts(plan("buy milk", "GB"))).toContain("tesco.com");
+    expect(await hosts(plan("buy a laptop", "US"))).toContain("bestbuy.com");
+    expect(await hosts(plan("buy a laptop", "GB"))).toContain("currys.co.uk");
   });
 
   it("uses the brand named in the task, and its site for that country", async () => {
@@ -49,12 +73,12 @@ describe("SitePlanner", () => {
   });
 
   it("keeps a checkout when a shop that also sells plans is named", async () => {
-    expect((await plan("buy milk on blinkit")).flow).toBe("checkout");
+    expect((await plan("buy a laptop on blinkit")).flow).toBe("checkout");
     expect((await plan("buy a lamp on Amazon")).flow).toBe("checkout");
   });
 
   it("caps a task naming too many sites at four", async () => {
-    const task = "milk on Blinkit, Zepto, BigBasket, Flipkart and Amazon";
+    const task = "a gift on Blinkit, Zepto, BigBasket, Flipkart and Amazon";
     expect((await plan(task)).sites).toHaveLength(4);
   });
 
@@ -144,9 +168,12 @@ describe("SitePlanner", () => {
   });
 
   it("says where the country's name and browser stand", async () => {
-    expect(await plan("buy milk", "IN")).toMatchObject({ countryName: "India", proxied: true });
-    expect(await plan("buy milk", "BR")).toMatchObject({ countryName: "Brazil", proxied: false });
-    expect(await plan("buy milk", null)).toMatchObject({
+    expect(await plan("buy a laptop", "IN")).toMatchObject({ countryName: "India", proxied: true });
+    expect(await plan("buy a laptop", "BR")).toMatchObject({
+      countryName: "Brazil",
+      proxied: false,
+    });
+    expect(await plan("buy a laptop", null)).toMatchObject({
       country: null,
       countryName: "Worldwide",
       proxied: false,

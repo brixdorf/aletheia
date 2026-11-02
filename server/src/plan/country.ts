@@ -10,27 +10,6 @@ const PROXY_COUNTRIES: ReadonlySet<string> = new Set([
   "AU",
 ]);
 
-const LISTED_COUNTRIES = [
-  "IN",
-  "US",
-  "GB",
-  "CA",
-  "AU",
-  "DE",
-  "FR",
-  "JP",
-  "SG",
-  "AE",
-  "IE",
-  "NL",
-  "ES",
-  "IT",
-  "BR",
-  "MX",
-  "ZA",
-  "NZ",
-];
-
 export const WORLDWIDE = "ZZ";
 const WORLDWIDE_NAME = "Worldwide";
 
@@ -104,18 +83,4 @@ export function proxyCountry(country: string | null): string | null {
 
 export function countryName(country: string | null): string {
   return country === null ? WORLDWIDE_NAME : (NAMES.of(country) ?? country);
-}
-
-export interface CountryChoice {
-  code: string;
-  name: string;
-}
-
-export function countryChoices(detected: string | null): CountryChoice[] {
-  const codes = new Set(LISTED_COUNTRIES);
-  if (detected) codes.add(detected);
-  return [
-    ...[...codes].map((code) => ({ code, name: countryName(code) })),
-    { code: WORLDWIDE, name: WORLDWIDE_NAME },
-  ];
 }

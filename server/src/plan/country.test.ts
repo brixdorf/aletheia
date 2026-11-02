@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { countryChoices, countryName, proxyCountry, resolveCountry } from "./country.ts";
+import { countryName, proxyCountry, resolveCountry } from "./country.ts";
 
 describe("resolveCountry", () => {
   it("takes the visitor's own choice over everything else", () => {
@@ -53,14 +53,5 @@ describe("countryName", () => {
     expect(countryName("IN")).toBe("India");
     expect(countryName("GB")).toBe("United Kingdom");
     expect(countryName(null)).toBe("Worldwide");
-  });
-});
-
-describe("countryChoices", () => {
-  it("starts with India, ends with worldwide and keeps a detected country on the list", () => {
-    const choices = countryChoices("KE");
-    expect(choices[0]).toEqual({ code: "IN", name: "India" });
-    expect(choices.at(-1)).toEqual({ code: "ZZ", name: "Worldwide" });
-    expect(choices).toContainEqual({ code: "KE", name: "Kenya" });
   });
 });

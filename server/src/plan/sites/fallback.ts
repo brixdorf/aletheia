@@ -4,7 +4,6 @@ import type { CountrySites } from "../types.ts";
 export const FALLBACK_SITES: CountrySites = {
   location: null,
   categories: {
-    groceries: [{ name: "Amazon", url: "https://www.amazon.com/" }],
     food_delivery: [{ name: "Uber Eats", url: "https://www.ubereats.com/" }],
     electronics: [
       { name: "Amazon", url: "https://www.amazon.com/" },

@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import type { AuditService, NewAudit } from "../audit/service.ts";
 import { ApiError } from "../errors.ts";
-import { countryChoices, proxyCountry, resolveCountry } from "../plan/country.ts";
+import { proxyCountry, resolveCountry } from "../plan/country.ts";
 import type { SitePlanner } from "../plan/planner.ts";
 import type { RunQueue } from "../runner/queue.ts";
 import type { Frame } from "../signin/remoteScreen.ts";
@@ -192,8 +192,7 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
       throw new ApiError("rate_limited", "That is the limit for this hour.");
     }
     const country = countryOf(c, body);
-    const plan = await planner.plan(body.task, country);
-    return c.json({ ...plan, countries: countryChoices(country) });
+    return c.json(await planner.plan(body.task, country));
   });
 
   api.get("/audits", (c) => c.json({ audits: audits.list(c.get("visitorId")).map(summaryView) }));

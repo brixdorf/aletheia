@@ -4,10 +4,6 @@ import type { CountrySites } from "../types.ts";
 export const IN_SITES: CountrySites = {
   location: `"Koramangala, Bengaluru" (pincode 560034)`,
   categories: {
-    groceries: [
-      { name: "Blinkit", url: "https://blinkit.com/" },
-      { name: "Zepto", url: "https://www.zepto.com/" },
-    ],
     food_delivery: [
       { name: "Zomato", url: "https://www.zomato.com/" },
       { name: "Swiggy", url: "https://www.swiggy.com/" },
@@ -94,6 +90,12 @@ export const IN_SITES: CountrySites = {
       name: "Netflix",
       url: "https://www.netflix.com/in/",
       aliases: ["netflix"],
+      subscription: true,
+    },
+    {
+      name: "Airtel",
+      url: "https://www.airtel.in/",
+      aliases: ["airtel"],
       subscription: true,
     },
     {

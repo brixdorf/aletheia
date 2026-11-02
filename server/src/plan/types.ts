@@ -1,7 +1,6 @@
 import type { Flow } from "../judge/types.ts";
 
 export type Category =
-  | "groceries"
   | "food_delivery"
   | "electronics"
   | "fashion"

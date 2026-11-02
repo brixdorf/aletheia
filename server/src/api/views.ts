@@ -1,5 +1,6 @@
 import type { Audit, SiteRun } from "../audit/types.ts";
 import { compareReports } from "../judge/compare.ts";
+import { countryName } from "../plan/country.ts";
 import type { SiteReport } from "../judge/types.ts";
 
 function reportsOf(audit: Audit): SiteReport[] {
@@ -18,6 +19,8 @@ function publicSite({ signInId, ...site }: SiteRun) {
 export function ownerView({ visitorId: _visitorId, ...audit }: Audit) {
   return {
     ...audit,
+    /** Worldwide audits, and audits saved before countries were inferred, have none to state. */
+    countryName: audit.country ? countryName(audit.country) : null,
     sites: audit.sites.map(publicSite),
     comparison: comparisonOf({ visitorId: "", ...audit }),
   };

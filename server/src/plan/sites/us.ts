@@ -3,11 +3,6 @@ import type { CountrySites } from "../types.ts";
 export const US_SITES: CountrySites = {
   location: `"New York, NY" (ZIP code 10001)`,
   categories: {
-    groceries: [
-      { name: "Instacart", url: "https://www.instacart.com/" },
-      { name: "Walmart", url: "https://www.walmart.com/" },
-      { name: "Target", url: "https://www.target.com/" },
-    ],
     food_delivery: [
       { name: "DoorDash", url: "https://www.doordash.com/" },
       { name: "Uber Eats", url: "https://www.ubereats.com/" },
