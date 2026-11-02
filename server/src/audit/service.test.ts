@@ -273,9 +273,12 @@ describe("AuditService", () => {
       });
 
       const site = (await finished(audits, id)).sites[0];
+      const unblocked = await audit(playing([good]).client);
 
       expect(seen).toContain("The site blocked the first try, so this is a fresh run.");
-      expect(site?.steps).toHaveLength(good.steps.length);
+      expect(site?.steps.map((step) => step.text)).toEqual(
+        unblocked?.steps.map((step) => step.text),
+      );
     });
 
     it("does not retry again when a restart lands on the retry", async () => {
