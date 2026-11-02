@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 
 import { ApiError } from "../errors.ts";
 import { judgeRun } from "../judge/judge.ts";
-import type { Flow } from "../judge/types.ts";
+import type { Flow, SafetyFlag, SiteReport } from "../judge/types.ts";
 import { countryName, proxyCountry } from "../plan/country.ts";
 import type { DriveClient, DriveOutcome } from "../runner/drive.ts";
 import { driveRun, RunStartError } from "../runner/drive.ts";
@@ -54,6 +54,19 @@ export interface NewAudit {
 }
 
 type Listener = (audit: Audit) => void;
+
+const RETRY_STEP = "The site blocked the first try, so this is a fresh run.";
+
+function retryFlag({ stop }: SiteReport): SafetyFlag {
+  return {
+    kind: "retried_after_block",
+    detail:
+      stop.at === "blocked"
+        ? "The site blocked the first run, and the one fresh retry did not get through."
+        : "The site blocked the first run, so Aletheia retried once with a fresh run. This report comes from the second run.",
+    stepId: null,
+  };
+}
 
 function missing(): ApiError {
   return new ApiError("not_found", "No audit with that id.");
@@ -257,6 +270,37 @@ export class AuditService {
     site.startedAt ??= this.#now().toISOString();
     this.#publish(audit);
 
+    await this.#walk(audit, site, signal);
+    await this.#retryIfBlocked(audit, site, signal);
+    if (site.retried && site.report) site.report.flags.push(retryFlag(site.report));
+  }
+
+  /** The retry keeps the queue slot it already holds, and a visitor pays for it once. */
+  async #retryIfBlocked(audit: Audit, site: SiteRun, signal: AbortSignal): Promise<void> {
+    const blocked = site.report;
+    if (blocked?.stop.at !== "blocked" || site.retried || signal.aborted) return;
+
+    site.retried = true;
+    site.report = null;
+    site.runId = null;
+    site.streamingUrl = null;
+    site.steps = [{ text: RETRY_STEP, at: this.#now().toISOString() }];
+    site.state = "running";
+    this.#publish(audit);
+    await this.#save(audit);
+
+    await this.#walk(audit, site, signal).catch((error: unknown) => {
+      if (signal.aborted) throw error;
+    });
+    site.steps = site.steps.filter(({ text }) => text !== RETRY_STEP);
+    if (!site.report && !signal.aborted) {
+      site.report = blocked;
+      site.state = "done";
+      site.error = null;
+    }
+  }
+
+  async #walk(audit: Audit, site: SiteRun, signal: AbortSignal): Promise<void> {
     const signedIn = site.signInId !== null;
     const budget = budgetSeconds({ task: audit.task, signedIn });
     const profileId = this.#profiles.get(site.id);
@@ -283,7 +327,7 @@ export class AuditService {
         onRunId: (runId) => {
           site.runId = runId;
           this.#publish(audit);
-          this.#save(audit);
+          void this.#save(audit);
         },
         onLive: (streamingUrl) => {
           if (site.streamingUrl === streamingUrl) return;
@@ -378,7 +422,7 @@ export class AuditService {
     for (const listener of this.#listeners.get(audit.id) ?? []) listener(audit);
   }
 
-  #save(audit: Audit): void {
-    if (this.#deps.store.get(audit.id)) this.#deps.store.save(audit).catch(() => undefined);
+  async #save(audit: Audit): Promise<void> {
+    if (this.#deps.store.get(audit.id)) await this.#deps.store.save(audit).catch(() => undefined);
   }
 }

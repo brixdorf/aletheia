@@ -141,7 +141,11 @@ export interface SubscriptionSummary {
   noCommitmentPrice: number | null;
 }
 
-export type FlagKind = "contact_entered" | "payment_click" | "browser_changed";
+export type FlagKind =
+  | "contact_entered"
+  | "payment_click"
+  | "browser_changed"
+  | "retried_after_block";
 
 export interface SafetyFlag {
   kind: FlagKind;

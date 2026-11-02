@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { RunStartError } from "../runner/drive.ts";
 import { RunQueue } from "../runner/queue.ts";
 import { AuditStore } from "../store/auditStore.ts";
 import { DomainMemory } from "../store/domainMemory.ts";
@@ -168,6 +169,156 @@ describe("AuditService", () => {
 
     expect(trap?.status).toBe("found");
     expect(trap?.quoteCheck).toBe("unavailable");
+  });
+
+  describe("a site that blocks the agent", () => {
+    const blocked = (runId: string): RunRecord => ({ ...loadRun("ajio"), run_id: runId });
+
+    /** Plays one saved run per start, the way TinyFish hands out a fresh run each time. */
+    function playing(runs: RunRecord[], overrides: Partial<AuditClient> = {}) {
+      const starts: string[] = [];
+      const client = clientFor(loadRun("blinkit-2"), {
+        streamRun: async function* (): AsyncGenerator<RunEvent> {
+          const run = runs[starts.length];
+          if (!run) throw new RunStartError("No more saved runs");
+          starts.push(run.run_id);
+          yield { type: "started", runId: run.run_id };
+          yield { type: "progress", runId: run.run_id, text: "Open the site", at: "t1" };
+          yield { type: "complete", runId: run.run_id, status: run.status };
+        },
+        getRun: (runId) => {
+          const run = runs.find((entry) => entry.run_id === runId);
+          return run ? Promise.resolve(run) : Promise.reject(new Error("No such run"));
+        },
+        ...overrides,
+      });
+      return { client, starts };
+    }
+
+    async function audit(client: AuditClient) {
+      const audits = service(client);
+      const { id } = await audits.create({
+        visitorId: "visitor",
+        task: "buy one packet of milk",
+        sites: [{ url: SITE }],
+      });
+      return (await finished(audits, id)).sites[0];
+    }
+
+    it("retries once with a fresh run, and reports the run that got through", async () => {
+      const good = loadRun("blinkit-2");
+      const { client, starts } = playing([blocked("run-blocked"), good]);
+
+      const site = await audit(client);
+
+      expect(starts).toEqual(["run-blocked", good.run_id]);
+      expect(site?.state).toBe("done");
+      expect(site?.runId).toBe(good.run_id);
+      expect(site?.report?.stop.at).not.toBe("blocked");
+      expect(site?.report?.bill.total).toBe(81);
+      expect(site?.report?.flags).toContainEqual({
+        kind: "retried_after_block",
+        detail:
+          "The site blocked the first run, so Aletheia retried once with a fresh run. This report comes from the second run.",
+        stepId: null,
+      });
+    });
+
+    it("stops after one retry and says both runs were turned away", async () => {
+      const { client, starts } = playing([blocked("run-1"), blocked("run-2"), blocked("run-3")]);
+
+      const site = await audit(client);
+
+      expect(starts).toEqual(["run-1", "run-2"]);
+      expect(site?.runId).toBe("run-2");
+      expect(site?.report?.stop.at).toBe("blocked");
+      expect(site?.report?.flags.map((flag) => flag.detail)).toContain(
+        "The site blocked the first run, and the one fresh retry did not get through.",
+      );
+    });
+
+    it("keeps the blocked report when the retry cannot start", async () => {
+      const { client, starts } = playing([blocked("run-1")]);
+
+      const site = await audit(client);
+
+      expect(starts).toEqual(["run-1"]);
+      expect(site?.state).toBe("done");
+      expect(site?.error).toBeNull();
+      expect(site?.report?.stop.at).toBe("blocked");
+    });
+
+    it("does not retry a site that was not blocked", async () => {
+      const good = loadRun("croma");
+      const { client, starts } = playing([good, blocked("run-2")]);
+
+      const site = await audit(client);
+
+      expect(starts).toEqual([good.run_id]);
+      expect(site?.report?.flags.map((flag) => flag.kind)).not.toContain("retried_after_block");
+    });
+
+    it("says so on the live steps, and counts only the second run's steps at the end", async () => {
+      const good = loadRun("blinkit-2");
+      const { client } = playing([blocked("run-1"), good]);
+      const audits = service(client);
+      const { id } = await audits.create({
+        visitorId: "visitor",
+        task: "buy one packet of milk",
+        sites: [{ url: SITE }],
+      });
+      const seen: string[] = [];
+      audits.subscribe("visitor", id, (live) => {
+        seen.push(...(live.sites[0]?.steps.map((step) => step.text) ?? []));
+      });
+
+      const site = (await finished(audits, id)).sites[0];
+
+      expect(seen).toContain("The site blocked the first try, so this is a fresh run.");
+      expect(site?.steps).toHaveLength(good.steps.length);
+    });
+
+    it("does not retry again when a restart lands on the retry", async () => {
+      const { client, starts } = playing([blocked("run-2"), blocked("run-3")]);
+      const saved = await store.save({
+        id: "resumed",
+        visitorId: "visitor",
+        task: "buy one packet of milk",
+        flow: "checkout",
+        country: null,
+        createdAt: "2026-11-02T00:00:00.000Z",
+        status: "running",
+        shareToken: null,
+        sites: [
+          {
+            id: "site-1",
+            url: SITE,
+            host: "shop.test",
+            signInId: null,
+            state: "running",
+            queuePosition: null,
+            runId: "run-2",
+            retried: true,
+            streamingUrl: null,
+            steps: [],
+            startedAt: null,
+            finishedAt: null,
+            report: null,
+            error: null,
+            logout: null,
+          },
+        ],
+      });
+      expect(saved).toBeUndefined();
+
+      const audits = service(client);
+      await audits.resume();
+      const site = (await finished(audits, "resumed")).sites[0];
+
+      expect(starts).toEqual([]);
+      expect(site?.report?.stop.at).toBe("blocked");
+      expect(site?.report?.flags.map((flag) => flag.kind)).toContain("retried_after_block");
+    });
   });
 
   it("runs one agent per site, each told to stay on its site", async () => {

@@ -17,6 +17,8 @@ export interface SiteRun {
   state: SiteState;
   queuePosition: number | null;
   runId: string | null;
+  /** The site blocked a run and this one fresh run followed. Saved so a restart adds no third. */
+  retried?: boolean;
   streamingUrl: string | null;
   steps: SiteStep[];
   startedAt: string | null;
