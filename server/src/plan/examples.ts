@@ -31,7 +31,7 @@ const firstName = (sites: readonly Site[] | undefined) => sites?.[0]?.name ?? ""
 
 const KINDS: readonly ExampleKind[] = [
   { words: () => "Sign up for Spotify Premium", proven: true },
-  { words: () => "Sign up for Adobe Creative Cloud", proven: true },
+  { words: () => "Sign up for Adobe Creative Cloud", proven: false },
   {
     words: ({ market }) => `Order dinner on ${firstName(market.categories.food_delivery)}`,
     proven: true,
@@ -44,7 +44,7 @@ const KINDS: readonly ExampleKind[] = [
   { words: ({ away }) => `Book a hotel in ${away} for this weekend`, proven: false },
   {
     words: ({ market }) => `Buy a laptop on ${firstName(market.categories.electronics)}`,
-    proven: false,
+    proven: true,
   },
   {
     words: ({ market }) => `Choose a mobile plan on ${firstName(market.categories.telecom)}`,
@@ -64,7 +64,7 @@ function localExamples(country: string, city: string | null): string[] | null {
 
 const WORLDWIDE_EXAMPLES = [
   "Sign up for Spotify Premium",
-  "Sign up for Adobe Creative Cloud",
+  "Buy a laptop on Amazon",
   "Order dinner on Uber Eats",
 ] as const;
 

@@ -33,7 +33,7 @@ describe("examplesFor", () => {
   });
 
   it("shows only kinds that have run on the live site", () => {
-    expect(allOf("IN").join(" ")).not.toMatch(/flight|hotel|mobile plan|laptop|Netflix/);
+    expect(allOf("IN").join(" ")).not.toMatch(/flight|hotel|mobile plan|Adobe|Netflix/);
   });
 
   it("never offers groceries or jokes", () => {
