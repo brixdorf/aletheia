@@ -139,8 +139,7 @@ export function Home({ prefill }: HomeProps) {
         Find the dark patterns on <span className="accent">any</span> website.
       </h1>
       <p className="mt-4 max-w-[560px] text-base text-body sm:text-[17px]">
-        Say what you want to buy or sign up for. An agent walks the site like a customer, stops
-        before payment and reports every dark pattern it saw.
+        Say what you want to buy or sign up for, and Aletheia reports every dark pattern it sees.
       </p>
 
       <form
@@ -293,12 +292,6 @@ export function Home({ prefill }: HomeProps) {
           </p>
         ) : null}
       </form>
-
-      <p className="mt-8 max-w-[560px] text-[13px] text-mute">
-        Every audit runs as a guest and stops before payment. The agent is told never to pay or
-        enter contact details, and the report flags any step that looks like it did. Your audits
-        stay tied to this browser.
-      </p>
     </div>
   );
 }

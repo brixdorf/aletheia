@@ -119,11 +119,14 @@ export function App() {
         <Page />
       </main>
 
-      <footer className="mx-auto w-full max-w-[1180px] px-4 pb-8 text-[13px] text-mute sm:px-7">
-        <p>
-          Checks for drip pricing, urgency, shaming wording, subscription traps and many other dark
-          patterns. The agent stops before payment.
-        </p>
+      <footer className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-4 px-4 pb-6 text-[13px] text-mute sm:px-7">
+        <span className="inline-flex items-center gap-2">
+          <img src="/favicon.svg?v=3" alt="" width="18" height="18" />
+          Aletheia {new Date().getFullYear()}
+        </span>
+        <Link href="/audits" className="inline-flex min-h-11 items-center hover:text-ink">
+          Past audits
+        </Link>
       </footer>
     </div>
   );
