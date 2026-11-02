@@ -31,11 +31,11 @@ flowchart LR
 
 Each site gets its own agent, which walks the flow like a customer as a guest. You watch the steps and the browser live.
 
-![A live run, with the agent's browser beside its steps](docs/images/live-run.png)
+![A live run on Spotify, with the agent's browser beside its steps](docs/images/live-run.png)
 
 The agent proposes, and our rules decide. Numbers are checked by arithmetic: the lines on a bill must add up to its total. Wording such as false urgency needs the exact quote and a screenshot, and is shown as seen with proof, not as a verdict. A pattern on a page the run never reached is marked not checked, so a login wall never earns a clean report.
 
-![An Adobe report: the dark patterns found, each with its quote, step and screenshot](docs/images/report.png)
+![An Adobe report: a subscription trap seen with proof, with its quote, step and screenshot](docs/images/report.png)
 
 Past audits stay in your browser. Compare sites, share a read-only link, or delete any report.
 
