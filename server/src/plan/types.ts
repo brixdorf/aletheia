@@ -44,6 +44,8 @@ export interface Brand extends Site {
 export interface CountrySites {
   /** What the agent types when a site asks where to deliver and the visitor's city is unknown. */
   location: string;
+  /** Two big cities, for examples such as a flight between them. */
+  cities: readonly [string, string];
   categories: Record<NationalCategory, readonly Site[]> &
     Partial<Record<GlobalCategory, readonly Site[]>>;
   brands: readonly Brand[];

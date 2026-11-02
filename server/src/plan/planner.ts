@@ -3,7 +3,7 @@ import { domainsIn, namedBrands, unknownSiteIn } from "./brands.ts";
 import { inferCategory, isShopCategory, isSignUpCategory } from "./category.ts";
 import { countryName, proxyCountry } from "./country.ts";
 import { FALLBACK_SITES, REGIONAL_MARKETPLACES } from "./sites/fallback.ts";
-import { sitesFor } from "./sites/index.ts";
+import { brandsOf, sitesFor } from "./sites/index.ts";
 import type {
   AuditPlan,
   Brand,
@@ -120,10 +120,7 @@ export class SitePlanner {
       };
     }
 
-    const brands: readonly Brand[] = [
-      ...(sitesFor(country)?.brands ?? []),
-      ...FALLBACK_SITES.brands,
-    ];
+    const brands: readonly Brand[] = [...brandsOf(country), ...FALLBACK_SITES.brands];
     const named = namedBrands(words, brands);
     const category = inferCategory(words);
     const flow =
@@ -177,7 +174,7 @@ export class SitePlanner {
   }
 
   #localised(sites: readonly Site[], country: string | null): PlannedSite[] {
-    const brands = [...(sitesFor(country)?.brands ?? []), ...FALLBACK_SITES.brands];
+    const brands = [...brandsOf(country), ...FALLBACK_SITES.brands];
     return sites.map((site) => {
       const brand = brands.find(({ name }) => name === site.name);
       return planned(brand ? forCountry(brand, country) : site);

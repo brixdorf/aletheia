@@ -2,6 +2,7 @@ import type { CountrySites } from "../types.ts";
 
 export const US_SITES: CountrySites = {
   location: `"New York, NY" (ZIP code 10001)`,
+  cities: ["New York", "Los Angeles"],
   categories: {
     food_delivery: [
       { name: "DoorDash", url: "https://www.doordash.com/" },

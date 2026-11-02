@@ -26,6 +26,7 @@ const IKEA = site("IKEA", "https://www.ikea.com/");
 
 export const CN_SITES: CountrySites = {
   location: `"Shanghai"`,
+  cities: ["Shanghai", "Beijing"],
   categories: {
     food_delivery: [
       site("Meituan", "https://www.meituan.com/"),
@@ -66,6 +67,7 @@ export const CN_SITES: CountrySites = {
 
 export const KR_SITES: CountrySites = {
   location: `"Gangnam-gu, Seoul" (postal code 06236)`,
+  cities: ["Seoul", "Busan"],
   categories: {
     food_delivery: [
       site("Baemin", "https://www.baemin.com/"),
@@ -120,6 +122,7 @@ export const KR_SITES: CountrySites = {
 
 export const DE_SITES: CountrySites = {
   location: `"Berlin Mitte" (postcode 10115)`,
+  cities: ["Berlin", "Munich"],
   categories: {
     food_delivery: [
       site("Lieferando", "https://www.lieferando.de/"),
@@ -175,6 +178,7 @@ export const DE_SITES: CountrySites = {
 
 export const JP_SITES: CountrySites = {
   location: `"Shibuya, Tokyo" (postcode 150-0002)`,
+  cities: ["Tokyo", "Osaka"],
   categories: {
     food_delivery: [
       site("Demae-can", "https://demae-can.com/"),
@@ -221,6 +225,7 @@ export const JP_SITES: CountrySites = {
 
 export const FR_SITES: CountrySites = {
   location: `"Paris" (postcode 75001)`,
+  cities: ["Paris", "Nice"],
   categories: {
     food_delivery: [
       UBER_EATS,
@@ -283,6 +288,7 @@ export const FR_SITES: CountrySites = {
 
 export const ID_SITES: CountrySites = {
   location: `"Menteng, Jakarta Pusat" (postal code 10310)`,
+  cities: ["Jakarta", "Bali"],
   categories: {
     food_delivery: [
       site("GrabFood", "https://food.grab.com/id/"),
@@ -331,6 +337,7 @@ export const ID_SITES: CountrySites = {
 
 export const CA_SITES: CountrySites = {
   location: `"Toronto, ON" (postal code M5H 2N2)`,
+  cities: ["Toronto", "Vancouver"],
   categories: {
     food_delivery: [
       UBER_EATS,
@@ -384,6 +391,7 @@ export const CA_SITES: CountrySites = {
 
 export const AU_SITES: CountrySites = {
   location: `"Sydney NSW" (postcode 2000)`,
+  cities: ["Sydney", "Melbourne"],
   categories: {
     food_delivery: [
       UBER_EATS,
@@ -439,6 +447,7 @@ export const AU_SITES: CountrySites = {
 
 export const BR_SITES: CountrySites = {
   location: `"Bela Vista, Sao Paulo" (CEP 01310-100)`,
+  cities: ["Sao Paulo", "Rio de Janeiro"],
   categories: {
     food_delivery: [
       site("iFood", "https://www.ifood.com.br/"),
@@ -492,6 +501,7 @@ export const BR_SITES: CountrySites = {
 
 export const MX_SITES: CountrySites = {
   location: `"Cuauhtemoc, Ciudad de Mexico" (CP 06000)`,
+  cities: ["Mexico City", "Cancun"],
   categories: {
     food_delivery: [
       site("Rappi", "https://www.rappi.com.mx/"),
@@ -545,6 +555,7 @@ export const MX_SITES: CountrySites = {
 
 export const TH_SITES: CountrySites = {
   location: `"Pathum Wan, Bangkok" (postal code 10330)`,
+  cities: ["Bangkok", "Phuket"],
   categories: {
     food_delivery: [
       site("GrabFood", "https://food.grab.com/th/"),
@@ -586,6 +597,7 @@ export const TH_SITES: CountrySites = {
 
 export const VN_SITES: CountrySites = {
   location: `"Quan 1, Ho Chi Minh City"`,
+  cities: ["Ho Chi Minh City", "Hanoi"],
   categories: {
     food_delivery: [
       site("GrabFood", "https://food.grab.com/vn/"),
@@ -628,6 +640,7 @@ export const VN_SITES: CountrySites = {
 
 export const ES_SITES: CountrySites = {
   location: `"Madrid" (postcode 28013)`,
+  cities: ["Madrid", "Barcelona"],
   categories: {
     food_delivery: [
       site("Glovo", "https://glovoapp.com/es/"),
@@ -677,6 +690,7 @@ export const ES_SITES: CountrySites = {
 
 export const IT_SITES: CountrySites = {
   location: `"Milano" (postcode 20121)`,
+  cities: ["Milan", "Rome"],
   categories: {
     food_delivery: [
       site("Glovo", "https://glovoapp.com/it/"),
@@ -726,6 +740,7 @@ export const IT_SITES: CountrySites = {
 
 export const NL_SITES: CountrySites = {
   location: `"Amsterdam" (postcode 1012)`,
+  cities: ["Amsterdam", "Rotterdam"],
   categories: {
     food_delivery: [site("Thuisbezorgd", "https://www.thuisbezorgd.nl/"), UBER_EATS],
     electronics: [
@@ -770,6 +785,7 @@ export const NL_SITES: CountrySites = {
 
 export const TR_SITES: CountrySites = {
   location: `"Kadikoy, Istanbul" (postal code 34710)`,
+  cities: ["Istanbul", "Ankara"],
   categories: {
     food_delivery: [
       site("Yemeksepeti", "https://www.yemeksepeti.com/"),
@@ -817,6 +833,7 @@ export const TR_SITES: CountrySites = {
 
 export const SA_SITES: CountrySites = {
   location: `"Olaya, Riyadh" (postal code 12211)`,
+  cities: ["Riyadh", "Jeddah"],
   categories: {
     food_delivery: [
       site("HungerStation", "https://hungerstation.com/"),
@@ -862,6 +879,7 @@ export const SA_SITES: CountrySites = {
 
 export const AE_SITES: CountrySites = {
   location: `"Downtown Dubai"`,
+  cities: ["Dubai", "Abu Dhabi"],
   categories: {
     food_delivery: [
       site("Talabat", "https://www.talabat.com/"),
@@ -904,6 +922,7 @@ export const AE_SITES: CountrySites = {
 
 export const PH_SITES: CountrySites = {
   location: `"Makati, Metro Manila" (postal code 1200)`,
+  cities: ["Manila", "Cebu"],
   categories: {
     food_delivery: [
       site("GrabFood", "https://food.grab.com/ph/"),
@@ -940,6 +959,7 @@ export const PH_SITES: CountrySites = {
 
 export const MY_SITES: CountrySites = {
   location: `"Bukit Bintang, Kuala Lumpur" (postcode 50200)`,
+  cities: ["Kuala Lumpur", "Penang"],
   categories: {
     food_delivery: [
       site("GrabFood", "https://food.grab.com/my/"),
@@ -984,6 +1004,7 @@ export const MY_SITES: CountrySites = {
 
 export const SG_SITES: CountrySites = {
   location: `"Orchard Road, Singapore" (postal code 238801)`,
+  cities: ["Singapore", "Bangkok"],
   categories: {
     food_delivery: [
       site("GrabFood", "https://food.grab.com/sg/en/"),
@@ -1026,6 +1047,7 @@ export const SG_SITES: CountrySites = {
 
 export const PL_SITES: CountrySites = {
   location: `"Warszawa" (postcode 00-001)`,
+  cities: ["Warsaw", "Krakow"],
   categories: {
     food_delivery: [
       site("Pyszne.pl", "https://www.pyszne.pl/"),
