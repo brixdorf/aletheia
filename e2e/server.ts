@@ -17,7 +17,10 @@ import { loadRun } from "../server/src/testing/fixtures.ts";
 import type { RunEvent, RunRequest } from "../server/src/tinyfish/client.ts";
 
 /** The real app with TinyFish replaced by saved runs, so the test costs nothing and is repeatable. */
-const SAVED_RUNS: Record<string, string> = { "blinkit.com": "blinkit-2", "croma.com": "croma" };
+const SAVED_RUNS: Record<string, string> = {
+  "adobe.com": "adobe-subscription",
+  "linkedin.com": "linkedin-subscription",
+};
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
 const PORT = Number(process.env["E2E_PORT"] ?? 4173);
 
