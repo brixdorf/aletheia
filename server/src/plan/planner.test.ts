@@ -118,6 +118,18 @@ describe("SitePlanner", () => {
     expect(await hosts(plan("sony wh1000xm5", "US", sony))).toEqual(["electronics.sony.com"]);
   });
 
+  it("does not take a word for a brand because it is a subdomain", async () => {
+    const search = vi.fn(() => Promise.resolve([hit("https://music.amazon.in/")]));
+
+    expect(await hosts(plan("a music streaming plan", "IN", search))).toContain("spotify.com");
+  });
+
+  it("reads a brand under a two-part country ending", async () => {
+    const search = vi.fn(() => Promise.resolve([hit("https://www.kogan.com.au/tv")]));
+
+    expect(await hosts(plan("kogan tv", "AU", search))).toEqual(["kogan.com.au"]);
+  });
+
   it("does not take a place or a passing word for a brand", async () => {
     const search = vi.fn(() => Promise.resolve([hit("https://www.mumbaiairport.com/")]));
 

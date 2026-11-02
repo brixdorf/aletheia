@@ -37,10 +37,12 @@ const NOT_A_SHOP_HOST =
 const NOT_A_SHOP_PATH =
   /\/(blog|blogs|wiki|news|articles?|guides?|reviews?|magazine|insights)\b|\/(best|top)[-_]/i;
 const SHORT_TLD = /\.[a-z]{2}$/;
+/** The middle of an ending such as .co.uk or .com.br, which is not the site's name. */
+const COUNTRY_ENDINGS: ReadonlySet<string> = new Set(["co", "com", "org", "net", "ac", "gov"]);
 
 /** A task with none of these is a greeting or a test, not something to look for. */
 const NO_MEANING =
-  /^(hi|hello|hey|test|testing|help|ok|okay|yes|no|please|thanks|something|anything|stuff|things?|asdf\w*|qwerty\w*|idk|what|why|how|me|i|my|want|need|buy|order|get|book|a|an|the|some|cheap|best|good|new|online|deal|deals)$/i;
+  /^(hi|hello|hey|test|testing|help|ok|okay|yes|no|please|thanks|something|anything|stuff|things?|asdf\w*|qwerty\w*|idk|what|why|how|there|me|i|my|want|need|buy|order|get|book|a|an|the|some|cheap|best|good|new|online|deal|deals)$/i;
 
 const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, "").toLowerCase();
 
@@ -76,6 +78,14 @@ function shopsIn(hits: readonly SearchHit[], country: string | null): PlannedSit
   const national = (site: PlannedSite) =>
     code !== undefined && SHORT_TLD.test(site.host) && site.host.endsWith(`.${code}`) ? 0 : 1;
   return oneSitePerHost(shops).toSorted((a, b) => national(a) - national(b));
+}
+
+/** The name a site goes by: "sony" in electronics.sony.com, "amazon" in music.amazon.in. */
+function siteLabel(host: string): string {
+  const parts = host.split(".");
+  const secondLevel = parts.at(-2) ?? "";
+  const isCountryEnding = parts.length > 2 && COUNTRY_ENDINGS.has(secondLevel);
+  return (isCountryEnding ? parts.at(-3) : secondLevel) ?? "";
 }
 
 function isVague(task: string): boolean {
@@ -221,7 +231,7 @@ export class SitePlanner {
       country,
     );
     const [firstWord = name] = name.split(" ");
-    const owns = (host: string, label: string) => host.split(".").includes(label);
+    const owns = (host: string, label: string) => siteLabel(host) === label;
     const site = hits
       .slice(0, TOP_HITS)
       .find(({ host }) => owns(host, name.replaceAll(" ", "")) || owns(host, firstWord));
