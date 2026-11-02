@@ -24,8 +24,6 @@
   --sky-ink: #1a67c4;
   --rose: #ffedef;
   --rose-ink: #be123c;
-  --found: #e4572e;
-  --dash: #b4b9c1;
   --shadow-card: 0 1px 2px rgb(14 42 71 / 0.06), 0 12px 32px -8px rgb(14 42 71 / 0.14);
 }
 
@@ -77,24 +75,4 @@ body {
   border-radius: 22px;
   box-shadow: var(--shadow-card);
   display: block;
-}
-
-.strip {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.strip i {
-  background: var(--line);
-  border-radius: 5px;
-  display: block;
-}
-
-.strip i.found {
-  background: var(--found);
-}
-
-.strip i.unchecked {
-  background: none;
-  border: 1.5px dashed var(--dash);
 }
