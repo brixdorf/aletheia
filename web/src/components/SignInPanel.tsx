@@ -77,12 +77,14 @@ function CodeBoxes({ name, onText, onKey }: CodeBoxesProps) {
 interface SignInPanelProps {
   url: string;
   host: string;
+  /** Where the sign-in browser should appear to be. */
+  country: string | null;
   onReady: (signIn: SignInView) => void;
   /** The panel closed with no sign-in left behind. */
   onClosed: () => void;
 }
 
-export function SignInPanel({ url, host, onReady, onClosed }: SignInPanelProps) {
+export function SignInPanel({ url, host, country, onReady, onClosed }: SignInPanelProps) {
   const image = useRef<HTMLImageElement>(null);
   const screen = useRef<HTMLDivElement>(null);
   const doneButton = useRef<HTMLButtonElement>(null);
@@ -101,7 +103,7 @@ export function SignInPanel({ url, host, onReady, onClosed }: SignInPanelProps) 
     if (opened.current) return;
     opened.current = true;
 
-    startSignIn(url).then(
+    startSignIn(url, country).then(
       (view) => {
         if (abandoned.current) {
           void signOut(view.id).catch(() => undefined);

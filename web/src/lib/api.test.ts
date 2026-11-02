@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { ApiFailure, deleteAudit, listAudits, screenshotUrl, startAudit } from "./api.ts";
+import {
+  ApiFailure,
+  deleteAudit,
+  listAudits,
+  planAudit,
+  screenshotUrl,
+  startAudit,
+} from "./api.ts";
 
 function reply(status: number, body?: unknown) {
   return new Response(body === undefined ? null : JSON.stringify(body), { status });
@@ -25,9 +32,25 @@ describe("api", () => {
     const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(path).toBe("/api/audits");
     expect(init.method).toBe("POST");
-    expect(JSON.parse(init.body as string)).toEqual({
+    expect(JSON.parse(init.body as string)).toMatchObject({
       task: "Buy milk",
       sites: [{ url: "https://a.test/" }],
+    });
+  });
+
+  it("sends where the browser is, for when no country header reaches the server", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reply(200, { sites: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await planAudit("Buy milk", "IN");
+
+    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(path).toBe("/api/plan");
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      task: "Buy milk",
+      country: "IN",
+      timeZone: expect.any(String) as string,
+      languages: expect.any(Array) as string[],
     });
   });
 

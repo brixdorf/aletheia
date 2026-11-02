@@ -1,4 +1,6 @@
 import type { ownerView, sharedView, summaryView } from "../../../server/src/api/views.ts";
+import type { CountryChoice } from "../../../server/src/plan/country.ts";
+import type { AuditPlan } from "../../../server/src/plan/types.ts";
 
 export type {
   Bill,
@@ -12,6 +14,9 @@ export type {
   SubscriptionSummary,
 } from "../../../server/src/judge/types.ts";
 
+export type { Flow } from "../../../server/src/judge/types.ts";
+
+export type PlanView = AuditPlan & { countries: CountryChoice[] };
 export type AuditView = ReturnType<typeof ownerView>;
 /** What every audit screen can draw, so a report opened from a shared link works the same way. */
 export type AuditPublic = ReturnType<typeof sharedView>;

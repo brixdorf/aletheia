@@ -1,5 +1,6 @@
 import type { RemoteInput } from "./remoteInput.ts";
-import type { AuditPublic, AuditSummary, AuditView, SignInView } from "./types.ts";
+import { browserPlace } from "./plan.ts";
+import type { AuditPublic, AuditSummary, AuditView, PlanView, SignInView } from "./types.ts";
 
 export class ApiFailure extends Error {
   readonly code: string;
@@ -64,11 +65,17 @@ export function getSharedAudit(token: string): Promise<AuditPublic> {
 export interface NewAudit {
   task: string;
   flow?: "checkout" | "subscription";
-  sites: { url: string; signInId?: string }[];
+  country?: string;
+  /** Left out, the server picks the sites itself. */
+  sites?: { url: string; signInId?: string }[];
 }
 
 export function startAudit(audit: NewAudit): Promise<AuditView> {
-  return post("/audits", audit);
+  return post("/audits", { ...audit, ...browserPlace() });
+}
+
+export function planAudit(task: string, country: string | null): Promise<PlanView> {
+  return post("/plan", { task, ...(country ? { country } : {}), ...browserPlace() });
 }
 
 export function deleteAudit(id: string): Promise<void> {
@@ -99,8 +106,8 @@ export async function loginHint(url: string): Promise<boolean> {
   return loginNeeded;
 }
 
-export function startSignIn(url: string): Promise<SignInView> {
-  return post("/signin", { url });
+export function startSignIn(url: string, country: string | null): Promise<SignInView> {
+  return post("/signin", { url, ...(country ? { country } : {}), ...browserPlace() });
 }
 
 export function finishSignIn(id: string): Promise<SignInView> {
