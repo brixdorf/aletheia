@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { RULES_VERSION } from "../judge/judge.ts";
 import { RunStartError } from "../runner/drive.ts";
 import { RunQueue } from "../runner/queue.ts";
 import { AuditStore } from "../store/auditStore.ts";
@@ -145,10 +146,10 @@ describe("AuditService", () => {
       sites: [{ url: SITE }],
     });
     const audit = await finished(audits, id);
-    const trap = audit.sites[0]?.report?.patterns.find((entry) => entry.id === "subscription_trap");
+    const fee = audit.sites[0]?.report?.patterns.find((entry) => entry.id === "cancellation_fee");
 
     expect(getStepHtml).toHaveBeenCalledOnce();
-    expect(trap?.quoteCheck).toBe("matched");
+    expect(fee?.status).toBe("found");
     expect(JSON.stringify(audit)).not.toContain("<p>");
   });
 
@@ -165,10 +166,77 @@ describe("AuditService", () => {
       sites: [{ url: SITE }],
     });
     const audit = await finished(audits, id);
-    const trap = audit.sites[0]?.report?.patterns.find((entry) => entry.id === "subscription_trap");
+    const fee = audit.sites[0]?.report?.patterns.find((entry) => entry.id === "cancellation_fee");
 
-    expect(trap?.status).toBe("found");
-    expect(trap?.quoteCheck).toBe("unavailable");
+    expect(audit.sites[0]?.state).toBe("done");
+    expect(fee?.status).toBe("not_checked");
+  });
+
+  describe("reports saved under older rules", () => {
+    const FEE = "half your remaining annual commitment";
+
+    let runGone = false;
+
+    async function saved() {
+      runGone = false;
+      const run = loadRun("adobe-subscription");
+      const terms = (run.result?.["terms"] ?? []) as { term: string; quote: string }[];
+      const fee = terms.find(({ term }) => term === "cancellation_fee");
+      run.steps[5] = { ...(run.steps[5] as RunRecord["steps"][number]), html: "url" };
+      const audits = service(
+        clientFor(run, {
+          getRun: () => (runGone ? Promise.reject(new Error("gone")) : Promise.resolve(run)),
+          getStepHtml: () => Promise.resolve(`<p>${fee?.quote}</p>`),
+        }),
+      );
+      const { id } = await audits.create({
+        visitorId: "visitor",
+        task: "subscribe to the plan",
+        sites: [{ url: SITE }],
+      });
+      const audit = await finished(audits, id);
+      const site = audit.sites[0];
+      if (!site?.report) throw new Error("no report");
+      site.report.rules = 1;
+      site.report.patterns = [];
+      await store.save(audit);
+      return { audits, id };
+    }
+
+    it("judges them again from the saved run", async () => {
+      const { audits, id } = await saved();
+
+      await audits.rejudgeSaved();
+      const report = audits.get("visitor", id).sites[0]?.report;
+
+      expect(report?.rules).toBe(RULES_VERSION);
+      expect(report?.patterns.find(({ id: name }) => name === "cancellation_fee")?.quote).toContain(
+        FEE,
+      );
+    });
+
+    it("leaves a report under the current rules alone", async () => {
+      const { audits, id } = await saved();
+      await audits.rejudgeSaved();
+      const first = audits.get("visitor", id).sites[0]?.report;
+
+      await audits.rejudgeSaved();
+
+      expect(audits.get("visitor", id).sites[0]?.report).toBe(first);
+    });
+
+    it("keeps the report but claims nothing when the run is gone", async () => {
+      const { audits, id } = await saved();
+      runGone = true;
+
+      await audits.rejudgeSaved();
+      const report = audits.get("visitor", id).sites[0]?.report;
+
+      expect(report?.rules).toBe(RULES_VERSION);
+      expect(report?.pages.length).toBeGreaterThan(0);
+      expect(report?.patterns.length).toBeGreaterThan(0);
+      expect(report?.patterns.every(({ status }) => status === "not_checked")).toBe(true);
+    });
   });
 
   describe("a site that blocks the agent", () => {

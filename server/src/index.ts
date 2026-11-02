@@ -39,6 +39,7 @@ async function startApi(apiKey: string, { dataDir }: Config) {
 
   // Audits first: a signed-in check cut off by the restart has to end before its profile goes.
   await audits.resume();
+  void audits.rejudgeSaved();
   await signIns.recover();
   setInterval(() => void signIns.sweep().catch(() => undefined), SWEEP_INTERVAL_MS).unref();
 

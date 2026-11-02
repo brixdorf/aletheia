@@ -1,3 +1,4 @@
+import type { PageCapture } from "../judge/pageText.ts";
 import { htmlToText } from "../judge/pageText.ts";
 import type { RunRecord } from "../tinyfish/types.ts";
 
@@ -14,17 +15,22 @@ interface HtmlClient {
 export async function collectPageText(
   client: HtmlClient,
   { run_id: runId, steps }: RunRecord,
-): Promise<string | null> {
+): Promise<PageCapture[]> {
   const captured = steps.filter((step) => step.html);
-  const texts: string[] = [];
+  const pages: PageCapture[] = [];
 
   for (let start = 0; start < captured.length; start += CONCURRENT_FETCHES) {
     const batch = captured.slice(start, start + CONCURRENT_FETCHES);
-    const pages = await Promise.allSettled(batch.map((step) => client.getStepHtml(runId, step.id)));
-    for (const page of pages) {
-      if (page.status === "fulfilled") texts.push(htmlToText(page.value));
-    }
+    const results = await Promise.allSettled(
+      batch.map((step) => client.getStepHtml(runId, step.id)),
+    );
+    results.forEach((result, index) => {
+      const stepId = batch[index]?.id;
+      if (stepId && result.status === "fulfilled") {
+        pages.push({ stepId, text: htmlToText(result.value) });
+      }
+    });
   }
 
-  return texts.length > 0 ? texts.join("\n") : null;
+  return pages;
 }

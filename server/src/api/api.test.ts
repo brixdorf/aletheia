@@ -10,7 +10,7 @@ import { SignInService } from "../signin/service.ts";
 import { AuditStore } from "../store/auditStore.ts";
 import { DomainMemory } from "../store/domainMemory.ts";
 import { SitePlanner } from "../plan/planner.ts";
-import { loadRun } from "../testing/fixtures.ts";
+import { loadRun, pageOf, withSavedPages } from "../testing/fixtures.ts";
 import type { RunEvent } from "../tinyfish/client.ts";
 import type { RunRecord } from "../tinyfish/types.ts";
 import type { ApiLimits } from "./routes.ts";
@@ -56,7 +56,7 @@ describe("api", () => {
       getRun: () => Promise.resolve(run),
       cancelRun: () => Promise.resolve(),
       getScreenshot,
-      getStepHtml: () => Promise.resolve(""),
+      getStepHtml: () => Promise.resolve(pageOf(run)),
       createProfile: () => Promise.resolve("prof_1"),
       deleteProfile: () => Promise.resolve(),
       startSetup: () =>
@@ -98,7 +98,7 @@ describe("api", () => {
 
   beforeEach(async () => {
     dataDir = await mkdtemp(join(tmpdir(), "aletheia-api-"));
-    run = loadRun("blinkit-2");
+    run = withSavedPages(loadRun("blinkit-2"));
     getScreenshot = vi.fn(() => Promise.resolve(JPEG));
     screen = fakeScreen();
     limits = {};

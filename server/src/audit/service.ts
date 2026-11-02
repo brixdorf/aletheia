@@ -1,8 +1,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
 
 import { ApiError } from "../errors.ts";
-import { judgeRun } from "../judge/judge.ts";
-import type { Flow, SafetyFlag, SiteReport } from "../judge/types.ts";
+import { judgeRun, RULES_VERSION } from "../judge/judge.ts";
+import type { Flow, PatternFinding, SafetyFlag, SiteReport } from "../judge/types.ts";
 import { countryName, proxyCountry } from "../plan/country.ts";
 import type { DriveClient, DriveOutcome } from "../runner/drive.ts";
 import { driveRun, RunStartError } from "../runner/drive.ts";
@@ -10,10 +10,12 @@ import type { RunQueue } from "../runner/queue.ts";
 import { QueueCancelledError } from "../runner/queue.ts";
 import type { AuditStore } from "../store/auditStore.ts";
 import type { DomainMemory } from "../store/domainMemory.ts";
+import { PATTERNS } from "../judge/patterns.ts";
 import { budgetSeconds, buildGoal, detectFlow } from "./goals.ts";
 import { OUTPUT_SCHEMA } from "./outputSchema.ts";
 import { collectPageText } from "./pageCapture.ts";
 import { scrubPersonal } from "./scrub.ts";
+import type { RunRecord } from "../tinyfish/types.ts";
 import type { Audit, SiteRun } from "./types.ts";
 
 export interface AuditClient extends DriveClient {
@@ -74,6 +76,24 @@ function missing(): ApiError {
 
 function hostOf(url: string): string {
   return new URL(url).hostname.replace(/^www\./, "");
+}
+
+/** A saved report whose run is gone keeps its pages and bill but claims no pattern any more. */
+function withoutClaims(report: SiteReport): SiteReport {
+  const patterns: PatternFinding[] = PATTERNS.map(({ id, label, group, severity }) => ({
+    id,
+    label,
+    group,
+    severity,
+    status: "not_checked",
+    soFar: false,
+    step: null,
+    quote: null,
+    amounts: [],
+    screenshot: null,
+    note: "This older run can no longer be read again.",
+  }));
+  return { ...report, rules: RULES_VERSION, patterns };
 }
 
 function screenshotsOf({ report }: SiteRun): string[] {
@@ -143,6 +163,36 @@ export class AuditService {
         else this.#launch(audit, site);
       }
     }
+  }
+
+  /** Old audits move to the current pattern set. Reading a finished run costs nothing. */
+  async rejudgeSaved(): Promise<void> {
+    for (const audit of this.#deps.store.all()) {
+      const outdated = audit.sites.filter(
+        ({ report, runId }) => report && runId && (report.rules ?? 0) < RULES_VERSION,
+      );
+      for (const site of outdated) await this.#rejudge(audit, site);
+      if (outdated.length > 0) await this.#save(audit);
+    }
+  }
+
+  async #rejudge(audit: Audit, site: SiteRun): Promise<void> {
+    const saved = site.report;
+    if (!saved || !site.runId) return;
+    try {
+      const run = await this.#deps.client.getRun(site.runId);
+      const report = await this.#report(audit, site, run);
+      site.report = {
+        ...report,
+        flags: [
+          ...report.flags,
+          ...saved.flags.filter((flag) => flag.kind === "retried_after_block"),
+        ],
+      };
+    } catch {
+      site.report = withoutClaims(saved);
+    }
+    this.#publish(audit);
   }
 
   /** Claiming first means a bad sign-in fails the request, before any run is paid for. */
@@ -368,12 +418,20 @@ export class AuditService {
     }
 
     const stopped = end === "timed_out" ? { ...run, status: "CANCELLED" as const } : run;
+    site.report = await this.#report(audit, site, stopped);
+    site.steps = scrubPersonal(site.steps);
+    site.state = "done";
+
+    if (site.report.stop.at === "login_wall") await this.#deps.domains.rememberLogin(site.url);
+  }
+
+  async #report(audit: Audit, site: SiteRun, run: RunRecord): Promise<SiteReport> {
     const report = judgeRun({
       flow: audit.flow,
       url: site.url,
-      run: stopped,
+      run,
       signedIn: site.signInId !== null,
-      pageText: await collectPageText(this.#deps.client, run),
+      captures: await collectPageText(this.#deps.client, run),
     });
     const { country } = audit;
     if (country && !proxyCountry(country)) {
@@ -381,11 +439,7 @@ export class AuditService {
         `TinyFish cannot browse from ${countryName(country)}, so this run came from another country and prices may differ.`,
       );
     }
-    site.report = scrubPersonal(report);
-    site.steps = scrubPersonal(site.steps);
-    site.state = "done";
-
-    if (report.stop.at === "login_wall") await this.#deps.domains.rememberLogin(site.url);
+    return scrubPersonal(report);
   }
 
   #failed(site: SiteRun, error: unknown): void {
