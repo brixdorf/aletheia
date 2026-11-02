@@ -31,6 +31,17 @@ const PAID_LABEL: Record<SiteReport["priceLabel"], string> = {
   none: "You pay",
 };
 
+/** A saved report can hold the older signed `unexplained`, so a negative still reads correctly. */
+export function billMismatch({ unexplained, linesOverTotal, currency }: Bill): string | null {
+  const over = linesOverTotal ?? (unexplained !== null && unexplained < 0 ? -unexplained : null);
+  if (over !== null) {
+    return `The lines on this bill come to ${money(over, currency)} more than its total`;
+  }
+  return unexplained === null
+    ? null
+    : `${money(unexplained, currency)} of the total is on no line of the bill`;
+}
+
 export function paidLabel(priceLabel: SiteReport["priceLabel"]): string {
   return PAID_LABEL[priceLabel];
 }

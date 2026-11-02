@@ -1,5 +1,5 @@
 import { money, plural } from "./format.ts";
-import { counts, headline, orderedPatterns, stopSummary } from "./report.ts";
+import { billMismatch, counts, headline, orderedPatterns, stopSummary } from "./report.ts";
 import type { AuditSummary, PatternFinding, Screenshot, SiteReport } from "./types.ts";
 
 /** Writes "Drip Pricing" as "Drip pricing". Only the first word keeps its capitals, as in SaaS. */
@@ -223,16 +223,14 @@ function quoteCheck(finding: PatternFinding): ProofCheck | null {
 
 /** The proof list beside a finding. Each line is something this run can show. */
 export function proofChecks(report: SiteReport, finding: PatternFinding | null): ProofCheck[] {
-  const { addsUp, total, unexplained, currency } = report.bill;
+  const { addsUp, total } = report.bill;
+  const mismatch = billMismatch(report.bill);
   const quote = finding ? quoteCheck(finding) : null;
   const sum: ProofCheck | null =
     addsUp === true && total !== null
       ? { ok: true, text: "Lines add up to the total" }
-      : addsUp === false && unexplained !== null
-        ? {
-            ok: false,
-            text: `${money(unexplained, currency)} of the total is on no line of the bill`,
-          }
+      : addsUp === false && mismatch !== null
+        ? { ok: false, text: mismatch }
         : null;
   const shot: ProofCheck | null = finding?.screenshot
     ? {

@@ -1,5 +1,5 @@
 import { moneyParts } from "../lib/format.ts";
-import { billLines, paidLabel } from "../lib/report.ts";
+import { billLines, billMismatch, paidLabel } from "../lib/report.ts";
 import { billPill, totalLine } from "../lib/story.ts";
 import type { SiteReport } from "../lib/types.ts";
 import { Money, Pill } from "./ui.tsx";
@@ -14,6 +14,7 @@ export function Receipt({ report, Heading }: { report: SiteReport; Heading: "h2"
   const { bill, priceLabel, item } = report;
   const lines = billLines(bill);
   const said = totalLine(report);
+  const mismatch = billMismatch(bill);
 
   if (lines.length === 0) {
     return (
@@ -85,11 +86,8 @@ export function Receipt({ report, Heading }: { report: SiteReport; Heading: "h2"
         </div>
       )}
 
-      {bill.addsUp === false && bill.unexplained !== null ? (
-        <p className="mt-2 px-1 text-[13px] text-peach-ink">
-          <span className="num">{exact(bill.unexplained, bill.currency)}</span> of the total is on
-          no line of the bill.
-        </p>
+      {bill.addsUp === false && mismatch !== null ? (
+        <p className="num mt-2 px-1 text-[13px] text-peach-ink">{mismatch}.</p>
       ) : null}
 
       {bill.includedCharges.length > 0 ? (

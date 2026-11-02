@@ -235,6 +235,20 @@ describe("proofChecks", () => {
       { ok: false, text: "Rs 12 of the total is on no line of the bill" },
     ]);
   });
+
+  it("says when the lines come to more than the total", () => {
+    const off = report({ bill: bill({ total: 100, addsUp: false, linesOverTotal: 29 }) });
+    expect(proofChecks(off, null)).toEqual([
+      { ok: false, text: "The lines on this bill come to Rs 29 more than its total" },
+    ]);
+  });
+
+  it("reads the negative amount a saved report may hold as lines over the total", () => {
+    const off = report({ bill: bill({ total: 100, addsUp: false, unexplained: -29 }) });
+    expect(proofChecks(off, null)).toEqual([
+      { ok: false, text: "The lines on this bill come to Rs 29 more than its total" },
+    ]);
+  });
 });
 
 describe("stats", () => {
