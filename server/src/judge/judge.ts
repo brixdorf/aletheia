@@ -16,7 +16,7 @@ import {
   UNCONFIRMED,
 } from "./patterns.ts";
 import { scanSafety } from "./safety.ts";
-import { locateScreenshots } from "./screenshots.ts";
+import { locateScreenshots, movesPage } from "./screenshots.ts";
 import { resolveReach, resolveStop } from "./stop.ts";
 import { summariseSubscription } from "./subscription.ts";
 import type {
@@ -287,13 +287,15 @@ function confirmed(draft: Draft, pages: RunPages, words: readonly PageCapture[])
   const older = captures.length === 0;
   const stepsWithShots = new Set(steps.filter(({ screenshot }) => screenshot).map(({ id }) => id));
   const pagesToRead = (older ? words : captures).filter(({ stepId }) => stepsWithShots.has(stepId));
+  const moving = new Set(steps.filter(({ action }) => movesPage(action)).map(({ id }) => id));
+  const settled = pagesToRead.filter(({ stepId }) => !moving.has(stepId));
   const named = draft.step === null ? null : (shots.get(draft.step)?.stepId ?? null);
   if (draft.status !== "found") {
     return { ...draft, screenshot: draft.step === null ? null : (shots.get(draft.step) ?? null) };
   }
 
   for (const anchor of draft.anchors) {
-    const stepId = locateQuote(anchor, pagesToRead, named);
+    const stepId = locateQuote(anchor, settled, named) ?? locateQuote(anchor, pagesToRead, named);
     const page = pagesToRead.find((capture) => capture.stepId === stepId);
     const step = steps.find((entry) => entry.id === stepId);
     if (!stepId || !page || !step?.screenshot) continue;

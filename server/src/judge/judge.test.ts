@@ -1082,6 +1082,49 @@ describe("a plan with no commitment", () => {
   });
 });
 
+describe("which screenshot a finding shows", () => {
+  it("prefers a step that read the page over one caught mid-navigation", () => {
+    const run = loadRun("adobe-subscription");
+    const terms = run.result?.["terms"] as { term: string; quote: string | null }[];
+    const quote = terms.find(({ term }) => term === "cancellation_fee")?.quote ?? "";
+    const [moving, reading] = run.steps;
+    if (!moving || !reading) throw new Error("no steps");
+    moving.action = "Open the plan details page";
+    reading.action = "Get full plan details and terms text";
+    const captures = [moving, reading].map(({ id }) => ({
+      stepId: id,
+      text: htmlToText(`<p>${quote}</p>`),
+    }));
+    const report = judgeRun({ flow: "subscription", url: "https://example.test/", run, captures });
+
+    expect(pattern(report, "cancellation_fee").screenshot?.stepId).toBe(reading.id);
+  });
+});
+
+describe("a card asked for a free trial", () => {
+  const trial = (terms: Record<string, unknown>) =>
+    judge("spotify-subscription", "subscription", (run) => {
+      if (run.result) run.result["terms"] = terms;
+    });
+  const card = { quote: "Credit card required.", shown_where: "fine_print", seen_at_step: 1 };
+
+  it("needs a free trial on offer", () => {
+    const free = { quote: "1 month Free", shown_where: "main_page", seen_at_step: 1 };
+
+    expect(pattern(trial({ trial_card: card, trial: free }), "trial_needs_card").status).toBe(
+      "found",
+    );
+  });
+
+  it("does not count a card for a plan with no trial", () => {
+    const none = { quote: null, shown_where: "not_shown", seen_at_step: null };
+
+    expect(pattern(trial({ trial_card: card, trial: none }), "trial_needs_card").status).not.toBe(
+      "found",
+    );
+  });
+});
+
 describe("a page saved without a screenshot", () => {
   it("is passed over for the page that has one", () => {
     const run = loadRun("adobe-subscription");

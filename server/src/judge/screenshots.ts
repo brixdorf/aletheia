@@ -8,9 +8,15 @@ const STOP_WORDS = new Set(
   ),
 );
 const READS_THE_PAGE = /^(check|extract|get|view|read|review|understand|inspect|record)\b/i;
+const MOVES_PAGE = /^(open|navigate|go to|visit|load)\b/i;
 // The agent's last action is writing up, and it often has no stored image.
 const WRITES_UP = /^(report|finish|complete|compile|task completed)\b/i;
 const NOTE_WORDS = 24;
+
+/** A step that moves to a new page can be caught mid-navigation, with nothing on screen yet. */
+export function movesPage(action: string | null): boolean {
+  return MOVES_PAGE.test(action ?? "");
+}
 
 function words(text: string): Set<string> {
   return new Set(

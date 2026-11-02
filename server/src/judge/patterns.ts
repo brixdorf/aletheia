@@ -88,6 +88,7 @@ const COOKIE_PROMPT = /cookie/i;
 // A bare "Got it" only closes a notice, so there is no choice to refuse.
 const ACCEPT_WORD = /accept|agree|allow|consent/i;
 const CARD_WORD = /\bcard\b|payment (method|details|information)|billing (details|information)/i;
+const FREE_TRIAL = /\bfree\b|\btrial\b/i;
 const RENEWAL_WORD =
   /renew|auto|recurr|(until|unless) (you )?cancel|each (month|year)|every (month|year)|billed/i;
 const OFFLINE_CANCEL =
@@ -347,7 +348,8 @@ function termQuote(evidence: Evidence, name: TermName) {
 
 function trialNeedsCard({ evidence }: JudgedContext): Draft | null {
   const term = termQuote(evidence, "trial_card");
-  if (!term || !CARD_WORD.test(term.quote)) return null;
+  const trial = termQuote(evidence, "trial");
+  if (!term || !CARD_WORD.test(term.quote) || !trial || !FREE_TRIAL.test(trial.quote)) return null;
   return seen(term.quote, term.seenAtStep, "The free trial asks for payment details up front.");
 }
 
