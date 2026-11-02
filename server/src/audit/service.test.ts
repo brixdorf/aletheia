@@ -64,7 +64,8 @@ describe("AuditService", () => {
   });
 
   afterEach(async () => {
-    await rm(dataDir, { recursive: true, force: true });
+    // A finished audit's last save can still be landing, and Windows refuses a folder in use.
+    await rm(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   });
 
   it("walks a site to a judged report", async () => {
