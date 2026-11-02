@@ -14,15 +14,13 @@ export interface ComparisonRow {
   total: number | null;
   currency: string | null;
   destination: string | null;
-  comparable: boolean;
-  rank: number | null;
   hiddenCost: HiddenCost | null;
   found: number;
   notChecked: number;
 }
 
 export interface Comparison {
-  rankable: boolean;
+  /** Why the prices beside each other are not like for like. */
   reasons: string[];
   rows: ComparisonRow[];
 }
@@ -62,7 +60,7 @@ export function hiddenCost({ bill, priceLabel }: SiteReport): HiddenCost | null 
   };
 }
 
-/** Only like-for-like results are ever ranked: same item, same currency, the place the task named. */
+/** Sites are compared on patterns. Prices only sit beside each other, with any mismatch spelled out. */
 export function compareReports(task: string, reports: readonly SiteReport[]): Comparison {
   const wanted = wantedPlace(task);
   const reasons: string[] = [];
@@ -81,33 +79,21 @@ export function compareReports(task: string, reports: readonly SiteReport[]): Co
       total: report.bill.total,
       currency: report.bill.currency,
       destination: report.destination,
-      comparable: !elsewhere && report.bill.total !== null,
-      rank: null,
       hiddenCost: hiddenCost(report),
       found: report.patterns.filter((entry) => entry.status === "found").length,
       notChecked: report.patterns.filter((entry) => entry.status === "not_checked").length,
     };
   });
 
-  const comparable = rows.filter((row) => row.comparable);
-  const currencies = new Set(comparable.map((row) => row.currency));
+  const priced = rows.filter((row) => row.total !== null);
+  const currencies = new Set(priced.map((row) => row.currency));
   if (currencies.size > 1) {
     reasons.push(`Prices are in different currencies: ${[...currencies].join(", ")}.`);
   }
 
-  const itemsMatch = sameItems(reports);
-  if (!itemsMatch && reports.length >= 2) {
-    reasons.push("These are different items, so there is no winner. Compare the hidden cost.");
+  if (!sameItems(reports) && reports.length >= 2) {
+    reasons.push("These are different items, so compare the patterns, not the prices.");
   }
 
-  const everyRowComparable = comparable.length === rows.length;
-  const rankable =
-    comparable.length >= 2 && currencies.size === 1 && everyRowComparable && itemsMatch;
-  if (!rankable) return { rankable, reasons, rows };
-
-  const ranked = rows.toSorted((a, b) => (a.total ?? 0) - (b.total ?? 0));
-  ranked.forEach((row, index) => {
-    row.rank = index + 1;
-  });
-  return { rankable, reasons, rows: ranked };
+  return { reasons, rows };
 }
