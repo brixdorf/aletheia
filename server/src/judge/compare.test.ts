@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { loadRun } from "../testing/fixtures.ts";
+import { capturedEverywhere, loadRun } from "../testing/fixtures.ts";
 import { compareReports } from "./compare.ts";
 import { judgeRun } from "./judge.ts";
 import type { PriceLabel, SiteReport } from "./types.ts";
@@ -14,10 +14,12 @@ function report(overrides: {
   item?: string | null;
   priceLabel?: PriceLabel;
 }): SiteReport {
+  const run = loadRun("blinkit-2");
   const base = judgeRun({
     flow: "checkout",
     url: `https://${overrides.host}/`,
-    run: loadRun("blinkit-2"),
+    run,
+    captures: capturedEverywhere(run),
   });
   const firstPrice =
     overrides.firstPrice === undefined ? base.bill.firstPrice : overrides.firstPrice;

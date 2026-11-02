@@ -3,6 +3,12 @@ import { z } from "zod";
 import type { PatternId, PatternStatus, PlanOption, StopPoint, Term } from "./types.ts";
 import { PATTERN_IDS } from "./types.ts";
 
+/** Names the agent used before the pattern set changed, so saved runs can be judged again. */
+const OLD_PATTERN_NAMES: Readonly<Record<string, PatternId>> = {
+  confirm_shaming: "confirmshaming",
+  disguised_advertisement: "disguised_ad",
+};
+
 // Agent output is untrusted: a field of the wrong shape becomes "absent", never a crash.
 const num = z.number().nullish().catch(null);
 const str = z.string().nullish().catch(null);
@@ -46,7 +52,14 @@ const consentSchema = z.object({
 });
 
 const termSchema = z.object({
-  term: z.enum(["trial", "renewal", "price_after_intro", "cancellation", "cancellation_fee"]),
+  term: z.enum([
+    "trial",
+    "renewal",
+    "price_after_intro",
+    "cancellation",
+    "cancellation_fee",
+    "trial_card",
+  ]),
   quote: str,
   shown_where: z
     .enum(["main_page", "fine_print", "info_icon", "faq", "later_page", "not_shown"])
@@ -64,8 +77,28 @@ const planOptionSchema = z.object({
   first_seen_at_step: step,
 });
 
+const priceAnchorSchema = z.object({
+  quote: z.string(),
+  price: z.number(),
+  reference_price: z.number(),
+  seen_at_step: step,
+});
+
+const cookieBannerSchema = z.object({ accept_label: str, reject_label: str, seen_at_step: step });
+
+const emphasisSchema = z.object({
+  prominent: z.string(),
+  muted: z.string(),
+  seen_at_step: step,
+});
+
+const repeatedPromptSchema = z.object({
+  text: z.string(),
+  seen_at_steps: z.array(z.number().int()).catch([]),
+});
+
 const patternCheckSchema = z.object({
-  pattern: z.enum(PATTERN_IDS),
+  pattern: z.string(),
   status: z.enum(["found", "not_found", "not_checked"]),
   quote: str,
   seen_at_step: step,
@@ -104,6 +137,11 @@ const resultSchema = z.object({
   terms: list(termSchema),
   plan_options: list(planOptionSchema),
   pattern_checks: list(patternCheckSchema),
+  cart_item_count: step,
+  price_anchors: list(priceAnchorSchema),
+  cookie_banners: list(cookieBannerSchema),
+  emphasis_pairs: list(emphasisSchema),
+  repeated_prompts: list(repeatedPromptSchema),
 });
 
 export interface EvidencePage {
@@ -145,6 +183,30 @@ export interface Consent {
   canDeclineSeparately: boolean | null;
 }
 
+export interface PriceAnchor {
+  quote: string;
+  price: number;
+  referencePrice: number;
+  seenAtStep: number | null;
+}
+
+export interface CookieBanner {
+  accept: string | null;
+  reject: string | null;
+  seenAtStep: number | null;
+}
+
+export interface EmphasisPair {
+  prominent: string;
+  muted: string;
+  seenAtStep: number | null;
+}
+
+export interface RepeatedPrompt {
+  text: string;
+  steps: number[];
+}
+
 export interface PatternCheck {
   status: PatternStatus;
   quote: string | null;
@@ -180,6 +242,13 @@ export interface Evidence {
   terms: Term[];
   planOptions: PlanOption[];
   checks: Partial<Record<PatternId, PatternCheck>>;
+  cartItemCount: number | null;
+  priceAnchors: PriceAnchor[];
+  cookieBanners: CookieBanner[];
+  emphasisPairs: EmphasisPair[];
+  repeatedPrompts: RepeatedPrompt[];
+  /** The fields this run filled in, since an older agent was never asked for some of them. */
+  reported: ReadonlySet<string>;
 }
 
 const STOP_POINTS: ReadonlySet<string> = new Set<StopPoint>([
@@ -228,6 +297,10 @@ function currencyCode(value: string | null | undefined): string | null {
   return CURRENCY_SYMBOLS.find(([symbol]) => symbol.test(value.trim()))?.[1] ?? null;
 }
 
+function isPatternId(name: string): name is PatternId {
+  return (PATTERN_IDS as readonly string[]).includes(name);
+}
+
 export function parseEvidence(result: Record<string, unknown> | null): Evidence | null {
   if (!result) return null;
   const raw = resultSchema.parse(result);
@@ -241,7 +314,9 @@ export function parseEvidence(result: Record<string, unknown> | null): Evidence 
 
   const checks: Evidence["checks"] = {};
   for (const check of present(raw.pattern_checks)) {
-    checks[check.pattern] = {
+    const name = OLD_PATTERN_NAMES[check.pattern] ?? check.pattern;
+    if (!isPatternId(name)) continue;
+    checks[name] = {
       status: check.status,
       quote: check.quote?.trim() || null,
       seenAtStep: check.seen_at_step ?? null,
@@ -312,5 +387,27 @@ export function parseEvidence(result: Record<string, unknown> | null): Evidence 
       firstSeenAtStep: option.first_seen_at_step ?? null,
     })),
     checks,
+    cartItemCount: raw.cart_item_count ?? null,
+    priceAnchors: present(raw.price_anchors).map((anchor) => ({
+      quote: anchor.quote,
+      price: anchor.price,
+      referencePrice: anchor.reference_price,
+      seenAtStep: anchor.seen_at_step ?? null,
+    })),
+    cookieBanners: present(raw.cookie_banners).map((banner) => ({
+      accept: banner.accept_label ?? null,
+      reject: banner.reject_label ?? null,
+      seenAtStep: banner.seen_at_step ?? null,
+    })),
+    emphasisPairs: present(raw.emphasis_pairs).map((pair) => ({
+      prominent: pair.prominent,
+      muted: pair.muted,
+      seenAtStep: pair.seen_at_step ?? null,
+    })),
+    repeatedPrompts: present(raw.repeated_prompts).map((prompt) => ({
+      text: prompt.text,
+      steps: prompt.seen_at_steps,
+    })),
+    reported: new Set(Object.keys(result)),
   };
 }

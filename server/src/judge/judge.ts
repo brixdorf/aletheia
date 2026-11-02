@@ -2,8 +2,10 @@ import type { RunRecord } from "../tinyfish/types.ts";
 import { buildBill } from "./bill.ts";
 import type { Evidence } from "./evidence.ts";
 import { parseEvidence } from "./evidence.ts";
-import { checkQuote } from "./pageText.ts";
-import { judgePattern, PATTERNS } from "./patterns.ts";
+import type { PageCapture } from "./pageText.ts";
+import { locateQuote } from "./pageText.ts";
+import type { Draft } from "./patterns.ts";
+import { judgePattern, PATTERNS, UNCONFIRMED } from "./patterns.ts";
 import { scanSafety } from "./safety.ts";
 import { locateScreenshots } from "./screenshots.ts";
 import { resolveReach, resolveStop } from "./stop.ts";
@@ -18,13 +20,16 @@ import type {
   StopPoint,
 } from "./types.ts";
 
+/** Raised when the rules change, so reports saved under older ones are judged again. */
+export const RULES_VERSION = 2;
+
 export interface JudgeInput {
   flow: Flow;
   url: string;
   run: RunRecord;
   signedIn?: boolean;
-  /** Text of every page captured during the run, from `htmlToText`. Null if none was. */
-  pageText?: string | null;
+  /** The pages saved during the run. A finding needs its words on one of them. */
+  captures?: readonly PageCapture[];
 }
 
 const EMPTY_BILL: Bill = {
@@ -45,9 +50,6 @@ const EMPTY_BILL: Bill = {
   increase: null,
   multiple: null,
 };
-
-const QUOTE_NOT_CONFIRMED =
-  "This wording was not found in the saved page text, so rely on the screenshot.";
 
 const STOP_WORDS = /\b(add|one|the|to|cart|bag|basket|click|select|item|first)\b/gi;
 
@@ -112,12 +114,62 @@ function hostOf(url: string): string {
   return new URL(url).hostname.replace(/^www\./, "");
 }
 
+interface Proofing {
+  steps: readonly RunRecord["steps"][number][];
+  captures: readonly PageCapture[];
+  shots: ReadonlyMap<number, Screenshot>;
+}
+
+function pageOfStep({ steps, shots }: Proofing, stepId: string): number | null {
+  const position = (id: string) => steps.findIndex((step) => step.id === id);
+  const at = position(stepId);
+  let page: number | null = null;
+  for (const [number, shot] of shots) {
+    if (position(shot.stepId) <= at) page = number;
+  }
+  return page ?? shots.keys().next().value ?? null;
+}
+
+/**
+ * The last word on what a reader may see. A claim whose words are not on a saved page with a
+ * screenshot goes no further, and the page that holds the words picks the screenshot.
+ */
+function confirmed(draft: Draft, proofing: Proofing): Draft & { screenshot: Screenshot | null } {
+  const { steps, captures, shots } = proofing;
+  const named = draft.step === null ? null : (shots.get(draft.step)?.stepId ?? null);
+  if (draft.status !== "found") {
+    return { ...draft, screenshot: draft.step === null ? null : (shots.get(draft.step) ?? null) };
+  }
+
+  for (const anchor of draft.anchors) {
+    const stepId = locateQuote(anchor, captures, named);
+    const page = captures.find((capture) => capture.stepId === stepId);
+    const step = steps.find((entry) => entry.id === stepId);
+    if (!stepId || !page || !step?.screenshot) continue;
+    if (draft.alongside.some((words) => locateQuote(words, [page]) === null)) continue;
+    return {
+      ...draft,
+      step: stepId === named ? draft.step : (pageOfStep(proofing, stepId) ?? draft.step),
+      screenshot: { stepId, action: step.action },
+    };
+  }
+  return {
+    ...draft,
+    status: "not_checked",
+    quote: null,
+    step: null,
+    amounts: [],
+    note: UNCONFIRMED,
+    screenshot: null,
+  };
+}
+
 export function judgeRun({
   flow,
   url,
   run,
   signedIn = false,
-  pageText = null,
+  captures = [],
 }: JudgeInput): SiteReport {
   const actions = run.steps.map((step) => step.action ?? "");
   const parsed = parseEvidence(run.result);
@@ -130,18 +182,25 @@ export function judgeRun({
   const screenshotFor = (step: number | null): Screenshot | null =>
     step === null ? null : (shots.get(step) ?? null);
 
-  const context = { evidence, bill, stop, reach, actions };
+  const context = { flow, evidence, bill, stop, reach, captures };
+  const proofing = { steps: run.steps, captures, shots };
   const patterns: PatternFinding[] = PATTERNS.map((definition) => {
-    const draft = judgePattern(definition, context);
-    const quoteCheck = draft.quote === null ? null : checkQuote(draft.quote, pageText);
+    const { status, quote, step, amounts, note, screenshot } = confirmed(
+      judgePattern(definition, context),
+      proofing,
+    );
     return {
       id: definition.id,
       label: definition.label,
-      ...draft,
-      quoteCheck,
-      note: quoteCheck === "not_matched" ? `${draft.note} ${QUOTE_NOT_CONFIRMED}` : draft.note,
-      soFar: draft.status === "not_found" && stop !== "payment_page",
-      screenshot: screenshotFor(draft.step),
+      group: definition.group,
+      severity: definition.severity,
+      status,
+      quote,
+      step,
+      amounts,
+      note,
+      soFar: status === "not_found" && stop !== "payment_page",
+      screenshot,
     };
   });
 
@@ -149,6 +208,7 @@ export function judgeRun({
   const hidesFees = wall && bill.total === null;
 
   return {
+    rules: RULES_VERSION,
     url,
     host: hostOf(url),
     flow,

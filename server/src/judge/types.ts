@@ -1,19 +1,35 @@
 export type Flow = "checkout" | "subscription";
 
 export const PATTERN_IDS = [
-  "false_urgency",
-  "basket_sneaking",
-  "confirm_shaming",
-  "forced_action",
-  "subscription_trap",
-  "interface_interference",
-  "bait_and_switch",
   "drip_pricing",
-  "disguised_advertisement",
-  "nagging",
+  "partitioned_pricing",
+  "bait_and_switch",
+  "free_claim",
+  "reference_price",
+  "countdown",
+  "scarcity_message",
+  "high_demand",
+  "activity_message",
+  "basket_sneaking",
+  "preselected_extra",
+  "preselected_plan",
+  "hidden_subscription",
+  "trial_needs_card",
+  "renewal_small_print",
+  "intro_price_jump",
+  "cancellation_fee",
+  "hard_to_cancel",
+  "cancellation_terms_missing",
+  "price_behind_signin",
+  "forced_action",
+  "forced_consent",
+  "false_hierarchy",
+  "confirmshaming",
   "trick_question",
-  "saas_billing",
-  "rogue_malware",
+  "nagging",
+  "disguised_ad",
+  "no_cookie_reject",
+  "preticked_consent",
 ] as const;
 
 export type PatternId = (typeof PATTERN_IDS)[number];
@@ -31,11 +47,21 @@ export type Reach = "none" | "pages" | "offer" | "order" | "payment";
 
 export type PatternStatus = "found" | "not_found" | "not_checked";
 
-/** `verified` means our arithmetic proved it; `seen` means a quote and step back it up. */
-export type Proof = "verified" | "seen";
+export type Severity = "high" | "medium" | "low";
 
-/** Whether a quote was found in the page text captured during the run. */
-export type QuoteCheck = "matched" | "not_matched" | "unavailable";
+export type PatternGroup =
+  | "pricing"
+  | "urgency"
+  | "social"
+  | "sneaking"
+  | "subscriptions"
+  | "obstruction"
+  | "forced"
+  | "interface"
+  | "wording"
+  | "nagging"
+  | "ads"
+  | "privacy";
 
 export interface Amount {
   label: string;
@@ -50,13 +76,13 @@ export interface Screenshot {
 export interface PatternFinding {
   id: PatternId;
   label: string;
+  group: PatternGroup;
+  severity: Severity;
   status: PatternStatus;
-  proof: Proof | null;
   /** True when a clean result only holds up to the last page reached. */
   soFar: boolean;
   step: number | null;
   quote: string | null;
-  quoteCheck: QuoteCheck | null;
   amounts: Amount[];
   screenshot: Screenshot | null;
   note: string;
@@ -99,7 +125,8 @@ export type TermName =
   | "renewal"
   | "price_after_intro"
   | "cancellation"
-  | "cancellation_fee";
+  | "cancellation_fee"
+  | "trial_card";
 
 export type ShownWhere =
   | "main_page"
@@ -165,6 +192,8 @@ export interface Page {
 }
 
 export interface SiteReport {
+  /** The version of the rules that wrote this report. Saved reports below it are judged again. */
+  rules: number;
   url: string;
   host: string;
   flow: Flow;

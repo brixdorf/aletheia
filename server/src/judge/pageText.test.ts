@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { loadRun } from "../testing/fixtures.ts";
-import { judgeRun } from "./judge.ts";
-import { checkQuote, htmlToText } from "./pageText.ts";
+import { htmlToText, locateQuote } from "./pageText.ts";
 
 describe("htmlToText", () => {
   it("keeps visible text and drops scripts, styles and tags", () => {
@@ -19,72 +17,50 @@ describe("htmlToText", () => {
   });
 });
 
-describe("checkQuote", () => {
-  const page = htmlToText(
-    `<div>Fee applies of <span>half your remaining</span> annual commitment</div>
-     <button>No, I’ll risk it</button><p>Only <b>2</b> left – hurry</p><p>₹ 1,199.00/mo</p>`,
-  );
+describe("locateQuote", () => {
+  const pages = [
+    { stepId: "first", text: htmlToText("<p>Choose a plan</p>") },
+    {
+      stepId: "second",
+      text: htmlToText(
+        `<div>Fee applies of <span>half your remaining</span> annual commitment</div>
+         <button>No, I’ll risk it</button><p>Only <b>2</b> left – hurry</p><p>₹ 1,199.00/mo</p>`,
+      ),
+    },
+  ];
 
-  it("matches wording split across tags and lines", () => {
-    expect(checkQuote("Fee applies of half your remaining annual commitment", page)).toBe(
-      "matched",
+  it("finds wording split across tags and lines, and names its page", () => {
+    expect(locateQuote("Fee applies of half your remaining annual commitment", pages)).toBe(
+      "second",
     );
   });
 
   it("ignores case, spacing and curly or straight punctuation", () => {
-    expect(checkQuote("no, i'll RISK it", page)).toBe("matched");
-    expect(checkQuote("Only 2 left - hurry", page)).toBe("matched");
-    expect(checkQuote("₹1,199.00/mo", page)).toBe("matched");
+    expect(locateQuote("no, i'll RISK it", pages)).toBe("second");
+    expect(locateQuote("Only 2 left - hurry", pages)).toBe("second");
+    expect(locateQuote("₹1,199.00/mo", pages)).toBe("second");
   });
 
   it("does not accept a paraphrase", () => {
-    expect(checkQuote("a fee of half the remaining commitment", page)).toBe("not_matched");
+    expect(locateQuote("a fee of half the remaining commitment", pages)).toBeNull();
   });
 
-  it("says unavailable when no page text was captured", () => {
-    expect(checkQuote("anything", null)).toBe("unavailable");
-  });
-});
-
-describe("quotes in a report", () => {
-  function reportWith(pageText: string | null) {
-    const run = loadRun("adobe-subscription");
-    return judgeRun({
-      flow: "subscription",
-      url: "https://example.test/",
-      run,
-      pageText,
-    }).patterns.find((entry) => entry.id === "subscription_trap");
-  }
-
-  it("confirms a quote that is on a captured page", () => {
-    const text = htmlToText(
-      "<p>Fee applies of half your remaining annual commitment if you cancel after Nov 14</p>",
-    );
-
-    expect(reportWith(text)?.quoteCheck).toBe("matched");
+  it("does not accept a word too short to mean anything", () => {
+    expect(locateQuote("a", pages)).toBeNull();
+    expect(locateQuote("  ", pages)).toBeNull();
   });
 
-  it("keeps a finding whose quote is not in the capture, and marks it unconfirmed", () => {
-    const finding = reportWith(htmlToText("<p>nothing relevant</p>"));
+  it("prefers the page the agent named when the wording is on it", () => {
+    const twice = [
+      { stepId: "one", text: htmlToText("<p>Only 2 left</p>") },
+      { stepId: "two", text: htmlToText("<p>Only 2 left</p>") },
+    ];
 
-    expect(finding?.status).toBe("found");
-    expect(finding?.quoteCheck).toBe("not_matched");
-    expect(finding?.note).toMatch(/not found in the saved page text/i);
+    expect(locateQuote("Only 2 left", twice)).toBe("one");
+    expect(locateQuote("Only 2 left", twice, "two")).toBe("two");
   });
 
-  it("marks older runs with no capture as unavailable", () => {
-    expect(reportWith(null)?.quoteCheck).toBe("unavailable");
-  });
-
-  it("leaves arithmetic findings with no quote out of it", () => {
-    const report = judgeRun({
-      flow: "checkout",
-      url: "https://example.test/",
-      run: loadRun("blinkit-2"),
-      pageText: "",
-    });
-
-    expect(report.patterns.find((entry) => entry.id === "drip_pricing")?.quoteCheck).toBeNull();
+  it("finds nothing when no page was captured", () => {
+    expect(locateQuote("anything", [])).toBeNull();
   });
 });
