@@ -124,13 +124,13 @@ function hostOf(url: string): string {
   return new URL(url).hostname.replace(/^www\./, "");
 }
 
-interface Proofing {
+interface RunPages {
   steps: readonly RunRecord["steps"][number][];
   captures: readonly PageCapture[];
   shots: ReadonlyMap<number, Screenshot>;
 }
 
-function pageOfStep({ steps, shots }: Proofing, stepId: string): number | null {
+function pageOfStep({ steps, shots }: RunPages, stepId: string): number | null {
   const position = (id: string) => steps.findIndex((step) => step.id === id);
   const at = position(stepId);
   let page: number | null = null;
@@ -144,8 +144,8 @@ function pageOfStep({ steps, shots }: Proofing, stepId: string): number | null {
  * The last word on what a reader may see. A claim whose words are not on a saved page with a
  * screenshot goes no further, and the page that holds the words picks the screenshot.
  */
-function confirmed(draft: Draft, proofing: Proofing): Draft & { screenshot: Screenshot | null } {
-  const { steps, captures, shots } = proofing;
+function confirmed(draft: Draft, pages: RunPages): Draft & { screenshot: Screenshot | null } {
+  const { steps, captures, shots } = pages;
   const named = draft.step === null ? null : (shots.get(draft.step)?.stepId ?? null);
   if (draft.status !== "found") {
     return { ...draft, screenshot: draft.step === null ? null : (shots.get(draft.step) ?? null) };
@@ -159,7 +159,7 @@ function confirmed(draft: Draft, proofing: Proofing): Draft & { screenshot: Scre
     if (draft.alongside.some((words) => locateQuote(words, [page]) === null)) continue;
     return {
       ...draft,
-      step: stepId === named ? draft.step : (pageOfStep(proofing, stepId) ?? draft.step),
+      step: stepId === named ? draft.step : (pageOfStep(pages, stepId) ?? draft.step),
       screenshot: { stepId, action: step.action },
     };
   }
@@ -193,11 +193,11 @@ export function judgeRun({
     step === null ? null : (shots.get(step) ?? null);
 
   const context = { flow, evidence, bill, stop, reach, captures };
-  const proofing = { steps: run.steps, captures, shots };
+  const pages = { steps: run.steps, captures, shots };
   const patterns: PatternFinding[] = PATTERNS.map((definition) => {
     const { status, quote, step, amounts, note, screenshot } = confirmed(
       judgePattern(definition, context),
-      proofing,
+      pages,
     );
     return {
       id: definition.id,
