@@ -82,6 +82,12 @@ export function deleteAudit(id: string): Promise<void> {
   return request(`/audits/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
+export function deleteSite(auditId: string, siteId: string): Promise<void> {
+  return request(`/audits/${encodeURIComponent(auditId)}/sites/${encodeURIComponent(siteId)}`, {
+    method: "DELETE",
+  });
+}
+
 export async function shareAudit(id: string): Promise<string> {
   const { token } = await post<{ token: string }>(`/audits/${encodeURIComponent(id)}/share`);
   return token;

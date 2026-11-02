@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   ApiFailure,
   deleteAudit,
+  deleteSite,
   listAudits,
   planAudit,
   screenshotUrl,
@@ -36,6 +37,17 @@ describe("api", () => {
       task: "Buy milk",
       sites: [{ url: "https://a.test/" }],
     });
+  });
+
+  it("deletes one site's report by its id", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await deleteSite("a1", "s1");
+
+    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(path).toBe("/api/audits/a1/sites/s1");
+    expect(init.method).toBe("DELETE");
   });
 
   it("sends where the browser is, for when no country header reaches the server", async () => {

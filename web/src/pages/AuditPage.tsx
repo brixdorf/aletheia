@@ -7,7 +7,7 @@ import { LiveSite } from "../components/LiveSite.tsx";
 import { ReportCard } from "../components/ReportCard.tsx";
 import { Failed, Link, Loading, Notice, usePageTitle } from "../components/ui.tsx";
 import type { ReportScope } from "../lib/api.ts";
-import { deleteAudit, getSharedAudit, shareAudit } from "../lib/api.ts";
+import { deleteAudit, deleteSite, getSharedAudit, shareAudit } from "../lib/api.ts";
 import { buildComparison } from "../lib/compare.ts";
 import { dateTime, duration } from "../lib/format.ts";
 import { auditIsLive } from "../lib/live.ts";
@@ -121,10 +121,43 @@ interface SiteSlotProps {
   scope: ReportScope;
   owned: AuditView | null;
   arrivedLive: boolean;
+  onChanged: () => void;
 }
 
 /** A report that lands while the page is open first fills the live strip, then takes over. */
-function SiteSlot({ site, audit, scope, owned, arrivedLive }: SiteSlotProps) {
+function DeleteReport({
+  site,
+  auditId,
+  onDeleted,
+}: {
+  site: SiteView;
+  auditId: string;
+  onDeleted: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <>
+      <button type="button" className="btn btn-soft btn-sm" onClick={() => setConfirming(true)}>
+        Delete this report<span className="sr-only"> for {site.host}</span>
+      </button>
+      {confirming ? (
+        <ConfirmDialog
+          title={`Delete the ${siteName(site.host)} report?`}
+          confirmLabel="Delete report"
+          onClose={() => setConfirming(false)}
+          onConfirm={async () => {
+            await deleteSite(auditId, site.id);
+            onDeleted();
+          }}
+        >
+          This report and its screenshots go for good. The rest of the audit stays.
+        </ConfirmDialog>
+      ) : null}
+    </>
+  );
+}
+
+function SiteSlot({ site, audit, scope, owned, arrivedLive, onChanged }: SiteSlotProps) {
   const { report } = site;
   const [revealed, setRevealed] = useState(!arrivedLive);
   const hold = report !== null && !revealed;
@@ -138,14 +171,21 @@ function SiteSlot({ site, audit, scope, owned, arrivedLive }: SiteSlotProps) {
 
   if (report && revealed) {
     return (
-      <ReportCard
-        site={site}
-        report={report}
-        task={audit.task}
-        scope={scope}
-        press={arrivedLive}
-        solo={audit.sites.length === 1}
-      />
+      <div className="flex flex-col items-end gap-3">
+        <div className="w-full">
+          <ReportCard
+            site={site}
+            report={report}
+            task={audit.task}
+            scope={scope}
+            press={arrivedLive}
+            solo={audit.sites.length === 1}
+          />
+        </div>
+        {owned && audit.sites.length > 1 ? (
+          <DeleteReport site={site} auditId={audit.id} onDeleted={onChanged} />
+        ) : null}
+      </div>
     );
   }
   return <LiveSite site={site} task={audit.task} auditId={owned ? audit.id : null} />;
@@ -155,8 +195,10 @@ function AuditBody({
   audit,
   scope,
   owned,
+  onChanged,
 }: {
   audit: AuditPublic;
+  onChanged: () => void;
   scope: ReportScope;
   owned: AuditView | null;
 }) {
@@ -221,6 +263,7 @@ function AuditBody({
             scope={scope}
             owned={owned}
             arrivedLive={!presentAtOpen.current.has(site.id)}
+            onChanged={onChanged}
           />
         ))}
       </div>
@@ -259,7 +302,12 @@ export function AuditPage({ id }: { id: string }) {
           Reconnecting to the live view. The agent keeps working.
         </p>
       ) : null}
-      <AuditBody audit={result.data} scope={{ kind: "owner", auditId: id }} owned={result.data} />
+      <AuditBody
+        audit={result.data}
+        scope={{ kind: "owner", auditId: id }}
+        owned={result.data}
+        onChanged={() => void refresh()}
+      />
     </>
   );
 }
@@ -278,5 +326,12 @@ export function SharedPage({ token }: { token: string }) {
     }
     return <Failed level="h1" message={result.message} onRetry={() => void refresh()} />;
   }
-  return <AuditBody audit={result.data} scope={{ kind: "shared", token }} owned={null} />;
+  return (
+    <AuditBody
+      audit={result.data}
+      scope={{ kind: "shared", token }}
+      owned={null}
+      onChanged={() => void refresh()}
+    />
+  );
 }
