@@ -10,6 +10,7 @@ test("a visitor describes a task, audits the picked sites, compares, shares and 
 }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("dark patterns");
+  await expect(page.getByRole("list", { name: "Examples" }).getByRole("button")).toHaveCount(3);
   await expect(page.getByText("Country")).toHaveCount(0);
 
   const prompt = page.getByLabel("What should Aletheia audit?");
@@ -17,16 +18,19 @@ test("a visitor describes a task, audits the picked sites, compares, shares and 
 
   const picked = page.getByRole("list", { name: "Sites to audit" });
   await expect(picked).toContainText("spotify.com");
-  await expect(picked).toContainText("netflix.com");
-  await expect(picked).toContainText("adobe.com");
+  await expect(picked).toContainText("youtube.com");
+  await expect(page.getByRole("button", { name: /sign in/i })).toHaveCount(0);
 
   // Only Adobe and LinkedIn have saved runs here, so the visitor changes the picks.
-  await page.getByRole("button", { name: "Remove netflix.com" }).click();
   await page.getByRole("button", { name: "Remove spotify.com" }).click();
-  await page.getByRole("button", { name: "Add a site" }).click();
-  await page.getByLabel("Site address").fill("linkedin.com");
-  await page.getByRole("button", { name: "Add site" }).click();
-  await expect(picked).toContainText("linkedin.com");
+  await page.getByRole("button", { name: "Remove youtube.com" }).click();
+  await page.getByRole("button", { name: "Remove apple.com" }).click();
+  for (const site of ["adobe.com", "linkedin.com"]) {
+    await page.getByRole("button", { name: "Add a site" }).click();
+    await page.getByLabel("Site address").fill(site);
+    await page.getByRole("button", { name: "Add site" }).click();
+    await expect(picked).toContainText(site);
+  }
 
   await page.getByRole("button", { name: "Run audit" }).click();
   await expect(page).toHaveURL(/\/audits\//);

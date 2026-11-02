@@ -12,7 +12,6 @@ import { SitePlanner } from "../server/src/plan/planner.ts";
 import { RunQueue } from "../server/src/runner/queue.ts";
 import { SignInService } from "../server/src/signin/service.ts";
 import { AuditStore } from "../server/src/store/auditStore.ts";
-import { DomainMemory } from "../server/src/store/domainMemory.ts";
 import { loadRun, pageOf, withSavedPages } from "../server/src/testing/fixtures.ts";
 import type { RunEvent, RunRequest } from "../server/src/tinyfish/client.ts";
 
@@ -66,8 +65,7 @@ const client = {
 
 const dataDir = await mkdtemp(join(tmpdir(), "aletheia-e2e-"));
 const store = new AuditStore(dataDir);
-const domains = new DomainMemory(dataDir);
-await Promise.all([store.load(), domains.load()]);
+await store.load();
 
 const queue = new RunQueue(2);
 const signIns = new SignInService({
@@ -76,9 +74,9 @@ const signIns = new SignInService({
   runLogout: () => Promise.resolve(true),
   dataDir,
 });
-const audits = new AuditService({ client, store, domains, queue, signIns });
+const audits = new AuditService({ client, store, queue, signIns });
 
 const webRoot = fileURLToPath(new URL("../web/dist", import.meta.url));
 const planner = new SitePlanner(() => Promise.resolve([]));
-const api = createApi({ audits, signIns, store, domains, queue, client, planner });
+const api = createApi({ audits, signIns, store, queue, client, planner });
 serve({ fetch: createApp({ webRoot, api }).fetch, port: PORT });
