@@ -9,6 +9,7 @@ import type { Frame, RemoteScreen } from "../signin/remoteScreen.ts";
 import { SignInService } from "../signin/service.ts";
 import { AuditStore } from "../store/auditStore.ts";
 import { DomainMemory } from "../store/domainMemory.ts";
+import { SitePlanner } from "../plan/planner.ts";
 import { loadRun } from "../testing/fixtures.ts";
 import type { RunEvent } from "../tinyfish/client.ts";
 import type { RunRecord } from "../tinyfish/types.ts";
@@ -89,7 +90,8 @@ describe("api", () => {
       signIns,
       timing: { pollMs: 1, quietMs: 10_000, graceMs: 5000 },
     });
-    api = createApi({ audits, signIns, store, domains, queue, client, limits });
+    const planner = new SitePlanner(() => Promise.resolve([]));
+    api = createApi({ audits, signIns, store, domains, queue, client, planner, limits });
   }
 
   beforeEach(async () => {
@@ -344,6 +346,88 @@ describe("api", () => {
 
     it("answers 404 for an unknown token", async () => {
       expect((await api.request("/shared/nope")).status).toBe(404);
+    });
+  });
+
+  describe("planning", () => {
+    interface PlanBody {
+      flow: string;
+      country: string | null;
+      sites: { host: string }[];
+      countries: { code: string; name: string }[];
+    }
+
+    async function planFor(body: unknown, headers: Record<string, string> = {}) {
+      const request = post(body);
+      const response = await alice()("/plan", {
+        ...request,
+        headers: { ...(request.headers as Record<string, string>), ...headers },
+      });
+      expect(response.status).toBe(200);
+      return (await response.json()) as PlanBody;
+    }
+
+    it("picks the sites and the flow for a task, from Cloudflare's country", async () => {
+      const plan = await planFor({ task: "buy toned milk" }, { "CF-IPCountry": "IN" });
+      expect(plan.flow).toBe("checkout");
+      expect(plan.country).toBe("IN");
+      expect(plan.sites[0]?.host).toBe("blinkit.com");
+      expect(plan.countries).toContainEqual({ code: "IN", name: "India" });
+    });
+
+    it("lets the visitor's choice and the browser stand in for the header", async () => {
+      const chosen = await planFor({ task: "buy milk", country: "GB" }, { "CF-IPCountry": "IN" });
+      expect(chosen.country).toBe("GB");
+
+      const browser = await planFor({ task: "buy milk", timeZone: "America/Chicago" });
+      expect(browser.country).toBe("US");
+    });
+
+    it("answers with the country before there is a task", async () => {
+      const plan = await planFor({ task: "" }, { "CF-IPCountry": "IN" });
+      expect(plan.country).toBe("IN");
+      expect(plan.sites).toEqual([]);
+    });
+
+    it("refuses a malformed country", async () => {
+      const response = await alice()("/plan", post({ task: "buy milk", country: "india" }));
+      expect(response.status).toBe(400);
+    });
+
+    it("picks the sites itself when an audit names none", async () => {
+      const as = alice();
+      const request = post({ task: "buy toned milk" });
+      const response = await as("/audits", {
+        ...request,
+        headers: { ...(request.headers as Record<string, string>), "CF-IPCountry": "IN" },
+      });
+      expect(response.status).toBe(201);
+
+      const audit = (await response.json()) as {
+        id: string;
+        country: string;
+        flow: string;
+        sites: { host: string }[];
+      };
+      await finished(as, audit.id);
+      expect(audit.country).toBe("IN");
+      expect(audit.flow).toBe("checkout");
+      expect(audit.sites.map(({ host }) => host)).toEqual([
+        "blinkit.com",
+        "zepto.com",
+        "bigbasket.com",
+      ]);
+    });
+
+    it("works out the flow for sites the visitor chose", async () => {
+      const as = alice();
+      const response = await as(
+        "/audits",
+        post({ task: "Adobe Photoshop", sites: [{ url: "https://www.adobe.com/in/" }] }),
+      );
+      const audit = (await response.json()) as { id: string; flow: string };
+      await finished(as, audit.id);
+      expect(audit.flow).toBe("subscription");
     });
   });
 

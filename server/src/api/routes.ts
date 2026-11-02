@@ -5,8 +5,10 @@ import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 
-import type { AuditService } from "../audit/service.ts";
+import type { AuditService, NewAudit } from "../audit/service.ts";
 import { ApiError } from "../errors.ts";
+import { countryChoices, proxyCountry, resolveCountry } from "../plan/country.ts";
+import type { SitePlanner } from "../plan/planner.ts";
 import type { RunQueue } from "../runner/queue.ts";
 import type { Frame } from "../signin/remoteScreen.ts";
 import type { SignInService } from "../signin/service.ts";
@@ -28,9 +30,16 @@ export interface ApiLimits {
   perVisitor: number;
   perAddress: number;
   maxWaiting: number;
+  /** Plans run as a visitor types, and each can spend one search. */
+  plansPerVisitor: number;
 }
 
-const DEFAULT_LIMITS: ApiLimits = { perVisitor: 6, perAddress: 60, maxWaiting: 12 };
+const DEFAULT_LIMITS: ApiLimits = {
+  perVisitor: 6,
+  perAddress: 60,
+  maxWaiting: 12,
+  plansPerVisitor: 240,
+};
 
 export interface ApiDeps {
   audits: AuditService;
@@ -39,6 +48,7 @@ export interface ApiDeps {
   domains: DomainMemory;
   queue: RunQueue;
   client: { getScreenshot(runId: string, stepId: string): Promise<Uint8Array> };
+  planner: SitePlanner;
   limits?: Partial<ApiLimits>;
 }
 
@@ -51,16 +61,30 @@ const siteUrl = z
   .max(2000)
   .refine((url) => !LOCAL_HOST.test(new URL(url).hostname), "Only public sites can be audited");
 
+/** What the browser knows about where it is, for when no country header arrives. */
+const placeSignals = {
+  country: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .optional(),
+  timeZone: z.string().max(64).optional(),
+  languages: z.array(z.string().max(35)).max(10).optional(),
+};
+
+const planSchema = z.object({ task: z.string().trim().max(300), ...placeSignals });
+
 const newAuditSchema = z.object({
   task: z.string().trim().min(3).max(300),
   flow: z.enum(["checkout", "subscription"]).optional(),
+  ...placeSignals,
   sites: z
     .array(z.object({ url: siteUrl, signInId: z.uuid().optional() }))
     .min(1)
-    .max(4),
+    .max(4)
+    .optional(),
 });
 
-const signInStartSchema = z.object({ url: siteUrl });
+const signInStartSchema = z.object({ url: siteUrl, ...placeSignals });
 
 const coordinate = z.number().finite().min(-20_000).max(20_000);
 
@@ -90,6 +114,13 @@ class Wakeup {
   }
 }
 
+type PlaceSignals = Pick<z.infer<typeof planSchema>, "country" | "timeZone" | "languages">;
+
+function countryOf(c: Context, { country, timeZone, languages }: PlaceSignals): string | null {
+  const cloudflare = c.req.header("cf-ipcountry");
+  return resolveCountry({ choice: country, cloudflare, timeZone, languages });
+}
+
 function clientAddress(c: Context): string {
   // The last hop is the one our own proxy added, and a visitor cannot forge that.
   return c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "direct";
@@ -110,10 +141,11 @@ function parsed<T extends z.ZodType>(schema: T, value: unknown): z.infer<T> {
 }
 
 export function createApi(deps: ApiDeps): Hono<ApiEnv> {
-  const { audits, signIns, store, domains, queue, client } = deps;
+  const { audits, signIns, store, domains, queue, client, planner } = deps;
   const limits = { ...DEFAULT_LIMITS, ...deps.limits };
   const byVisitor = new RateLimiter(limits.perVisitor, HOUR_MS);
   const byAddress = new RateLimiter(limits.perAddress, HOUR_MS);
+  const plans = new RateLimiter(limits.plansPerVisitor, HOUR_MS);
   const api = new Hono<ApiEnv>();
 
   function spend(c: Context<ApiEnv>, runs: number): void {
@@ -154,13 +186,32 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
     await next();
   });
 
+  api.post("/plan", async (c) => {
+    const body = parsed(planSchema, await jsonBody(c));
+    if (!plans.take(c.get("visitorId"), 1)) {
+      throw new ApiError("rate_limited", "That is the limit for this hour.");
+    }
+    const country = countryOf(c, body);
+    const plan = await planner.plan(body.task, country);
+    return c.json({ ...plan, countries: countryChoices(country) });
+  });
+
   api.get("/audits", (c) => c.json({ audits: audits.list(c.get("visitorId")).map(summaryView) }));
 
   api.post("/audits", async (c) => {
     const body = parsed(newAuditSchema, await jsonBody(c));
     const visitorId = c.get("visitorId");
+    const country = countryOf(c, body);
 
-    for (const { url, signInId } of body.sites) {
+    const plan = body.sites && body.flow ? null : await planner.plan(body.task, country);
+    const flow = body.flow ?? plan?.flow;
+    const picked = (plan?.sites ?? []).filter(({ url }) => siteUrl.safeParse(url).success);
+    const sites: NewAudit["sites"] = body.sites ?? picked.map(({ url }) => ({ url }));
+    if (sites.length === 0) {
+      throw new ApiError("invalid_request", "No sites could be picked for that. Please add one.");
+    }
+
+    for (const { url, signInId } of sites) {
       if (!signInId) continue;
       const { host } = signIns.view(visitorId, signInId);
       if (new URL(url).hostname.replace(/^www\./, "") !== host) {
@@ -171,8 +222,8 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
       throw new ApiError("busy", "Too many audits are waiting. Please try again in a few minutes.");
     }
 
-    spend(c, body.sites.length);
-    const audit = await audits.create({ ...body, visitorId });
+    spend(c, sites.length);
+    const audit = await audits.create({ task: body.task, flow, country, sites, visitorId });
     return c.json(ownerView(audit), 201);
   });
 
@@ -261,9 +312,10 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
   });
 
   api.post("/signin", async (c) => {
-    const { url } = parsed(signInStartSchema, await jsonBody(c));
+    const { url, ...place } = parsed(signInStartSchema, await jsonBody(c));
     spend(c, 1);
-    return c.json(await signIns.start(c.get("visitorId"), url), 201);
+    const proxy = proxyCountry(countryOf(c, place));
+    return c.json(await signIns.start(c.get("visitorId"), url, proxy), 201);
   });
 
   api.get("/signin/:id", (c) => c.json(signIns.view(c.get("visitorId"), c.req.param("id"))));

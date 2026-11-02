@@ -11,6 +11,7 @@ import { AuditService, DEFAULT_TIMING } from "./audit/service.ts";
 import type { Config } from "./config.ts";
 import { loadConfig } from "./config.ts";
 import { RunQueue } from "./runner/queue.ts";
+import { SitePlanner } from "./plan/planner.ts";
 import { openRemoteScreen } from "./signin/remoteScreen.ts";
 import { SignInService } from "./signin/service.ts";
 import { AuditStore } from "./store/auditStore.ts";
@@ -41,7 +42,8 @@ async function startApi(apiKey: string, { dataDir }: Config) {
   await signIns.recover();
   setInterval(() => void signIns.sweep().catch(() => undefined), SWEEP_INTERVAL_MS).unref();
 
-  return createApi({ audits, signIns, store, domains, queue, client });
+  const planner = new SitePlanner((query, country) => client.search(query, country));
+  return createApi({ audits, signIns, store, domains, queue, client, planner });
 }
 
 /** The site still serves without a key, so a missing variable shows up as a clear API answer. */
