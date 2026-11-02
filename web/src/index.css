@@ -313,23 +313,6 @@
     @apply inline-flex min-h-11 items-center gap-2 rounded-full bg-graphite px-5 text-[15px] font-semibold text-white transition-colors hover:bg-[#3a3c42];
   }
 
-  .logo-mark {
-    display: grid;
-    width: 20px;
-    height: 20px;
-    place-items: center;
-    border-radius: 6px;
-    background: var(--ring);
-  }
-
-  .logo-mark::after {
-    content: "";
-    width: 13px;
-    height: 13px;
-    border-radius: 4px;
-    background: #fff;
-  }
-
   .spinner {
     @apply size-4 animate-spin-soft rounded-full border-2 border-line border-t-ink;
   }

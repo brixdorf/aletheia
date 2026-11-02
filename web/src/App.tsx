@@ -84,7 +84,7 @@ export function App() {
             aria-label="Aletheia, run an audit"
             className="inline-flex min-h-11 items-center gap-[9px] text-[19px] font-semibold tracking-[-0.01em] text-ink"
           >
-            <span aria-hidden="true" className="logo-mark" />
+            <img src="/favicon.svg" alt="" width="24" height="24" />
             Aletheia
           </Link>
 
