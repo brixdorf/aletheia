@@ -382,7 +382,8 @@ function introPriceJump({ evidence }: JudgedContext): Draft | null {
   );
 }
 
-function cancellationFee({ evidence, bill }: JudgedContext): Draft | null {
+function cancellationFee({ flow, evidence, bill }: JudgedContext): Draft | null {
+  if (flow !== "subscription") return null;
   const fee = evidence.terms.find(
     (term) =>
       term.term === "cancellation_fee" &&

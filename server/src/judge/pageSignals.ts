@@ -29,7 +29,7 @@ export interface PageSignals {
 const MESSAGES: readonly (readonly [PatternId, RegExp])[] = [
   [
     "scarcity_message",
-    /\b(?:(?:only|just|we have)\s+\d{1,3}\s+(?:[a-z]+\s+){0,2}?(?:left|remaining|available)\b(?:\s+(?:at this price|in stock|on our site))?|\d{1,3}\s+(?:left|remaining)\s+(?:in stock|at this price)\b|(?:almost|nearly)\s+(?:gone|sold out)\b|low stock\b|few (?:seats|rooms|tickets|left)\b(?:\s+left)?|limited (?:availability|stock|seats)\b|\d{1,3}% of [a-z ]{3,40}(?:unavailable|booked|sold out|gone)\b(?: for your dates)?)/gi,
+    /\b(?:(?:only|just|we have)\s+\d{1,3}\s+(?:[a-z]+\s+){0,2}?(?:left|remaining|available)\b(?:\s+(?:at this price|in stock|on our site))?|\d{1,3}\s+(?:left|remaining)\s+(?:in stock|at this price)\b|(?:almost|nearly)\s+(?:gone|sold out)\b|low stock\b|last tickets\b|few (?:seats|rooms|tickets|left)\b(?:\s+left)?|limited (?:availability|stock|seats)\b|\d{1,3}% of [a-z ]{3,40}(?:unavailable|booked|sold out|gone)\b(?: for your dates)?)/gi,
   ],
   [
     "high_demand",
@@ -41,7 +41,7 @@ const MESSAGES: readonly (readonly [PatternId, RegExp])[] = [
   ],
   [
     "countdown",
-    /\b(?:(?:offer|sale|deal|discount|promotion|price)s?\s+(?:ends?|expires?)\s+(?:in|today|tonight|soon|at|on|by)\b[^.!?|<]{0,24}|(?:ends|expires)\s+in\s+\d+\s*(?:d|h|m|s|days?|hours?|hrs?|mins?|minutes?|seconds?)\b|limited[- ]time (?:deal|offer|sale|discount|only)\b|today only\b|last chance\b[^.!?|<]{0,24}|time (?:left|remaining)\b[:\s]*\d{1,2}:\d{2}|(?:held|reserved)\s+for\s+\d{1,2}:\d{2})/gi,
+    /\b(?:(?:offer|sale|deal|discount|promotion|price)s?\s+(?:ends?|expires?)\s+(?:in|today|tonight|soon|at|on|by)\b[^.!?|<]{0,24}|(?:ends|expires)\s+in\s+\d+\s*(?:d|h|m|s|days?|hours?|hrs?|mins?|minutes?|seconds?)\b|limited[- ]time (?:deal|offer|sale|discount)\b|today only\b|last chance\b[^.!?|<]{0,24}|time (?:left|remaining)\b[:\s]*\d{1,2}:\d{2}|(?:held|reserved)\s+for\s+\d{1,2}:\d{2})/gi,
   ],
 ];
 

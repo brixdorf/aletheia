@@ -1101,6 +1101,38 @@ describe("which screenshot a finding shows", () => {
   });
 });
 
+describe("a cancellation fee", () => {
+  it("belongs to a subscription, so a flight's fare rule does not count", () => {
+    const report = judge("blinkit-2", "checkout", (run) => {
+      if (!run.result) return;
+      run.result["terms"] = {
+        cancellation_fee: {
+          quote: "Delivery charge fee if you cancel",
+          shown_where: "main_page",
+          seen_at_step: 1,
+        },
+      };
+    });
+
+    expect(pattern(report, "cancellation_fee").status).not.toBe("found");
+  });
+});
+
+describe("what the pages say, read from the end of the walk first", () => {
+  it("shows the message on the page deepest in the flow", () => {
+    const run = loadRun("blinkit-2");
+    const [home, cart] = [run.steps[1], run.steps[3]];
+    if (!home || !cart) throw new Error("no steps");
+    const captures = [
+      capturePage(home.id, "<p>Only 9 left</p>"),
+      capturePage(cart.id, "<p>Only 2 left</p>"),
+    ];
+    const report = judgeRun({ flow: "checkout", url: "https://example.test/", run, captures });
+
+    expect(pattern(report, "scarcity_message").quote).toBe("Only 2 left");
+  });
+});
+
 describe("a card asked for a free trial", () => {
   const trial = (terms: Record<string, unknown>) =>
     judge("spotify-subscription", "subscription", (run) => {

@@ -33,7 +33,7 @@ import type {
 import { TERM_NAMES } from "./types.ts";
 
 /** Raised when the rules change, so reports saved under older ones are judged again. */
-export const RULES_VERSION = 5;
+export const RULES_VERSION = 6;
 
 export interface JudgeInput {
   flow: Flow;
@@ -100,7 +100,8 @@ function withPageSignals(
   evidence: Evidence,
   captures: readonly PageCapture[],
 ): Evidence {
-  const read = captures.flatMap(({ signals }) => (signals ? [signals] : []));
+  // Latest first: a home page's promotions matter less than the page being bought from.
+  const read = captures.flatMap(({ signals }) => (signals ? [signals] : [])).toReversed();
   if (read.length === 0) return evidence;
 
   const refused = evidence.cookieBanners.some(({ reject }) => reject);

@@ -8,7 +8,7 @@ const STOP_WORDS = new Set(
   ),
 );
 const READS_THE_PAGE = /^(check|extract|get|view|read|review|understand|inspect|record)\b/i;
-const MOVES_PAGE = /^(open|navigate|go to|visit|load)\b/i;
+const MOVES_PAGE = /^(open|navigate|go to|visit|load|proceed)\b/i;
 // The agent's last action is writing up, and it often has no stored image.
 const WRITES_UP = /^(report|finish|complete|compile|task completed)\b/i;
 const NOTE_WORDS = 24;

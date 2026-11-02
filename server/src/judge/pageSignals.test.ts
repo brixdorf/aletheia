@@ -23,6 +23,16 @@ describe("readSignals", () => {
     );
   });
 
+  it("reads a last-tickets tag as scarcity", () => {
+    expect(readSignals("<span>Last tickets</span>").pressure).toEqual([
+      { kind: "scarcity_message", text: "Last tickets" },
+    ]);
+  });
+
+  it("does not take a menu section called Limited Time Only for a deadline", () => {
+    expect(readSignals("<a>Limited Time Only!</a><p>Burgers</p>").pressure).toEqual([]);
+  });
+
   it("reads a share of places already gone as scarcity", () => {
     const { pressure } = readSignals(
       "<p>80% of places to stay are unavailable for your dates on our site.</p>",
