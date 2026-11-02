@@ -236,6 +236,11 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
     return c.body(null, 204);
   });
 
+  api.delete("/audits/:id/sites/:siteId", async (c) => {
+    await audits.removeSite(c.get("visitorId"), c.req.param("id"), c.req.param("siteId"));
+    return c.body(null, 204);
+  });
+
   api.post("/audits/:id/share", async (c) => {
     const token = await audits.share(c.get("visitorId"), c.req.param("id"));
     return c.json({ token });

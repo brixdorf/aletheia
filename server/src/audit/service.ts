@@ -63,6 +63,13 @@ function hostOf(url: string): string {
   return new URL(url).hostname.replace(/^www\./, "");
 }
 
+function screenshotsOf({ report }: SiteRun): string[] {
+  const shots = [...(report?.pages ?? []), ...(report?.patterns ?? [])].map(
+    ({ screenshot }) => screenshot?.stepId,
+  );
+  return [...new Set(shots.filter((stepId) => stepId !== undefined))];
+}
+
 export class AuditService {
   readonly #deps: AuditDeps;
   readonly #timing: Timing;
@@ -181,6 +188,24 @@ export class AuditService {
     for (const site of audit.sites) this.#stops.get(site.id)?.abort();
     await this.#deps.store.remove(id);
     this.#listeners.delete(id);
+  }
+
+  /** One report out of a multi-site audit. The last site takes the audit with it. */
+  async removeSite(visitorId: string, id: string, siteId: string): Promise<void> {
+    const audit = this.get(visitorId, id);
+    const site = audit.sites.find((entry) => entry.id === siteId);
+    if (!site) throw missing();
+    if (audit.sites.length === 1) {
+      await this.remove(visitorId, id);
+      return;
+    }
+
+    this.#stops.get(site.id)?.abort();
+    audit.sites = audit.sites.filter((entry) => entry !== site);
+    if (audit.sites.every((entry) => this.#isOver(entry))) audit.status = "finished";
+    await this.#deps.store.save(audit);
+    await this.#deps.store.removeScreenshots(audit.id, screenshotsOf(site));
+    this.#publish(audit);
   }
 
   async stopCheckUsing(signInId: string): Promise<void> {

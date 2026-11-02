@@ -55,6 +55,10 @@ export class AuditStore {
     await writeFile(path, image);
   }
 
+  async removeScreenshots(id: string, stepIds: readonly string[]): Promise<void> {
+    await Promise.all(stepIds.map((stepId) => rm(this.#shotPath(id, stepId), { force: true })));
+  }
+
   async #removeFolder(id: string): Promise<void> {
     await rm(join(this.#root, id), {
       recursive: true,

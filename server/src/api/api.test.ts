@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -17,6 +17,8 @@ import type { ApiLimits } from "./routes.ts";
 import { createApi } from "./routes.ts";
 
 const SECRET = "tf-secret-key";
+
+const readdirOrEmpty = (path: string) => readdir(path).catch(() => [] as string[]);
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff]);
 
 function fakeScreen() {
@@ -198,6 +200,68 @@ describe("api", () => {
 
     expect((await as(`/audits/${id}`, { method: "DELETE" })).status).toBe(204);
     expect((await as(`/audits/${id}`)).status).toBe(404);
+  });
+
+  describe("deleting one site's report", () => {
+    async function twoSites(as: ReturnType<typeof visitor>) {
+      const response = await as(
+        "/audits",
+        post({
+          task: "buy milk",
+          flow: "checkout",
+          sites: [{ url: "https://a.test/" }, { url: "https://b.test/" }],
+        }),
+      );
+      const audit = (await response.json()) as {
+        id: string;
+        sites: { id: string; host: string }[];
+      };
+      await finished(as, audit.id);
+      return audit;
+    }
+
+    it("keeps the rest of the audit, and drops that site's screenshots", async () => {
+      const as = alice();
+      const { id, sites } = await twoSites(as);
+      const [first, second] = sites;
+      const view = (await (await as(`/audits/${id}`)).json()) as {
+        sites: { id: string; report: { pages: { screenshot: { stepId: string } | null }[] } }[];
+      };
+      const stepId = view.sites[0]?.report.pages.find((page) => page.screenshot)?.screenshot
+        ?.stepId;
+      await as(`/audits/${id}/sites/${first?.id}/steps/${stepId}/screenshot`);
+      expect(getScreenshot).toHaveBeenCalledOnce();
+
+      const removed = await as(`/audits/${id}/sites/${first?.id}`, { method: "DELETE" });
+      expect(removed.status).toBe(204);
+
+      const left = (await (await as(`/audits/${id}`)).json()) as { sites: { id: string }[] };
+      expect(left.sites.map((site) => site.id)).toEqual([second?.id]);
+      expect(await readdirOrEmpty(join(dataDir, "audits", id, "screenshots"))).not.toContain(
+        `${stepId}.jpg`,
+      );
+    });
+
+    it("deletes the whole audit with its last site", async () => {
+      const as = alice();
+      const id = await createAudit(as);
+      const view = (await (await as(`/audits/${id}`)).json()) as { sites: { id: string }[] };
+
+      await as(`/audits/${id}/sites/${view.sites[0]?.id}`, { method: "DELETE" });
+
+      expect((await as(`/audits/${id}`)).status).toBe(404);
+    });
+
+    it("is refused for another visitor and for an unknown site", async () => {
+      const as = alice();
+      const { id, sites } = await twoSites(as);
+      const bob = visitor("00000000-0000-4000-8000-00000000000b");
+
+      expect((await bob(`/audits/${id}/sites/${sites[0]?.id}`, { method: "DELETE" })).status).toBe(
+        404,
+      );
+      expect((await as(`/audits/${id}/sites/nope`, { method: "DELETE" })).status).toBe(404);
+    });
   });
 
   it("hides one visitor's audits from another", async () => {
