@@ -4,21 +4,21 @@
 
 <h1 align="center">Aletheia</h1>
 
-<p align="center">See what a site hides before you pay.</p>
+<p align="center">Find the dark patterns on any website, with proof.</p>
 
 <p align="center"><a href="https://aletheia.romitraj.dev">aletheia.romitraj.dev</a></p>
 
-![The Aletheia home page: one box for the task, with the sites it picked for buying toned milk in India](docs/images/home.png)
+![The Aletheia home page: one box for the task, with the site it picked for an Adobe Creative Cloud sign-up](docs/images/home.png)
 
 ## The problem
 
-India's CCPA banned 13 dark patterns in 2023, and they apply to every platform selling to people in India.
-They live deep in a flow: a Rs 27 pack of milk on Blinkit came to Rs 54 in the cart on 2 Nov 2026, and Adobe's fee for leaving early sits one page after its refund promise.
-Nobody can walk every checkout by hand, so Aletheia does it and brings back proof.
+India's CCPA dark pattern guidelines ban drip pricing, false urgency, confirm shaming, subscription traps and more, on every platform selling to people in India.
+These patterns live deep in a flow: Adobe's fee for leaving early sits one page after its refund promise, in a sign-up nobody reads to the end.
+Nobody can walk every flow by hand, so Aletheia does it and brings back proof.
 
 ## How it works
 
-Say what you want to buy or subscribe to. Aletheia works out the flow and the country, and picks the sites: a brand you named, or the main national sites for that kind of product. You can change any of it, and you never have to.
+Name a site and a flow in your own words. Aletheia works out the flow and the country, and picks the sites: a brand you named, or the main national sites for that kind of product. You can change the sites, and you never have to.
 
 ```mermaid
 flowchart LR
@@ -26,20 +26,20 @@ flowchart LR
     B --> C[One TinyFish agent per site]
     C --> D[Stop before payment]
     D --> E[Check the evidence]
-    E --> F[Report on all 13 patterns]
+    E --> F[Report every pattern, with proof]
 ```
 
 Each site gets its own agent, which walks the flow like a customer as a guest. You watch the steps and the browser live.
 
-![A live run on Zepto, with the agent's browser beside its steps](docs/images/live-run.png)
+![A live run, with the agent's browser beside its steps](docs/images/live-run.png)
 
 The agent proposes, and our rules decide. Numbers are checked by arithmetic: the lines on a bill must add up to its total. Wording such as false urgency needs the exact quote and a screenshot, and is shown as seen with proof, not as a verdict. A pattern on a page the run never reached is marked not checked, so a login wall never earns a clean report.
 
-![A Blinkit report: milk at Rs 27 comes to Rs 54 once delivery and handling charges are added](docs/images/report.png)
+![An Adobe report: the dark patterns found, each with its quote, step and screenshot](docs/images/report.png)
 
 Past audits stay in your browser. Compare sites, share a read-only link, or delete any report.
 
-![Past audits, each row with its 13-cell pattern strip and the price shown against the price reached](docs/images/audits.png)
+![Past audits, each row with its pattern strip and its findings as pills](docs/images/audits.png)
 
 ## How TinyFish is used
 
