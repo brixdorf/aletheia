@@ -232,6 +232,7 @@ function SiteSlot({ site, audit, scope, owned, arrivedLive, onChanged }: SiteSlo
             site={site}
             report={report}
             task={audit.task}
+            country={audit.country ?? null}
             scope={scope}
             press={arrivedLive}
             solo={audit.sites.length === 1}

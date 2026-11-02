@@ -57,7 +57,7 @@ describe("parseSite", () => {
 });
 
 describe("addSite", () => {
-  const site = (url: string, host: string) => ({ url, host, signInId: null });
+  const site = (url: string, host: string) => ({ url, host });
 
   it("appends a new site as a guest", () => {
     expect(addSite([], { url: "https://a.test/", host: "a.test" })).toEqual({

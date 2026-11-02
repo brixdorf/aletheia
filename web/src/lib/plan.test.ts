@@ -5,7 +5,7 @@ import type { PlanView } from "./types.ts";
 
 const ixigo = { name: "ixigo", url: "https://www.ixigo.com/", host: "ixigo.com" };
 const cleartrip = { name: "Cleartrip", url: "https://www.cleartrip.com/", host: "cleartrip.com" };
-const goibibo = { url: "https://www.goibibo.com/", host: "goibibo.com", signInId: null };
+const goibibo = { url: "https://www.goibibo.com/", host: "goibibo.com" };
 
 function plan(overrides: Partial<PlanView> = {}): PlanView {
   return {
@@ -31,7 +31,7 @@ describe("countryChoices", () => {
 });
 
 describe("pickedSites", () => {
-  const none = { removed: [], added: [], signIns: {} };
+  const none = { removed: [], added: [] };
 
   it("shows what the server picked", () => {
     expect(pickedSites([ixigo, cleartrip], none).map(({ host }) => host)).toEqual([
@@ -50,20 +50,14 @@ describe("pickedSites", () => {
   });
 
   it("does not list a site twice when the server picks one the visitor added", () => {
-    const added = [{ ...ixigo, signInId: null }];
+    const added = [ixigo];
     expect(pickedSites([ixigo], { ...none, added })).toHaveLength(1);
-  });
-
-  it("attaches a sign-in to its site", () => {
-    const sites = pickedSites([ixigo], { ...none, signIns: { "ixigo.com": "sign-1" } });
-    expect(sites[0]?.signInId).toBe("sign-1");
   });
 
   it("never lists more than one audit can take", () => {
     const added = ["a", "b", "c", "d"].map((name) => ({
       url: `https://${name}.test/`,
       host: `${name}.test`,
-      signInId: null,
     }));
     expect(pickedSites([ixigo, cleartrip], { ...none, added })).toHaveLength(4);
   });

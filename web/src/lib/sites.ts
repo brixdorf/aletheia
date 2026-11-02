@@ -19,7 +19,6 @@ export function avatarTone(host: string): number {
 export interface PlannedSite {
   url: string;
   host: string;
-  signInId: string | null;
 }
 
 type Parsed = { ok: true; url: string; host: string } | { ok: false; message: string };
@@ -54,5 +53,5 @@ export function addSite(
   if (sites.length >= MAX_SITES) {
     return { ok: false, message: `One audit can cover ${MAX_SITES} sites.` };
   }
-  return { ok: true, sites: [...sites, { url, host, signInId: null }] };
+  return { ok: true, sites: [...sites, { url, host }] };
 }

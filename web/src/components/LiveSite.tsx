@@ -205,10 +205,7 @@ export function LiveSite({ site, task, auditId }: LiveSiteProps) {
       ) : null}
       {logout ? <p className="text-[13px] text-mute">{logout}</p> : null}
       {status.tone === "stopped" && auditId ? (
-        <Link
-          className="btn btn-soft w-fit"
-          href={newAuditHref({ task, url: site.url, signIn: site.signedIn })}
-        >
+        <Link className="btn btn-soft w-fit" href={newAuditHref({ task, url: site.url })}>
           Run this site again
         </Link>
       ) : null}

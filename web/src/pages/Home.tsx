@@ -1,51 +1,32 @@
 import type { FormEvent, KeyboardEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { Cross } from "../components/icons.tsx";
-import { SignInPanel } from "../components/SignInPanel.tsx";
 import { SiteAvatar, usePageTitle } from "../components/ui.tsx";
-import { loginHint, signOut, startAudit } from "../lib/api.ts";
+import { startAudit } from "../lib/api.ts";
 import { pickedSites, planNote } from "../lib/plan.ts";
-import { rememberSignIn } from "../lib/signInMemory.ts";
 import type { PlannedSite } from "../lib/sites.ts";
 import { addSite, MAX_SITES, parseSite } from "../lib/sites.ts";
 import { useAuditPlan } from "../lib/useAuditPlan.ts";
-import { useRotatingExample } from "../lib/useRotatingExample.ts";
+import { useExamples } from "../lib/useExamples.ts";
 import { navigate } from "../lib/useRoute.ts";
 
 function pinnedSite(url: string): PlannedSite | null {
   if (!url) return null;
   const parsed = parseSite(url);
-  return parsed.ok ? { url: parsed.url, host: parsed.host, signInId: null } : null;
+  return parsed.ok ? { url: parsed.url, host: parsed.host } : null;
 }
 
 interface SiteChipProps {
   site: PlannedSite;
-  loginExpected: boolean;
-  onSignIn: () => void;
-  onSignOut: () => void;
   onRemove: () => void;
 }
 
-function SiteChip({ site, loginExpected, onSignIn, onSignOut, onRemove }: SiteChipProps) {
+function SiteChip({ site, onRemove }: SiteChipProps) {
   return (
     <li className="site-chip">
       <SiteAvatar host={site.host} small />
       <span className="min-w-0 truncate">{site.host}</span>
-      {site.signInId ? (
-        <button type="button" className="site-chip-action" onClick={onSignOut}>
-          Sign out<span className="sr-only"> of {site.host}</span>
-        </button>
-      ) : (
-        <button
-          type="button"
-          className={`site-chip-action ${loginExpected ? "text-ink" : ""}`}
-          title="Sign in to see more"
-          onClick={onSignIn}
-        >
-          Sign in<span className="sr-only"> to see more on {site.host}</span>
-        </button>
-      )}
       <button
         type="button"
         className="round-button"
@@ -59,7 +40,7 @@ function SiteChip({ site, loginExpected, onSignIn, onSignOut, onRemove }: SiteCh
 }
 
 interface HomeProps {
-  prefill: { task: string; url: string; signIn: boolean };
+  prefill: { task: string; url: string };
 }
 
 export function Home({ prefill }: HomeProps) {
@@ -70,52 +51,20 @@ export function Home({ prefill }: HomeProps) {
     const pinned = pinnedSite(prefill.url);
     return pinned ? [pinned] : [];
   });
-  const [signIns, setSignIns] = useState<Record<string, string>>({});
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const [siteError, setSiteError] = useState<string | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [hints, setHints] = useState<Record<string, boolean>>({});
-  const [signingIn, setSigningIn] = useState<PlannedSite | null>(() =>
-    prefill.signIn ? pinnedSite(prefill.url) : null,
-  );
 
   const { plan, pending, failed } = useAuditPlan(task);
-  const example = useRotatingExample(task.length === 0);
+  const examples = useExamples();
   // A site carried over from a report is the whole audit, so the planner stays out of it.
   const pinned = pinnedSite(prefill.url) !== null;
   const picks = pinned ? [] : (plan?.sites ?? []);
-  const sites = pickedSites(picks, { removed, added, signIns });
+  const sites = pickedSites(picks, { removed, added });
   const edited = pinned || removed.length > 0 || added.length > 0;
-  const hasSignIn = Object.keys(signIns).length > 0;
-
-  const started = useRef(false);
-  const latestSignIns = useRef(signIns);
-  latestSignIns.current = signIns;
-
-  // A sign-in that never reached a check should not sit at TinyFish until the sweep finds it.
-  useEffect(
-    () => () => {
-      if (started.current) return;
-      for (const signInId of Object.values(latestSignIns.current)) {
-        void signOut(signInId).catch(() => undefined);
-      }
-    },
-    [],
-  );
-
-  const hosts = sites.map(({ host }) => host).join(" ");
-  useEffect(() => {
-    for (const site of sites) {
-      if (hints[site.host] !== undefined) continue;
-      loginHint(site.url).then(
-        (needed) => setHints((current) => ({ ...current, [site.host]: needed })),
-        () => undefined,
-      );
-    }
-  }, [hosts]);
 
   function addDraft() {
     const parsed = parseSite(draft);
@@ -129,17 +78,10 @@ export function Home({ prefill }: HomeProps) {
     setDraft("");
     setAdding(false);
     setRemoved((current) => current.filter((host) => host !== parsed.host));
-    setAdded((current) => [...current, { ...parsed, signInId: null }]);
-  }
-
-  function endSignIn(host: string) {
-    const signInId = signIns[host];
-    if (signInId) void signOut(signInId).catch(() => undefined);
-    setSignIns(({ [host]: _ended, ...others }) => others);
+    setAdded((current) => [...current, parsed]);
   }
 
   function remove({ host }: PlannedSite) {
-    endSignIn(host);
     setRemoved((current) => [...current, host]);
     setAdded((current) => current.filter((site) => site.host !== host));
   }
@@ -154,7 +96,7 @@ export function Home({ prefill }: HomeProps) {
     if (taskProblem) return;
 
     // With nothing edited the server can plan for itself, even if our own plan is still on its way.
-    const letServerPick = !edited && !hasSignIn && (pending || !plan);
+    const letServerPick = !edited && (pending || !plan);
     if (!letServerPick && sites.length === 0) {
       setSiteError("Add at least one site.");
       setAdding(true);
@@ -170,16 +112,9 @@ export function Home({ prefill }: HomeProps) {
         ...(letServerPick
           ? {}
           : {
-              sites: sites.map(({ url, signInId }) => ({
-                url,
-                ...(signInId ? { signInId } : {}),
-              })),
+              sites: sites.map(({ url }) => ({ url })),
             }),
       });
-      started.current = true;
-      for (const { url, signInId } of sites) {
-        if (signInId) rememberSignIn(audit.id, url, signInId);
-      }
       navigate(`/audits/${audit.id}`);
     } catch (error) {
       setBusy(false);
@@ -224,7 +159,7 @@ export function Home({ prefill }: HomeProps) {
             value={task}
             onChange={(event) => setTask(event.target.value)}
             onKeyDown={submitOnEnter}
-            placeholder={example}
+            placeholder="Say what you want to buy, book or sign up for"
             aria-invalid={taskError !== null}
             aria-describedby={taskError ? "task-error" : undefined}
             className="prompt-field mt-1.5"
@@ -243,18 +178,27 @@ export function Home({ prefill }: HomeProps) {
           </div>
         </div>
 
+        {task.length === 0 && examples.length > 0 ? (
+          <ul aria-label="Examples" className="flex max-w-[720px] flex-wrap justify-center gap-2">
+            {examples.map((example) => (
+              <li key={example}>
+                <button
+                  type="button"
+                  className="btn btn-soft btn-sm"
+                  onClick={() => setTask(example)}
+                >
+                  {example}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
         <div className="flex w-full max-w-[720px] flex-col items-center gap-2.5">
           {sites.length > 0 ? (
             <ul aria-label="Sites to audit" className="flex flex-wrap justify-center gap-2">
               {sites.map((site) => (
-                <SiteChip
-                  key={site.host}
-                  site={site}
-                  loginExpected={hints[site.host] === true}
-                  onSignIn={() => setSigningIn(site)}
-                  onSignOut={() => endSignIn(site.host)}
-                  onRemove={() => remove(site)}
-                />
+                <SiteChip key={site.host} site={site} onRemove={() => remove(site)} />
               ))}
             </ul>
           ) : null}
@@ -294,7 +238,7 @@ export function Home({ prefill }: HomeProps) {
                     className="btn btn-soft btn-sm"
                     onClick={() => {
                       setRemoved((current) => current.filter((entry) => entry !== host));
-                      setAdded((current) => [...current, { url, host, signInId: null }]);
+                      setAdded((current) => [...current, { url, host }]);
                     }}
                   >
                     {host}
@@ -351,24 +295,10 @@ export function Home({ prefill }: HomeProps) {
       </form>
 
       <p className="mt-8 max-w-[560px] text-[13px] text-mute">
-        An agent walks each site like a customer and stops before payment. It is told never to pay
-        or enter contact details, and the report flags any step that looks like it did. Every site
-        is a guest run unless you sign in, for one check only. Your audits stay tied to this
-        browser.
+        Every audit runs as a guest and stops before payment. The agent is told never to pay or
+        enter contact details, and the report flags any step that looks like it did. Your audits
+        stay tied to this browser.
       </p>
-
-      {signingIn ? (
-        <SignInPanel
-          url={signingIn.url}
-          host={signingIn.host}
-          country={plan?.country ?? null}
-          onReady={(signIn) => {
-            setSignIns((current) => ({ ...current, [signingIn.host]: signIn.id }));
-            setSigningIn(null);
-          }}
-          onClosed={() => setSigningIn(null)}
-        />
-      ) : null}
     </div>
   );
 }

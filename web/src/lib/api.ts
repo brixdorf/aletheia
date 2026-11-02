@@ -106,11 +106,9 @@ export function screenshotUrl(scope: ReportScope, siteId: string, stepId: string
   return `${base}/sites/${siteId}/steps/${stepId}/screenshot`;
 }
 
-export async function loginHint(url: string): Promise<boolean> {
-  const { loginNeeded } = await request<{ loginNeeded: boolean }>(
-    `/signin/hint?url=${encodeURIComponent(url)}`,
-  );
-  return loginNeeded;
+export async function getExamples(): Promise<string[]> {
+  const { examples } = await post<{ examples: string[] }>("/examples", browserPlace());
+  return examples;
 }
 
 export function startSignIn(url: string, country: string | null): Promise<SignInView> {

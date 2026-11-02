@@ -150,7 +150,7 @@ export function stopSummary({ stop, login }: SiteReport): string {
 }
 
 export function signInOffer({ login }: SiteReport): string | null {
-  return login.offerSignIn ? "Sign in for the full price" : null;
+  return login.offerSignIn ? "Sign in to check further" : null;
 }
 
 export function logoutNote(logout: SiteView["logout"]): string | null {

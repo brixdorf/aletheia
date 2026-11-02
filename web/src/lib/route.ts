@@ -1,5 +1,5 @@
 export type Route =
-  | { name: "home"; task: string; url: string; signIn: boolean }
+  | { name: "home"; task: string; url: string }
   | { name: "audits" }
   | { name: "redirect"; to: string }
   | { name: "audit"; id: string }
@@ -13,12 +13,7 @@ export function matchRoute(pathname: string, search: string): Route {
   const [head, id] = parts;
 
   if (parts.length === 0) {
-    return {
-      name: "home",
-      task: query.get("task") ?? "",
-      url: query.get("url") ?? "",
-      signIn: query.get("signIn") === "1",
-    };
+    return { name: "home", task: query.get("task") ?? "", url: query.get("url") ?? "" };
   }
   if (parts.length === 1 && head === "new") return { name: "redirect", to: `/${search}` };
   if (parts.length === 1 && head === "audits") return { name: "audits" };
@@ -30,16 +25,6 @@ export function matchRoute(pathname: string, search: string): Route {
   return { name: "not_found" };
 }
 
-export function newAuditHref({
-  task,
-  url,
-  signIn,
-}: {
-  task: string;
-  url: string;
-  signIn: boolean;
-}): string {
-  const query = new URLSearchParams({ task, url });
-  if (signIn) query.set("signIn", "1");
-  return `/?${query}`;
+export function newAuditHref({ task, url }: { task: string; url: string }): string {
+  return `/?${new URLSearchParams({ task, url })}`;
 }

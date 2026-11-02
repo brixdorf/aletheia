@@ -2,7 +2,6 @@ import type { ReportScope } from "../lib/api.ts";
 import { screenshotUrl } from "../lib/api.ts";
 import { money, plural } from "../lib/format.ts";
 import { counts, logoutNote, signInOffer, stopSummary } from "../lib/report.ts";
-import { newAuditHref } from "../lib/route.ts";
 import { siteName } from "../lib/sites.ts";
 import type { Story } from "../lib/story.ts";
 import { renewalNote, stats, story } from "../lib/story.ts";
@@ -10,8 +9,9 @@ import type { SiteReport, SiteView } from "../lib/types.ts";
 import { Findings, FindingsSummary } from "./Findings.tsx";
 import { PatternList } from "./PatternList.tsx";
 import { Screenshot } from "./Screenshot.tsx";
+import { SignInOffer } from "./SignInOffer.tsx";
 import { SubscriptionFacts } from "./SubscriptionFacts.tsx";
-import { Link, SiteAvatar } from "./ui.tsx";
+import { SiteAvatar } from "./ui.tsx";
 
 const FLOW_LABEL = { checkout: "Checkout", subscription: "Subscription sign-up" } as const;
 
@@ -114,13 +114,14 @@ interface ReportCardProps {
   site: SiteView;
   report: SiteReport;
   task: string;
+  country: string | null;
   scope: ReportScope;
   press: boolean;
   /** The only site in the audit, so the crumb bar has already named it. */
   solo: boolean;
 }
 
-export function ReportCard({ site, report, task, scope, press, solo }: ReportCardProps) {
+export function ReportCard({ site, report, task, country, scope, press, solo }: ReportCardProps) {
   const logout = logoutNote(site.logout);
   const told = story(report);
   const offer = scope.kind === "owner" ? signInOffer(report) : null;
@@ -187,15 +188,7 @@ export function ReportCard({ site, report, task, scope, press, solo }: ReportCar
                 </div>
               ) : null}
               {offer ? (
-                <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
-                  <Link
-                    className="btn btn-dark"
-                    href={newAuditHref({ task, url: report.url, signIn: true })}
-                  >
-                    {offer}
-                  </Link>
-                  <p className="text-[13px] text-mute">You sign in yourself, for this one check.</p>
-                </div>
+                <SignInOffer label={offer} report={report} task={task} country={country} />
               ) : null}
             </div>
           ) : null}

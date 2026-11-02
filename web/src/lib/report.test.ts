@@ -126,7 +126,7 @@ describe("signInOffer", () => {
     const offer = signInOffer(
       report({ login: { wallAt: "/login", hidesFees: true, offerSignIn: true } }),
     );
-    expect(offer).toBe("Sign in for the full price");
+    expect(offer).toBe("Sign in to check further");
   });
 
   it("makes no offer when none is due", () => {
