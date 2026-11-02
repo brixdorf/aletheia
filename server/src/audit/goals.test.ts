@@ -122,11 +122,43 @@ describe("buildGoal", () => {
   it("asks about every pattern and the consent next to each button", () => {
     const text = goal({ flow: "subscription" });
 
-    for (const pattern of ["false_urgency", "saas_billing", "rogue_malware"]) {
+    for (const pattern of [
+      "partitioned_pricing",
+      "free_claim",
+      "price_behind_signin",
+      "forced_action",
+      "trick_question",
+      "disguised_ad",
+      "hidden_subscription",
+      "bait_and_switch",
+    ]) {
       expect(text).toContain(pattern);
     }
     expect(text).toMatch(/consent/i);
     expect(text).toMatch(/plan_options/);
+  });
+
+  it("asks for words copied from the page, with the signals the rules read", () => {
+    const text = goal({ flow: "subscription" });
+
+    expect(text).toMatch(/copied character for character/i);
+    for (const field of [
+      "price_anchors",
+      "cookie_banners",
+      "emphasis_pairs",
+      "repeated_prompts",
+      "cart_item_count",
+      "trial_card",
+    ]) {
+      expect(text).toContain(field);
+    }
+  });
+
+  it("shows the agent what does not count", () => {
+    const text = goal();
+
+    expect(text).toMatch(/does not count/i);
+    expect(text).toMatch(/most popular/i);
   });
 
   it("asks for the currency as a code", () => {
@@ -158,7 +190,18 @@ describe("OUTPUT_SCHEMA", () => {
   });
 
   it("covers places, currency, plans and consent", () => {
-    for (const field of ["origin", "destination", "plan_options", "consent_text", "terms"]) {
+    for (const field of [
+      "origin",
+      "destination",
+      "plan_options",
+      "consent_text",
+      "terms",
+      "cart_item_count",
+      "price_anchors",
+      "cookie_banners",
+      "emphasis_pairs",
+      "repeated_prompts",
+    ]) {
       expect(properties).toHaveProperty(field);
     }
     expect(properties.currency.nullable).toBe(true);

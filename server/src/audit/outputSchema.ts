@@ -1,5 +1,3 @@
-import { PATTERN_IDS } from "../judge/types.ts";
-
 const nullableString = { type: "string", nullable: true } as const;
 const nullableNumber = { type: "number", nullable: true } as const;
 const nullableInteger = { type: "integer", nullable: true } as const;
@@ -12,6 +10,18 @@ function objectOf<const P extends Record<string, unknown>>(properties: P) {
 function arrayOf<const I>(items: I) {
   return { type: "array", items } as const;
 }
+
+/** The patterns only the agent can spot. Every other pattern comes from the lists below. */
+const AGENT_PATTERNS = [
+  "partitioned_pricing",
+  "bait_and_switch",
+  "free_claim",
+  "hidden_subscription",
+  "price_behind_signin",
+  "forced_action",
+  "trick_question",
+  "disguised_ad",
+] as const;
 
 const properties = {
   stopped_at: {
@@ -34,6 +44,7 @@ const properties = {
   intro_period: nullableString,
   price_after_intro: nullableNumber,
   final_price: nullableNumber,
+  cart_item_count: nullableInteger,
   removed_from_cart: arrayOf(objectOf({ name: { type: "string" }, price: nullableNumber })),
   steps: arrayOf(
     objectOf({
@@ -80,7 +91,14 @@ const properties = {
     objectOf({
       term: {
         type: "string",
-        enum: ["trial", "renewal", "price_after_intro", "cancellation", "cancellation_fee"],
+        enum: [
+          "trial",
+          "renewal",
+          "price_after_intro",
+          "cancellation",
+          "cancellation_fee",
+          "trial_card",
+        ],
       },
       quote: nullableString,
       shown_where: {
@@ -101,10 +119,35 @@ const properties = {
       first_seen_at_step: nullableInteger,
     }),
   ),
+  price_anchors: arrayOf(
+    objectOf({
+      quote: { type: "string" },
+      price: { type: "number" },
+      reference_price: { type: "number" },
+      seen_at_step: nullableInteger,
+    }),
+  ),
+  cookie_banners: arrayOf(
+    objectOf({
+      accept_label: nullableString,
+      reject_label: nullableString,
+      seen_at_step: nullableInteger,
+    }),
+  ),
+  emphasis_pairs: arrayOf(
+    objectOf({
+      prominent: { type: "string" },
+      muted: { type: "string" },
+      seen_at_step: nullableInteger,
+    }),
+  ),
+  repeated_prompts: arrayOf(
+    objectOf({ text: { type: "string" }, seen_at_steps: arrayOf({ type: "integer" }) }),
+  ),
   pattern_checks: arrayOf(
     objectOf({
-      pattern: { type: "string", enum: [...PATTERN_IDS] },
-      status: { type: "string", enum: ["found", "not_found", "not_checked"] },
+      pattern: { type: "string", enum: AGENT_PATTERNS },
+      status: { type: "string", enum: ["found"] },
       quote: nullableString,
       seen_at_step: nullableInteger,
       note: nullableString,
