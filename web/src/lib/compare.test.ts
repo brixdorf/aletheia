@@ -26,23 +26,22 @@ function site(host: string, reportOverrides: Parameters<typeof report>[0] = {}):
 function audit(overrides: Partial<AuditPublic>): AuditPublic {
   return {
     id: "a1",
-    task: "Buy milk",
+    task: "Buy a laptop",
     flow: "checkout",
     createdAt: "2026-11-01T08:00:00.000Z",
     status: "finished",
     sites: [],
+    countryName: "India",
     comparison: null,
     ...overrides,
   };
 }
 
-const row = (host: string, rank: number | null, total: number | null) => ({
+const row = (host: string, total: number | null) => ({
   host,
   total,
   currency: "INR",
   destination: null,
-  comparable: total !== null,
-  rank,
   item: null,
   hiddenCost: null,
   found: 0,
@@ -68,48 +67,27 @@ describe("hiddenCostLabel", () => {
 });
 
 describe("buildComparison", () => {
-  it("ranks by the server's order when one audit is rankable", () => {
+  it("keeps the audit's order and carries the server's notes", () => {
     const view = buildComparison([
       audit({
-        sites: [site("blinkit.com"), site("zomato.com")],
+        sites: [site("a.test"), site("b.test")],
         comparison: {
-          rankable: true,
-          reasons: [],
-          rows: [row("zomato.com", 1, 60), row("blinkit.com", 2, 81)],
+          reasons: ["b.test priced Noida, not the place in the task."],
+          rows: [row("a.test", 60), row("b.test", 81)],
         },
       }),
     ]);
-    expect(view.ranked).toBe(true);
-    expect(view.columns.map((column) => [column.host, column.rank])).toEqual([
-      ["zomato.com", 1],
-      ["blinkit.com", 2],
-    ]);
+    expect(view.columns.map((column) => column.host)).toEqual(["a.test", "b.test"]);
+    expect(view.notes).toEqual(["b.test priced Noida, not the place in the task."]);
   });
 
-  it("drops every rank when the server says the results are not like for like", () => {
+  it("says separate audits are not like for like, since their tasks can differ", () => {
     const view = buildComparison([
-      audit({
-        sites: [site("a.test"), site("b.test"), site("c.test")],
-        comparison: {
-          rankable: false,
-          reasons: ["c.test priced Noida, not the place in the task."],
-          rows: [row("a.test", 1, 60), row("b.test", 2, 81), row("c.test", null, 90)],
-        },
-      }),
-    ]);
-    expect(view.ranked).toBe(false);
-    expect(view.columns.every((column) => column.rank === null)).toBe(true);
-    expect(view.notes).toEqual(["c.test priced Noida, not the place in the task."]);
-  });
-
-  it("never ranks across audits, whose tasks can differ", () => {
-    const view = buildComparison([
-      audit({ id: "a1", task: "Buy milk", sites: [site("blinkit.com")] }),
+      audit({ id: "a1", task: "Buy a laptop", sites: [site("blinkit.com")] }),
       audit({ id: "a2", task: "Buy a phone", sites: [site("croma.com")] }),
     ]);
-    expect(view.ranked).toBe(false);
-    expect(view.columns.map((column) => column.task)).toEqual(["Buy milk", "Buy a phone"]);
-    expect(view.notes[0]).toContain("not ranked");
+    expect(view.columns.map((column) => column.task)).toEqual(["Buy a laptop", "Buy a phone"]);
+    expect(view.notes[0]).toContain("separate audits");
   });
 
   it("leaves out sites with no report and says so", () => {
@@ -119,7 +97,7 @@ describe("buildComparison", () => {
     expect(view.notes).toContain("slow.test has no report to compare.");
   });
 
-  it("gives every column its hidden cost, with no winner, even across audits", () => {
+  it("gives every column its price change, even across audits", () => {
     const view = buildComparison([
       audit({
         id: "a1",
@@ -136,13 +114,20 @@ describe("buildComparison", () => {
       }),
     ]);
 
-    expect(view.columns.map((column) => [column.host, column.rank, column.hiddenCost])).toEqual([
-      ["blinkit.com", null, { amount: 57, percent: 238, final: false }],
-      ["croma.com", null, { amount: 0, percent: 0, final: true }],
+    expect(view.columns.map((column) => [column.host, column.hiddenCost])).toEqual([
+      ["blinkit.com", { amount: 57, percent: 238, final: false }],
+      ["croma.com", { amount: 0, percent: 0, final: true }],
     ]);
+    expect(view.pricesMoved).toBe(true);
   });
 
-  it("lines up the 13 patterns across columns", () => {
+  it("leaves prices out of the comparison when none of them moved", () => {
+    const flat = { bill: bill({ firstPrice: 549, total: 549, increase: 0 }) };
+    const view = buildComparison([audit({ sites: [site("a.test", flat), site("b.test", flat)] })]);
+    expect(view.pricesMoved).toBe(false);
+  });
+
+  it("lines up every pattern across columns", () => {
     const view = buildComparison([
       audit({
         sites: [

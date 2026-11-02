@@ -39,9 +39,11 @@ interface StatusPillProps {
   status: PatternStatus;
   /** Position among the pills landing together, so they pop one after another. */
   popOrder?: number;
+  /** Says what was found in place of the bare status. */
+  label?: string;
 }
 
-export function StatusPill({ status, popOrder }: StatusPillProps) {
+export function StatusPill({ status, popOrder, label }: StatusPillProps) {
   const { text, tone } = STATUS[status];
   const popping = status === "found" && popOrder !== undefined;
   const style = popping
@@ -49,7 +51,7 @@ export function StatusPill({ status, popOrder }: StatusPillProps) {
     : undefined;
   return (
     <span className={`pill ${tone} ${popping ? "pop-in" : ""}`} style={style}>
-      {text}
+      {label ? `${label}, ${text.toLowerCase()}` : text}
     </span>
   );
 }

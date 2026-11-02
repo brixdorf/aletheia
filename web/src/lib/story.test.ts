@@ -2,11 +2,15 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { bill, finding, report, subscription } from "../testing/report.ts";
 import {
+  auditLine,
+  billNote,
   billPill,
+  foundPatterns,
   patternName,
-  priceJump,
-  proofChecks,
-  rowPill,
+  priceChange,
+  renewalNote,
+  rowPills,
+  showsBill,
   stats,
   story,
   totalLine,
@@ -26,7 +30,7 @@ const drip = finding({
   screenshot: { stepId: "s4", action: null },
 });
 
-const blinkit = report({
+const checkout = report({
   priceLabel: "price_before_sign_in",
   bill: bill({
     firstPrice: 24,
@@ -71,6 +75,19 @@ const adobe = report({
   patterns: [trap],
 });
 
+const urgency = finding({
+  id: "false_urgency",
+  label: "False Urgency",
+  status: "found",
+  proof: "seen",
+  step: 3,
+  quote: "Only 2 left",
+  quoteCheck: "matched",
+  note: "Countdown beside the price.",
+});
+
+const flat = bill({ firstPrice: 549, total: 549, increase: 0 });
+
 describe("patternName", () => {
   it("writes labels in sentence case and keeps SaaS as it is", () => {
     expect(patternName("Drip Pricing")).toBe("Drip pricing");
@@ -79,96 +96,124 @@ describe("patternName", () => {
   });
 });
 
-describe("priceJump", () => {
-  it("goes from the first price to the total on a bill that grew", () => {
-    expect(priceJump(blinkit)).toEqual({ from: 24, to: 81, suffix: "", currency: "INR" });
-  });
-
-  it("goes from the intro price to the renewal price per billing period", () => {
-    expect(priceJump(adobe)).toEqual({ from: 1199, to: 2714, suffix: "/mo", currency: "INR" });
-  });
-
-  it("has no shown price when nothing was added", () => {
-    const croma = report({ bill: bill({ firstPrice: 549, total: 549, increase: 0 }) });
-    expect(priceJump(croma)).toEqual({ from: null, to: 549, suffix: "", currency: "INR" });
-  });
-
-  it("has no total when the run never reached one", () => {
-    expect(priceJump(report({ bill: bill({ firstPrice: 389 }) })).to).toBeNull();
+describe("foundPatterns", () => {
+  it("lists only what was found, proven by arithmetic first", () => {
+    const both = report({ patterns: [urgency, drip] });
+    expect(foundPatterns(both).map(({ id }) => id)).toEqual(["drip_pricing", "false_urgency"]);
   });
 });
 
-describe("story", () => {
-  it("tells the bill story with the amount that appeared", () => {
-    expect(story(blinkit)).toMatchObject({
-      tone: "found",
-      badge: "Drip pricing, found",
-      lead: "Rs 57 appeared",
-      accent: "after",
-      tail: "you chose.",
-      finding: { id: "drip_pricing" },
-    });
-    expect(story(blinkit).body).toBe(
+describe("priceChange", () => {
+  it("goes from the first price to the total on a bill that grew", () => {
+    expect(priceChange(checkout)).toEqual({ from: 24, to: 81, suffix: "", currency: "INR" });
+  });
+
+  it("goes from the intro price to the renewal price per billing period", () => {
+    expect(priceChange(adobe)).toEqual({ from: 1199, to: 2714, suffix: "/mo", currency: "INR" });
+  });
+
+  it("is absent when no price moved", () => {
+    expect(priceChange(report({ bill: flat }))).toBeNull();
+  });
+
+  it("is absent when the run never reached a total", () => {
+    expect(priceChange(report({ bill: bill({ firstPrice: 389 }) }))).toBeNull();
+  });
+});
+
+describe("showsBill", () => {
+  it("shows the bill when drip pricing was found", () => {
+    const noted = report({ bill: flat, patterns: [drip] });
+    expect(showsBill(noted)).toBe(true);
+  });
+
+  it("shows the bill when the price rose, whatever the patterns say", () => {
+    expect(showsBill(report({ bill: bill({ firstPrice: 24, total: 81, increase: 57 }) }))).toBe(
+      true,
+    );
+  });
+
+  it("keeps the bill out of a report about something else", () => {
+    expect(showsBill(report({ bill: flat, patterns: [urgency] }))).toBe(false);
+    expect(showsBill(adobe)).toBe(false);
+  });
+});
+
+describe("billNote", () => {
+  it("says how many charges came after the first price and where it was shown", () => {
+    expect(billNote(checkout)).toBe(
       "3 charges show up after the first price. None of them was on the product page, so the price you pay is 3.4 times the price you were shown.",
     );
   });
 
-  it("does not claim the product page when the first price came from the cart", () => {
-    const cart = report({
-      ...blinkit,
-      bill: { ...blinkit.bill, firstPriceSource: "cart" },
-    });
-    expect(story(cart).body).not.toContain("product page");
+  it("says first price, not product page, when the cart showed it first", () => {
+    const cart = { ...checkout, bill: { ...checkout.bill, firstPriceSource: "cart" as const } };
+    expect(billNote(cart)).toContain("None of them was in the first price");
   });
 
-  it("quotes the largest charge on a bill finding that has no quote of its own", () => {
-    expect(story(blinkit).quote).toBe("High demand surge charge Rs 30");
+  it("has nothing to say when the price held", () => {
+    expect(billNote(report({ bill: flat }))).toBeNull();
+  });
+});
+
+describe("renewalNote", () => {
+  it("states the jump after the offer", () => {
+    expect(renewalNote(adobe)).toBe(
+      "The site leads with Rs 1,199 for 12 months. Then you pay Rs 2,714, 2.3 times as much.",
+    );
   });
 
-  it("prefers the words on the page when the finding has them", () => {
-    expect(story(adobe).quote).toBe("Fee applies of half your remaining annual commitment");
+  it("has nothing to say without one", () => {
+    expect(renewalNote(report({ bill: flat }))).toBeNull();
   });
+});
 
-  it("tells the renewal story for a subscription", () => {
-    expect(story(adobe)).toMatchObject({
+describe("story", () => {
+  it("names a lone finding and never a price", () => {
+    expect(story(checkout)).toMatchObject({
       tone: "found",
-      badge: "Subscription trap, found",
-      lead: "Rs 1,515 more",
-      accent: "after",
-      tail: "12 months.",
-    });
-  });
-
-  it("names a finding that has no price behind it as seen, not proven", () => {
-    const shaming = report({
-      patterns: [
-        finding({
-          id: "confirm_shaming",
-          label: "Confirm Shaming",
-          status: "found",
-          proof: "seen",
-          note: "A guilt nudge.",
-          quote: "No, I hate saving",
-        }),
-      ],
-    });
-    expect(story(shaming)).toMatchObject({
-      tone: "found",
-      lead: "Confirm shaming",
+      badge: "Drip pricing, found",
+      lead: "Drip pricing",
       accent: "seen",
       tail: "with proof.",
-      body: "A guilt nudge.",
     });
   });
 
-  it("never gives a clean headline when a login hides the fees", () => {
-    const zomato = report({
-      stop: { at: "login_wall", claimed: null, note: null, reach: "offer" },
-      login: { wallAt: "cart", hidesFees: true, offerSignIn: true },
-      bill: bill({ firstPrice: 389 }),
-      patterns: [finding({ id: "drip_pricing", label: "Drip Pricing", status: "not_checked" })],
+  it("leads with the note of a lone finding", () => {
+    expect(story(report({ patterns: [urgency] })).body).toBe("Countdown beside the price.");
+  });
+
+  it("falls back to the quote, then to where the run stopped", () => {
+    const quoted = { ...urgency, note: "" };
+    expect(story(report({ patterns: [quoted] })).body).toBe("Only 2 left");
+    const bare = { ...urgency, note: "", quote: null };
+    expect(story(report({ patterns: [bare] })).body).toBe(
+      "Reached the payment page and stopped there, before paying.",
+    );
+  });
+
+  it("counts several findings and names each one", () => {
+    expect(story(report({ patterns: [urgency, drip, trap] }))).toMatchObject({
+      tone: "found",
+      badge: "3 patterns found",
+      lead: "3 dark patterns",
+      accent: "seen",
+      tail: "with proof.",
+      body: "Drip pricing, false urgency and subscription trap.",
     });
-    expect(story(zomato)).toMatchObject({
+  });
+
+  it("puts a subscription's findings ahead of its renewal price", () => {
+    expect(story(adobe)).toMatchObject({ lead: "Subscription trap", accent: "seen" });
+  });
+
+  it("says when a login hid the fees", () => {
+    const hidden = report({
+      stop: { at: "login_wall", claimed: "login_wall", note: null, reach: "offer" },
+      login: { wallAt: "cart", hidesFees: true, offerSignIn: true },
+      patterns: [finding({ id: "nagging", label: "Nagging", status: "not_checked" })],
+    });
+    expect(story(hidden)).toMatchObject({
       tone: "open",
       badge: "Fees behind a login",
       lead: "The fees are",
@@ -177,104 +222,81 @@ describe("story", () => {
     });
   });
 
-  it("says so far when the price held but pages were left unchecked", () => {
-    const croma = report({
-      bill: bill({ firstPrice: 549, total: 549, increase: 0 }),
-      patterns: [finding({ id: "saas_billing", label: "SaaS Billing", status: "not_checked" })],
+  it("promises nothing past the page the run reached", () => {
+    const partial = report({
+      bill: flat,
+      patterns: [finding({ id: "nagging", label: "Nagging", status: "not_checked" })],
     });
-    expect(story(croma)).toMatchObject({
+    expect(story(partial)).toMatchObject({
       tone: "clear",
-      badge: "Nothing hidden so far",
-      lead: "No fee added",
-      accent: "so far",
-      tail: ".",
+      badge: "Nothing found so far",
+      lead: "Nothing",
+      accent: "found",
+      tail: "so far.",
     });
   });
 
-  it("counts what was not checked when there is no price to speak of", () => {
+  it("counts what was not checked when the run saw no bill", () => {
     const stopped = report({
-      patterns: [finding({ id: "nagging", label: "Nagging", status: "not_checked" })],
+      patterns: [
+        finding({ id: "nagging", label: "Nagging", status: "not_checked" }),
+        finding({ id: "drip_pricing", label: "Drip Pricing", status: "not_checked" }),
+      ],
     });
-    expect(story(stopped)).toMatchObject({ tone: "open", lead: "1 of 13", accent: "not" });
+    expect(story(stopped)).toMatchObject({ tone: "open", lead: "2 patterns", accent: "not" });
   });
 
   it("calls a run clean only when nothing was left unchecked", () => {
     expect(story(report())).toMatchObject({
       tone: "clear",
-      badge: "None of the 13 found",
-      lead: "None of the 13",
+      badge: "No patterns found",
+      lead: "No dark patterns",
       accent: "found",
     });
   });
-});
 
-describe("proofChecks", () => {
-  it("lists only what the run proved", () => {
-    expect(proofChecks(blinkit, story(blinkit).finding)).toEqual([
-      { ok: true, text: "Charges first seen at step 4" },
-      { ok: true, text: "Lines add up to the total" },
-      { ok: true, text: "Screenshot of step 4 attached", shot: { stepId: "s4", action: null } },
-    ]);
-  });
-
-  it("confirms a quote only when it matched the page text", () => {
-    expect(proofChecks(adobe, trap)[0]).toEqual({
-      ok: true,
-      text: "Quote found on the page text at step 2",
-    });
-    const unmatched = { ...trap, quoteCheck: "not_matched" as const };
-    expect(proofChecks(adobe, unmatched)[0]).toEqual({
-      ok: false,
-      text: "Quote not found in the page text, so check the screenshot",
-    });
-  });
-
-  it("says when the bill does not add up", () => {
-    const off = report({ bill: bill({ total: 100, addsUp: false, unexplained: 12 }) });
-    expect(proofChecks(off, null)).toEqual([
-      { ok: false, text: "Rs 12 of the total is on no line of the bill" },
-    ]);
-  });
-
-  it("says when the lines come to more than the total", () => {
-    const off = report({ bill: bill({ total: 100, addsUp: false, linesOverTotal: 29 }) });
-    expect(proofChecks(off, null)).toEqual([
-      { ok: false, text: "The lines on this bill come to Rs 29 more than its total" },
-    ]);
-  });
-
-  it("reads the negative amount a saved report may hold as lines over the total", () => {
-    const off = report({ bill: bill({ total: 100, addsUp: false, unexplained: -29 }) });
-    expect(proofChecks(off, null)).toEqual([
-      { ok: false, text: "The lines on this bill come to Rs 29 more than its total" },
-    ]);
+  it("never prints how many patterns there are", () => {
+    const sayings = [report(), checkout, adobe].map((entry) => JSON.stringify(story(entry)));
+    expect(sayings.join(" ")).not.toMatch(/\b13\b/);
   });
 });
 
 describe("stats", () => {
-  it("shows the multiple, the steps and the count", () => {
-    expect(stats(blinkit, 17)).toEqual([
-      { value: "3.4x", label: "Shown to paid" },
+  it("shows the findings, what was not checked and the steps", () => {
+    expect(stats(checkout, 17)).toEqual([
+      { value: "1", label: "Patterns found" },
+      { value: "0", label: "Not checked" },
       { value: "17", label: "Steps walked" },
-      { value: "1 of 13", label: "Patterns found" },
     ]);
   });
+});
 
-  it("uses the renewal multiple for a subscription", () => {
-    expect(stats(adobe, 20)[0]).toEqual({ value: "2.3x", label: "Offer to renewal" });
+describe("auditLine", () => {
+  const sites = [{ host: "adobe.com" }];
+
+  it("states the flow, the sites and the country that were inferred", () => {
+    expect(auditLine({ flow: "subscription", countryName: "India", sites })).toBe(
+      "Audited as a subscription sign-up on adobe.com, from India.",
+    );
   });
 
-  it("drops the multiple when nothing changed", () => {
-    expect(stats(report({ bill: bill({ multiple: 1 }) }), 5).map(({ label }) => label)).toEqual([
-      "Steps walked",
-      "Patterns found",
-    ]);
+  it("joins several sites", () => {
+    const many = [...sites, { host: "spotify.com" }, { host: "netflix.com" }];
+    expect(auditLine({ flow: "checkout", countryName: "India", sites: many })).toBe(
+      "Audited as a checkout on adobe.com, spotify.com and netflix.com, from India.",
+    );
+  });
+
+  it("leaves out a country the audit never had", () => {
+    expect(auditLine({ flow: "checkout", countryName: null, sites })).toBe(
+      "Audited as a checkout on adobe.com.",
+    );
   });
 });
 
 describe("totalLine", () => {
   it("says what the total is and what the first price was", () => {
-    expect(totalLine(blinkit)).toEqual({
+    expect(totalLine(checkout)).toEqual({
       lead: "Before sign-in.",
       said: "The product page said",
       shown: "Rs 24",
@@ -282,22 +304,27 @@ describe("totalLine", () => {
   });
 
   it("leaves out the first price when it did not change", () => {
-    const croma = report({ bill: bill({ firstPrice: 549, total: 549, increase: 0 }) });
-    expect(totalLine(croma)).toEqual({ lead: "What you pay.", said: null, shown: null });
+    expect(totalLine(report({ bill: flat }))).toEqual({
+      lead: "What you pay.",
+      said: null,
+      shown: null,
+    });
   });
 });
 
 describe("billPill", () => {
   it("counts the charges added after the first price", () => {
-    expect(billPill(blinkit)).toEqual({
+    expect(billPill(checkout)).toEqual({
       tone: "found",
       text: "3 charges added after the first price",
     });
   });
 
   it("is clean when the total stayed at the first price", () => {
-    const croma = report({ bill: bill({ firstPrice: 549, total: 549, increase: 0 }) });
-    expect(billPill(croma)).toEqual({ tone: "clean", text: "Nothing added so far" });
+    expect(billPill(report({ bill: flat }))).toEqual({
+      tone: "clean",
+      text: "Nothing added so far",
+    });
   });
 
   it("makes no claim without a total", () => {
@@ -308,72 +335,84 @@ describe("billPill", () => {
   });
 });
 
-describe("rowPill on a run that saw no bill", () => {
-  const summary = { state: "done", found: 0, notChecked: 13, total: null } as const;
+describe("rowPills on a run that saw no bill", () => {
+  const summary = { state: "done", found: 0, notChecked: 8, total: null } as const;
 
   it("never calls a blocked site clean", () => {
     const blocked = report({
       bill: bill({ total: null }),
-      stop: { ...blinkit.stop, at: "blocked" },
+      stop: { ...checkout.stop, at: "blocked" },
     });
-    expect(rowPill(summary, blocked)).toEqual({ tone: "unchecked", text: "Blocked by the site" });
+    expect(rowPills(summary, blocked)).toEqual([
+      { tone: "unchecked", text: "Blocked by the site" },
+    ]);
   });
 
-  it("says no price was reached for any other run that stopped early", () => {
+  it("says the run stopped early for any other run that saw no bill", () => {
     const stopped = report({
       bill: bill({ total: null }),
-      stop: { ...blinkit.stop, at: "incomplete" },
+      stop: { ...checkout.stop, at: "incomplete" },
     });
-    expect(rowPill(summary, stopped)).toEqual({ tone: "unchecked", text: "No price reached" });
+    expect(rowPills(summary, stopped)).toEqual([{ tone: "unchecked", text: "Stopped early" }]);
   });
 
   it("does not look clean while the report is still loading", () => {
-    expect(rowPill(summary, null)).toEqual({ tone: "unchecked", text: "No price reached" });
+    expect(rowPills(summary, null)).toEqual([{ tone: "unchecked", text: "Stopped early" }]);
   });
 
-  it("stays clean when a bill was seen and nothing was added", () => {
-    expect(rowPill({ ...summary, total: 449 }, null)).toEqual({
-      tone: "clean",
-      text: "Nothing hidden so far",
-    });
+  it("stays clean when a bill was seen and nothing was found", () => {
+    expect(rowPills({ ...summary, total: 449 }, null)).toEqual([
+      { tone: "clean", text: "Nothing found so far" },
+    ]);
   });
 });
 
-describe("rowPill", () => {
+describe("rowPills", () => {
   const summary = { state: "done" as const, found: 1, notChecked: 0, total: 81 };
+  const nagging = finding({ id: "nagging", label: "Nagging", status: "found", proof: "seen" });
 
-  it("names a lone finding once the report is known", () => {
-    expect(rowPill(summary, blinkit)).toEqual({ tone: "found", text: "Drip pricing" });
-    expect(rowPill(summary, null)).toEqual({ tone: "found", text: "1 found" });
+  it("names each finding once the report is known", () => {
+    expect(rowPills(summary, checkout)).toEqual([{ tone: "found", text: "Drip pricing" }]);
+    expect(rowPills(summary, null)).toEqual([{ tone: "found", text: "1 found" }]);
   });
 
-  it("counts several findings", () => {
-    expect(rowPill({ ...summary, found: 2 }, null)).toEqual({ tone: "found", text: "2 found" });
+  it("names two findings and counts the rest", () => {
+    const three = report({ patterns: [urgency, drip, nagging] });
+    expect(rowPills({ ...summary, found: 3 }, three)).toEqual([
+      { tone: "found", text: "Drip pricing" },
+      { tone: "found", text: "False urgency" },
+      { tone: "found", text: "1 more" },
+    ]);
+  });
+
+  it("shows no count of more for exactly two", () => {
+    expect(rowPills({ ...summary, found: 2 }, report({ patterns: [urgency, drip] }))).toHaveLength(
+      2,
+    );
   });
 
   it("never reads as clean when a login hid the fees", () => {
     const hidden = report({ login: { wallAt: "cart", hidesFees: true, offerSignIn: true } });
-    expect(rowPill({ ...summary, found: 0, notChecked: 8 }, hidden)).toEqual({
-      tone: "unchecked",
-      text: "Fees behind a login",
-    });
+    expect(rowPills({ ...summary, found: 0, notChecked: 8 }, hidden)).toEqual([
+      { tone: "unchecked", text: "Fees behind a login" },
+    ]);
   });
 
   it("keeps so far on a clean row with pages left unchecked", () => {
-    expect(rowPill({ ...summary, found: 0, notChecked: 5 }, report())).toEqual({
-      tone: "clean",
-      text: "Nothing hidden so far",
-    });
+    expect(rowPills({ ...summary, found: 0, notChecked: 5 }, report())).toEqual([
+      { tone: "clean", text: "Nothing found so far" },
+    ]);
   });
 
   it("shows the state of a site still in progress", () => {
-    expect(rowPill({ state: "running", found: 0, notChecked: 0, total: null }, null)).toEqual({
-      tone: "live",
-      text: "Running",
-    });
-    expect(rowPill({ state: "failed", found: 0, notChecked: 0, total: null }, null)).toEqual({
-      tone: "unchecked",
-      text: "Failed",
-    });
+    expect(rowPills({ state: "running", found: 0, notChecked: 0, total: null }, null)).toEqual([
+      { tone: "live", text: "Running" },
+    ]);
+  });
+
+  it("says no patterns were found only when every one was checked", () => {
+    expect(rowPills({ ...summary, found: 0 }, report())).toEqual([
+      { tone: "clean", text: "No patterns found" },
+    ]);
   });
 });

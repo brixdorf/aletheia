@@ -73,7 +73,7 @@ export function subscription(overrides: Partial<SubscriptionSummary> = {}): Subs
   };
 }
 
-/** Every report lists all 13 patterns, so overrides replace rows by id. */
+/** Every report lists every pattern, so overrides replace rows by id. */
 export function report(
   overrides: Partial<Omit<SiteReport, "patterns">> & { patterns?: PatternFinding[] } = {},
 ): SiteReport {

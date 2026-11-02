@@ -1,28 +1,19 @@
-import { useState } from "react";
-
 import type { ReportScope } from "../lib/api.ts";
 import { screenshotUrl } from "../lib/api.ts";
 import { money, plural } from "../lib/format.ts";
 import { counts, logoutNote, signInOffer, stopSummary } from "../lib/report.ts";
 import { newAuditHref } from "../lib/route.ts";
 import { siteName } from "../lib/sites.ts";
-import type { ProofCheck, Story } from "../lib/story.ts";
-import { proofChecks, stats, story } from "../lib/story.ts";
+import type { Story } from "../lib/story.ts";
+import { renewalNote, stats, story } from "../lib/story.ts";
 import type { SiteReport, SiteView } from "../lib/types.ts";
-import { Check, Warning } from "./icons.tsx";
+import { Findings, FindingsSummary } from "./Findings.tsx";
 import { PatternList } from "./PatternList.tsx";
-import { Receipt } from "./Receipt.tsx";
-import { Screenshot, ScreenshotViewer } from "./Screenshot.tsx";
+import { Screenshot } from "./Screenshot.tsx";
 import { SubscriptionFacts } from "./SubscriptionFacts.tsx";
 import { Link, SiteAvatar } from "./ui.tsx";
 
 const FLOW_LABEL = { checkout: "Checkout", subscription: "Subscription sign-up" } as const;
-
-const PANEL: Record<Story["tone"], string> = {
-  found: "from-[#fff1e6] to-[#fff7f1]",
-  open: "from-[#e6f2ff] to-[#f3f9ff]",
-  clear: "from-[#e4faec] to-[#f2fdf6]",
-};
 
 const BADGE: Record<Story["tone"], string> = {
   found: "pill-found",
@@ -30,48 +21,17 @@ const BADGE: Record<Story["tone"], string> = {
   clear: "pill-clean",
 };
 
-function CheckLine({ check, onOpen }: { check: ProofCheck; onOpen: () => void }) {
-  const mark = (
-    <span
-      aria-hidden="true"
-      className={`grid size-5 shrink-0 place-items-center rounded-full ${
-        check.ok ? "bg-peach text-peach-ink" : "bg-rose text-rose-ink"
-      }`}
-    >
-      {check.ok ? <Check size={12} /> : <Warning size={12} />}
-    </span>
-  );
-  return (
-    <li className="flex items-center gap-2.5">
-      {mark}
-      {check.shot ? (
-        <button type="button" className="link text-left" onClick={onOpen}>
-          {check.text}
-        </button>
-      ) : (
-        check.text
-      )}
-    </li>
-  );
-}
-
 interface FindingCopyProps {
   told: Story;
   report: SiteReport;
   site: SiteView;
-  scope: ReportScope;
   /** With one site the headline is the site's heading, with several the site name is. */
   Heading: "h2" | "h3";
   /** What was audited, which only this block can say when the audit has one site. */
   detail: string | null;
 }
 
-function FindingCopy({ told, report, site, scope, Heading, detail }: FindingCopyProps) {
-  const [viewing, setViewing] = useState(false);
-  const checks = proofChecks(report, told.finding);
-  const shot = checks.find((check) => check.shot)?.shot;
-  const shotUrl = shot ? screenshotUrl(scope, site.id, shot.stepId) : null;
-
+function FindingCopy({ told, report, site, Heading, detail }: FindingCopyProps) {
   return (
     <div className="min-w-0">
       <span className={`pill ${BADGE[told.tone]}`}>
@@ -87,20 +47,6 @@ function FindingCopy({ told, report, site, scope, Heading, detail }: FindingCopy
       </Heading>
       <p className="mt-4 max-w-[440px] text-base text-body sm:text-[17px]">{told.body}</p>
 
-      {told.quote ? (
-        <blockquote className="mt-[22px] border-l-2 border-found py-1 pl-3.5 font-serif text-[22px]/[1.3] text-ink italic">
-          &ldquo;{told.quote}&rdquo;
-        </blockquote>
-      ) : null}
-
-      {checks.length > 0 ? (
-        <ul className="mt-[22px] grid gap-3">
-          {checks.map((check) => (
-            <CheckLine key={check.text} check={check} onOpen={() => setViewing(true)} />
-          ))}
-        </ul>
-      ) : null}
-
       <dl className="mt-7 flex flex-wrap gap-x-7 gap-y-3 sm:gap-x-10">
         {stats(report, site.steps.length).map(({ value, label }) => (
           <div key={label} className="flex flex-col-reverse">
@@ -114,14 +60,6 @@ function FindingCopy({ told, report, site, scope, Heading, detail }: FindingCopy
         {detail ? `${detail}. ` : null}
         {told.body === stopSummary(report) ? null : stopSummary(report)}
       </p>
-
-      {viewing && shotUrl ? (
-        <ScreenshotViewer
-          src={shotUrl}
-          label={`${told.badge}: what the agent saw`}
-          onClose={() => setViewing(false)}
-        />
-      ) : null}
     </div>
   );
 }
@@ -214,23 +152,24 @@ export function ReportCard({ site, report, task, scope, press, solo }: ReportCar
       )}
 
       <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
-        <div
-          className={`overflow-hidden rounded-panel bg-linear-to-b px-4 pt-8 sm:px-12 sm:pt-11 ${PANEL[told.tone]}`}
-        >
-          <Receipt report={report} Heading={solo ? "h2" : "h3"} />
-        </div>
+        <FindingsSummary report={report} siteId={site.id} />
         <FindingCopy
           told={told}
           report={report}
           site={site}
-          scope={scope}
           Heading={solo ? "h2" : "h3"}
           detail={solo ? detail : null}
         />
       </div>
 
+      <Findings report={report} siteId={site.id} scope={scope} Heading={solo ? "h2" : "h3"} />
+
       {report.subscription ? (
-        <SubscriptionFacts subscription={report.subscription} currency={report.bill.currency} />
+        <SubscriptionFacts
+          subscription={report.subscription}
+          currency={report.bill.currency}
+          renewal={renewalNote(report)}
+        />
       ) : null}
 
       {unseen || report.flags.length > 0 ? (
@@ -275,22 +214,16 @@ export function ReportCard({ site, report, task, scope, press, solo }: ReportCar
         </div>
       ) : null}
 
-      <section aria-label={`The 13 patterns on ${report.host}`} className="card p-2.5">
+      <section aria-label={`Patterns checked on ${report.host}`} className="card p-2.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-4 pt-3.5 pb-2.5">
           <h3 className="flex flex-wrap items-baseline gap-x-3 text-lg tracking-[-0.02em]">
-            All 13 patterns <Tally report={report} />
+            Patterns checked <Tally report={report} />
           </h3>
           <p className="text-[13px] text-mute">
             Not checked means the run never saw the page where it could appear, or did not look.
           </p>
         </div>
-        <PatternList
-          report={report}
-          siteId={site.id}
-          scope={scope}
-          press={press}
-          told={told.finding?.id ?? null}
-        />
+        <PatternList report={report} siteId={site.id} press={press} />
       </section>
 
       <PagesWalked report={report} siteId={site.id} scope={scope} />

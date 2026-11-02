@@ -15,56 +15,39 @@ import {
 } from "../components/ui.tsx";
 import { deleteAudit, listAudits } from "../lib/api.ts";
 import { dateTime, plural } from "../lib/format.ts";
-import { summaryPrice } from "../lib/report.ts";
+import { NOT_YET } from "../lib/report.ts";
 import { siteName } from "../lib/sites.ts";
-import { priceJump, rowPill } from "../lib/story.ts";
-import type { AuditSummary, AuditView, PatternStatus, SiteView } from "../lib/types.ts";
+import { priceChange, rowPills } from "../lib/story.ts";
+import type { AuditSummary, AuditView, SiteReport, SiteView } from "../lib/types.ts";
 import { useAuditDetails } from "../lib/useAuditDetails.ts";
 import { useLoad } from "../lib/useLoad.ts";
 
 const REFRESH_MS = 5000;
 const MAX_PICKED = 4;
-const NOT_YET: PatternStatus[] = Array.from({ length: 13 }, () => "not_checked");
 
 type SummarySite = AuditSummary["sites"][number];
 
 const doneSites = ({ sites }: AuditSummary) => sites.filter((site) => site.state === "done").length;
 
-function Amount({ site, detail }: { site: SummarySite; detail: SiteView | null }) {
-  if (site.state !== "done") return <span className="row-amount" />;
-  if (!detail?.report) {
-    return <span className="row-amount num font-semibold text-ink">{summaryPrice(site)}</span>;
+/** Empty on most rows. A price shows only when it moved. */
+function Change({ report }: { report: SiteReport | null }) {
+  const change = report ? priceChange(report) : null;
+  if (!change || change.from === null || change.to === null) {
+    return <span className="row-amount" />;
   }
-
-  const { from, to, suffix, currency } = priceJump(detail.report);
-  const label = {
-    final: null,
-    price_before_sign_in: "before sign-in",
-    last_seen: "last seen",
-    none: null,
-  }[site.priceLabel];
-
+  const { from, to, suffix, currency } = change;
   return (
     <span className="row-amount">
-      <span className="flex items-baseline justify-end gap-1.5 text-base font-semibold whitespace-nowrap text-ink sm:gap-2 sm:text-lg">
-        {from === null ? null : (
-          <>
-            <s className="num font-medium text-mute decoration-1">
-              <span className="sr-only">Shown as </span>
-              <Money amount={from} currency={currency} plain />
-            </s>
-            <span aria-hidden="true" className="font-normal text-mute">
-              &rarr;
-            </span>
-          </>
-        )}
-        {to === null ? (
-          <span className="text-base font-medium text-mute">No total</span>
-        ) : (
-          <Money amount={to} currency={currency} suffix={suffix} />
-        )}
+      <span className="flex items-baseline gap-1.5 text-sm font-semibold whitespace-nowrap text-ink lg:justify-end">
+        <s className="num font-medium text-mute decoration-1">
+          <span className="sr-only">Shown as </span>
+          <Money amount={from} currency={currency} plain />
+        </s>
+        <span aria-hidden="true" className="font-normal text-mute">
+          &rarr;
+        </span>
+        <Money amount={to} currency={currency} suffix={suffix} plain />
       </span>
-      {label ? <span className="block text-right text-xs text-mute">{label}</span> : null}
     </span>
   );
 }
@@ -106,10 +89,12 @@ function SiteRow({ audit, site, detail, controls, showTask }: SiteRowProps) {
       <div className="row-strip">
         <PatternStrip statuses={statuses} />
       </div>
-      <Amount site={site} detail={detail} />
       <div className="row-status">
-        <Pill {...rowPill(site, report)} />
+        {rowPills(site, report).map((pill) => (
+          <Pill key={pill.text} {...pill} />
+        ))}
       </div>
+      <Change report={report} />
       <div className="row-delete">{controls ? <DeleteRow {...controls} /> : null}</div>
     </div>
   );
@@ -289,7 +274,7 @@ export function PastAudits() {
               Past audits
             </h1>
             <p className="mt-1.5 text-mute">
-              Each row shows the 13 patterns: orange found, grey not found, dashed not checked.
+              Each row shows every pattern: orange found, grey not found, dashed not checked.
             </p>
           </div>
           {audits.length > 0 ? <CompareSelected audits={pickedAudits} /> : null}
@@ -309,8 +294,8 @@ export function PastAudits() {
               </Link>
             }
           >
-            Say what you want to buy or subscribe to. Aletheia picks the sites, walks each one like
-            a customer, stops before payment, and reports which of the 13 banned patterns it saw.
+            Name a site and a flow. Aletheia walks it like a customer, stops before payment and
+            reports every dark pattern it saw, with proof.
           </Notice>
         ) : null}
 

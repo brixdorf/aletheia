@@ -8,7 +8,6 @@ export interface CompareColumn {
   host: string;
   task: string;
   report: SiteReport;
-  rank: number | null;
   hiddenCost: HiddenCost | null;
 }
 
@@ -21,7 +20,8 @@ export interface PatternRow {
 export interface ComparisonView {
   columns: CompareColumn[];
   patternRows: PatternRow[];
-  ranked: boolean;
+  /** Prices earn a place beside the patterns only when one of them moved. */
+  pricesMoved: boolean;
   notes: string[];
 }
 
@@ -45,12 +45,8 @@ function patternRows(columns: readonly CompareColumn[]): PatternRow[] {
   }));
 }
 
-/** Ranks come only from the server's like-for-like check inside one audit. */
 export function buildComparison(audits: readonly AuditPublic[]): ComparisonView {
-  const single = audits.length === 1 ? audits[0] : undefined;
-  const comparison = single?.comparison ?? null;
-  const ranked = comparison?.rankable === true;
-  const rankOf = new Map(comparison?.rows.map((row) => [row.host, row.rank]));
+  const comparison = audits.length === 1 ? audits[0]?.comparison : null;
 
   const columns = audits.flatMap((audit) =>
     audit.sites.flatMap((site) =>
@@ -62,7 +58,6 @@ export function buildComparison(audits: readonly AuditPublic[]): ComparisonView 
               host: site.host,
               task: audit.task,
               report: site.report,
-              rank: ranked ? (rankOf.get(site.host) ?? null) : null,
               hiddenCost: hiddenCost(site.report),
             },
           ]
@@ -76,17 +71,17 @@ export function buildComparison(audits: readonly AuditPublic[]): ComparisonView 
       .map((site) => `${site.host} has no report to compare.`),
   );
   const notes = [
-    ...(audits.length > 1 ? ["These are separate audits, so they are shown but not ranked."] : []),
+    ...(audits.length > 1
+      ? ["These are separate audits, so their prices are not like for like."]
+      : []),
     ...(comparison?.reasons ?? []),
     ...unreported,
   ];
 
   return {
-    columns: ranked
-      ? columns.toSorted((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity))
-      : columns,
+    columns,
     patternRows: patternRows(columns),
-    ranked,
+    pricesMoved: columns.some(({ hiddenCost: cost }) => (cost?.amount ?? 0) > 0),
     notes,
   };
 }

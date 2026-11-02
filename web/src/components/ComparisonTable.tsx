@@ -1,9 +1,9 @@
 import { useState } from "react";
 
 import { hiddenCostLabel, type CompareColumn, type ComparisonView } from "../lib/compare.ts";
-import { counts, stopSummary } from "../lib/report.ts";
+import { stopSummary } from "../lib/report.ts";
 import { siteName } from "../lib/sites.ts";
-import { patternName } from "../lib/story.ts";
+import { foundPatterns, patternName } from "../lib/story.ts";
 import { Link, Money, PatternStrip, SiteAvatar, StatusPill } from "./ui.tsx";
 
 function Price({ amount, currency }: { amount: number | null; currency: string | null }) {
@@ -21,7 +21,7 @@ interface ComparisonTableProps {
   headingLevel?: "h2" | "h1";
   /** Where a site's name leads, which differs for a visitor reading a shared report. */
   linkFor: (column: CompareColumn) => string;
-  /** Sits above the reports on an audit page, so the 13 rows start folded away. */
+  /** Sits above the reports on an audit page, so the pattern rows start folded away. */
   foldPatterns?: boolean;
 }
 
@@ -32,7 +32,7 @@ export function ComparisonTable({
   linkFor,
   foldPatterns = false,
 }: ComparisonTableProps) {
-  const { columns, patternRows, ranked, notes } = view;
+  const { columns, patternRows, pricesMoved, notes } = view;
   const Heading = headingLevel;
   const [patternsShown, setPatternsShown] = useState(!foldPatterns);
 
@@ -42,11 +42,6 @@ export function ComparisonTable({
         <Heading id="comparison-title" className="text-[28px]/[1.1] sm:text-[34px]/[1.1]">
           Side by side
         </Heading>
-        {ranked ? (
-          <p className="mt-1.5 text-mute">
-            Same task and currency, so these are ranked by the total.
-          </p>
-        ) : null}
         {notes.length > 0 ? (
           <ul className="mt-1.5 text-mute">
             {notes.map((note) => (
@@ -80,11 +75,6 @@ export function ComparisonTable({
                         >
                           {siteName(column.host)}
                         </Link>
-                        {column.rank === null ? null : (
-                          <span className="block text-[13px] font-normal text-mute">
-                            {column.rank === 1 ? "Lowest total" : `Number ${column.rank} by total`}
-                          </span>
-                        )}
                       </div>
                     </div>
                     <PatternStrip statuses={statuses} className="mt-3" />
@@ -118,50 +108,64 @@ export function ComparisonTable({
             </tr>
             <tr>
               <th scope="row" className={headCell}>
-                First price shown
-              </th>
-              {columns.map(({ key, report: { bill } }) => (
-                <td key={key} className={cell}>
-                  <Price amount={bill.firstPrice} currency={bill.currency} />
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <th scope="row" className={headCell}>
-                Last total seen
-              </th>
-              {columns.map(({ key, report: { bill } }) => (
-                <td key={key} className={`${cell} text-lg font-semibold text-ink`}>
-                  <Price amount={bill.total} currency={bill.currency} />
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <th scope="row" className={headCell}>
-                Hidden cost
-              </th>
-              {columns.map(({ key, hiddenCost, report: { bill } }) => (
-                <td
-                  key={key}
-                  className={`${cell} num ${(hiddenCost?.amount ?? 0) > 0 ? "font-semibold text-peach-ink" : ""}`}
-                >
-                  {hiddenCostLabel(hiddenCost, bill.currency)}
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <th scope="row" className={headCell}>
                 Patterns found
               </th>
               {columns.map(({ key, report }) => {
-                const { found, notChecked } = counts(report);
+                const findings = foundPatterns(report);
                 return (
-                  <td key={key} className={`${cell} num`}>
-                    {found} found, {notChecked} not checked
+                  <td key={key} className={`${cell} max-w-56`}>
+                    {findings.length === 0 ? (
+                      <span className="text-mute">None seen</span>
+                    ) : (
+                      <ul className="flex flex-col gap-1">
+                        {findings.map(({ id, label }) => (
+                          <li key={id} className="font-medium text-peach-ink">
+                            {patternName(label)}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </td>
                 );
               })}
             </tr>
+            {pricesMoved ? (
+              <>
+                <tr>
+                  <th scope="row" className={headCell}>
+                    First price shown
+                  </th>
+                  {columns.map(({ key, report: { bill } }) => (
+                    <td key={key} className={cell}>
+                      <Price amount={bill.firstPrice} currency={bill.currency} />
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <th scope="row" className={headCell}>
+                    Last total seen
+                  </th>
+                  {columns.map(({ key, report: { bill } }) => (
+                    <td key={key} className={cell}>
+                      <Price amount={bill.total} currency={bill.currency} />
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <th scope="row" className={headCell}>
+                    Price change
+                  </th>
+                  {columns.map(({ key, hiddenCost, report: { bill } }) => (
+                    <td
+                      key={key}
+                      className={`${cell} num ${(hiddenCost?.amount ?? 0) > 0 ? "font-semibold text-peach-ink" : ""}`}
+                    >
+                      {hiddenCostLabel(hiddenCost, bill.currency)}
+                    </td>
+                  ))}
+                </tr>
+              </>
+            ) : null}
             <tr>
               <th scope="row" className={headCell}>
                 Where it stopped
@@ -196,7 +200,7 @@ export function ComparisonTable({
           aria-expanded={patternsShown}
           onClick={() => setPatternsShown((shown) => !shown)}
         >
-          {patternsShown ? "Hide the 13 patterns" : "Compare all 13 patterns"}
+          {patternsShown ? "Hide the pattern list" : "Compare every pattern"}
         </button>
       ) : null}
     </section>

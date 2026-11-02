@@ -231,7 +231,7 @@
     @apply rounded-card border border-line bg-white shadow-card;
   }
 
-  /* The signature: 13 small squares, one per banned pattern. */
+  /* The signature: one small square per pattern. */
   .strip {
     display: inline-flex;
     gap: 4px;
@@ -355,38 +355,14 @@
     @apply inline-flex min-h-11 items-center px-1 text-[13px] font-medium text-mute underline decoration-dash underline-offset-4 transition-colors hover:text-ink hover:decoration-ink sm:min-h-8;
   }
 
-  /* Quiet by design: Aletheia has already decided, and these are only there to overrule it. */
-  .choice-pill {
-    @apply relative inline-flex min-h-11 items-center gap-1.5 rounded-full bg-wash py-1 pr-2 pl-3 text-[13px] text-mute transition-colors hover:bg-line sm:min-h-8;
-  }
-
-  .choice-pill:has(select:focus-visible) {
-    outline: 2px solid #2563eb;
-    outline-offset: 2px;
-  }
-
-  .choice-pill select {
-    @apply cursor-pointer appearance-none bg-transparent pr-3.5 font-medium text-ink outline-none;
-    field-sizing: content;
-    background-image:
-      linear-gradient(45deg, transparent 50%, currentcolor 50%),
-      linear-gradient(135deg, currentcolor 50%, transparent 50%);
-    background-position:
-      right 5px center,
-      right 1px center;
-    background-size:
-      4px 4px,
-      4px 4px;
-    background-repeat: no-repeat;
-  }
-
   .audit-row {
     position: relative;
     display: grid;
     grid-template-areas:
       "pick avatar name delete"
       "strip strip strip strip"
-      "foot foot foot foot";
+      "status status status status"
+      "amount amount amount amount";
     grid-template-columns: 36px 44px minmax(0, 1fr) 44px;
     align-items: center;
     gap: 10px 8px;
@@ -417,16 +393,16 @@
     grid-area: strip;
   }
 
-  /* On a phone these share one line, the pill on the left and the price on the right. */
+  /* On a phone the findings take a line, and a price change, when there is one, the next. */
   .row-amount {
-    @apply pr-2;
-    grid-area: foot;
-    justify-self: end;
+    @apply pl-2 empty:hidden;
+    grid-area: amount;
+    justify-self: start;
   }
 
   .row-status {
-    @apply flex pl-2;
-    grid-area: foot;
+    @apply flex flex-wrap gap-1.5 pl-2;
+    grid-area: status;
     justify-self: start;
   }
 
@@ -436,8 +412,8 @@
 
   @media (min-width: 1024px) {
     .audit-row {
-      grid-template-areas: "pick avatar name strip amount status delete";
-      grid-template-columns: 30px 44px minmax(0, 1fr) 204px 216px 178px 40px;
+      grid-template-areas: "pick avatar name strip status amount delete";
+      grid-template-columns: 30px 44px minmax(0, 1fr) 204px 328px 136px 40px;
       gap: 14px;
       padding: 14px 12px 14px 6px;
     }
@@ -448,15 +424,12 @@
     }
 
     .row-amount {
-      @apply pr-0;
-      grid-area: amount;
+      @apply block;
       justify-self: stretch;
     }
 
     .row-status {
-      grid-area: status;
       justify-self: stretch;
-      justify-content: flex-end;
     }
   }
 }

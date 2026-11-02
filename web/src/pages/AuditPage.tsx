@@ -12,12 +12,13 @@ import { buildComparison } from "../lib/compare.ts";
 import { dateTime, duration } from "../lib/format.ts";
 import { auditIsLive } from "../lib/live.ts";
 import { siteName } from "../lib/sites.ts";
+import { auditLine } from "../lib/story.ts";
 import type { AuditPublic, AuditView, SiteView } from "../lib/types.ts";
 import { useAudit } from "../lib/useAudit.ts";
 import { useLoad } from "../lib/useLoad.ts";
 import { navigate } from "../lib/useRoute.ts";
 
-/** Long enough for the 13 cells of the live strip to fill in before the report takes over. */
+/** Long enough for every cell of the live strip to fill in before the report takes over. */
 const REVEAL_MS = 2200;
 
 function useShare(audit: AuditView) {
@@ -243,6 +244,7 @@ function AuditBody({
           {only ? `${audit.task} · ` : null}
           <span className="num">{dateTime(audit.createdAt)}</span>
         </p>
+        <p className="-mt-3 w-full text-[13px] text-mute">{auditLine(audit)}</p>
       </header>
 
       {comparison.columns.length >= 2 ? (

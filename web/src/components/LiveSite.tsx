@@ -3,14 +3,13 @@ import { useEffect, useState } from "react";
 import { signOut } from "../lib/api.ts";
 import { ago } from "../lib/format.ts";
 import { siteStatus } from "../lib/live.ts";
-import { logoutNote } from "../lib/report.ts";
+import { logoutNote, NOT_YET } from "../lib/report.ts";
 import { newAuditHref } from "../lib/route.ts";
 import { recallSignIn } from "../lib/signInMemory.ts";
 import { siteName } from "../lib/sites.ts";
-import type { PatternStatus, SiteView } from "../lib/types.ts";
+import type { SiteView } from "../lib/types.ts";
 import { Link, PatternStrip, SiteAvatar } from "./ui.tsx";
 
-const NOT_YET: PatternStatus[] = Array.from({ length: 13 }, () => "not_checked");
 const TICK_MS = 1000;
 
 function LivePill() {
@@ -195,7 +194,7 @@ export function LiveSite({ site, task, auditId }: LiveSiteProps) {
           <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-3">
             <PatternStrip statuses={statuses ?? NOT_YET} fill={statuses !== undefined} />
             <span className="text-xs text-mute">
-              {statuses ? "Results are in" : "13 patterns to check"}
+              {statuses ? "Results are in" : "Patterns to check"}
             </span>
           </div>
         </section>

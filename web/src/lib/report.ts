@@ -1,7 +1,7 @@
 import { money } from "./format.ts";
 import type {
-  AuditSummary,
   Bill,
+  PatternStatus,
   PatternFinding,
   SiteReport,
   SiteView,
@@ -10,19 +10,8 @@ import type {
 
 type Term = SubscriptionSummary["terms"][number];
 
-const TOTAL_PATTERNS = 13;
-
-export type Headline =
-  | {
-      kind: "price";
-      shownLabel: string;
-      shown: string;
-      paidLabel: string;
-      paid: string;
-      gap: string;
-    }
-  | { kind: "finding"; title: string; detail: string }
-  | { kind: "open" | "clear"; title: string; detail: string };
+/** Every run answers for each pattern, so this is the strip of a run with no results yet. */
+export const NOT_YET: readonly PatternStatus[] = Array<PatternStatus>(13).fill("not_checked");
 
 const PAID_LABEL: Record<SiteReport["priceLabel"], string> = {
   final: "You pay",
@@ -46,17 +35,6 @@ export function paidLabel(priceLabel: SiteReport["priceLabel"]): string {
   return PAID_LABEL[priceLabel];
 }
 
-export function summaryPrice({
-  total,
-  currency,
-  priceLabel,
-}: Pick<AuditSummary["sites"][number], "total" | "currency" | "priceLabel">): string {
-  if (total === null) return "No total";
-  const price = money(total, currency);
-  if (priceLabel === "price_before_sign_in") return `${price} before sign-in`;
-  return priceLabel === "last_seen" ? `${price} last seen` : price;
-}
-
 export const TERM_LABEL: Record<Term["term"], string> = {
   trial: "Trial",
   renewal: "Renewal",
@@ -73,37 +51,6 @@ export const SHOWN_WHERE_LABEL: Record<Term["shownWhere"], string> = {
   later_page: "Only on a later page",
   not_shown: "Not shown at all",
 };
-
-function roundToPaise(amount: number): number {
-  return Math.round(amount * 100) / 100;
-}
-
-function billStory({ bill, priceLabel }: SiteReport): Headline | null {
-  const { firstPrice, total, increase, currency } = bill;
-  if (firstPrice === null || total === null || increase === null || increase <= 0) return null;
-  return {
-    kind: "price",
-    shownLabel: "Shown",
-    shown: money(firstPrice, currency),
-    paidLabel: PAID_LABEL[priceLabel],
-    paid: money(total, currency),
-    gap: `${money(increase, currency)} more`,
-  };
-}
-
-function renewalStory({ subscription, bill }: SiteReport): Headline | null {
-  if (!subscription) return null;
-  const { introPrice, introPeriod, priceAfterIntro } = subscription;
-  if (introPrice === null || priceAfterIntro === null || priceAfterIntro <= introPrice) return null;
-  return {
-    kind: "price",
-    shownLabel: introPeriod ? `Shown for ${introPeriod}` : "Shown",
-    shown: money(introPrice, bill.currency),
-    paidLabel: "Then you pay",
-    paid: money(priceAfterIntro, bill.currency),
-    gap: `${money(roundToPaise(priceAfterIntro - introPrice), bill.currency)} more`,
-  };
-}
 
 function proofRank({ proof }: PatternFinding): number {
   return proof === "verified" ? 0 : 1;
@@ -126,34 +73,6 @@ export function counts({ patterns }: SiteReport) {
   const of = (status: PatternFinding["status"]) =>
     patterns.filter((entry) => entry.status === status).length;
   return { found: of("found"), notChecked: of("not_checked"), notFound: of("not_found") };
-}
-
-export function headline(report: SiteReport): Headline {
-  const story = billStory(report) ?? renewalStory(report);
-  if (story) return story;
-
-  const strongest = orderedPatterns(report)[0];
-  if (strongest?.status === "found") {
-    return {
-      kind: "finding",
-      title: strongest.label,
-      detail: strongest.note || (strongest.quote ?? ""),
-    };
-  }
-
-  const { notChecked } = counts(report);
-  if (notChecked > 0) {
-    return {
-      kind: "open",
-      title: `${notChecked} of ${TOTAL_PATTERNS} not checked`,
-      detail: stopSummary(report),
-    };
-  }
-  return {
-    kind: "clear",
-    title: `None of the ${TOTAL_PATTERNS} found`,
-    detail: "The agent reached every page these patterns live on and saw none of them.",
-  };
 }
 
 export interface BillLine {

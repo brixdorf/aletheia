@@ -1,126 +1,15 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { bill, finding, report, subscription } from "../testing/report.ts";
+import { bill, finding, report } from "../testing/report.ts";
 import {
   billLines,
   counts,
-  headline,
   logoutNote,
   orderedPatterns,
   proofLabel,
   signInOffer,
   stopSummary,
-  summaryPrice,
 } from "./report.ts";
-
-describe("headline", () => {
-  it("leads with the two numbers when the price rose", () => {
-    const blinkit = report({
-      priceLabel: "final",
-      bill: bill({ firstPrice: 24, total: 81, increase: 57 }),
-    });
-    expect(headline(blinkit)).toEqual({
-      kind: "price",
-      shownLabel: "Shown",
-      shown: "Rs 24",
-      paidLabel: "You pay",
-      paid: "Rs 81",
-      gap: "Rs 57 more",
-    });
-  });
-
-  it("never calls a price final when the run stopped at a login", () => {
-    const blinkit = report({
-      priceLabel: "price_before_sign_in",
-      bill: bill({ firstPrice: 24, total: 81, increase: 57 }),
-    });
-    expect(headline(blinkit)).toMatchObject({ kind: "price", paidLabel: "Before sign-in" });
-  });
-
-  it("labels a total from an unfinished run as the last price seen", () => {
-    const zomato = report({
-      priceLabel: "last_seen",
-      bill: bill({ firstPrice: 441.66, total: 497.18, increase: 55.52 }),
-    });
-    expect(headline(zomato)).toMatchObject({ paidLabel: "Last price seen", gap: "Rs 55.52 more" });
-  });
-
-  it("uses the renewal jump on a subscription whose bill shows no rise", () => {
-    const adobe = report({
-      flow: "subscription",
-      priceLabel: "last_seen",
-      bill: bill({ firstPrice: 1199, total: 1199, increase: 0 }),
-      subscription: subscription({
-        introPrice: 1199,
-        introPeriod: "12 months",
-        priceAfterIntro: 2714,
-      }),
-    });
-    expect(headline(adobe)).toEqual({
-      kind: "price",
-      shownLabel: "Shown for 12 months",
-      shown: "Rs 1,199",
-      paidLabel: "Then you pay",
-      paid: "Rs 2,714",
-      gap: "Rs 1,515 more",
-    });
-  });
-
-  it("falls back to the strongest finding, arithmetic before a quote", () => {
-    const flat = report({
-      bill: bill({ firstPrice: 549, total: 549, increase: 0 }),
-      patterns: [
-        finding({
-          id: "false_urgency",
-          label: "False Urgency",
-          status: "found",
-          proof: "seen",
-          quote: "Only 2 left",
-        }),
-        finding({
-          id: "basket_sneaking",
-          label: "Basket Sneaking",
-          status: "found",
-          proof: "verified",
-          note: "A Rs 10 donation was added.",
-        }),
-      ],
-    });
-    expect(headline(flat)).toEqual({
-      kind: "finding",
-      title: "Basket Sneaking",
-      detail: "A Rs 10 donation was added.",
-    });
-  });
-
-  it("quotes the finding when that is the proof", () => {
-    const urgent = report({
-      patterns: [
-        finding({
-          id: "false_urgency",
-          label: "False Urgency",
-          status: "found",
-          proof: "seen",
-          quote: "Only 2 left",
-          note: "Countdown beside the price.",
-        }),
-      ],
-    });
-    expect(headline(urgent)).toMatchObject({ detail: "Countdown beside the price." });
-  });
-
-  it("does not earn a clean result when patterns went unchecked", () => {
-    const croma = report({
-      stop: { at: "login_wall", claimed: "login_wall", note: null, reach: "offer" },
-      patterns: [finding({ id: "drip_pricing", label: "Drip Pricing", status: "not_checked" })],
-    });
-    expect(headline(croma)).toMatchObject({ kind: "open", title: "1 of 13 not checked" });
-  });
-
-  it("states a clean result only when all 13 were checked", () => {
-    expect(headline(report())).toMatchObject({ kind: "clear", title: "None of the 13 found" });
-  });
-});
 
 describe("orderedPatterns", () => {
   it("puts found first, proven by arithmetic ahead of quotes, and clean rows last", () => {
@@ -280,24 +169,5 @@ describe("logoutNote", () => {
 
   it("says plainly when the logout could not be confirmed", () => {
     expect(logoutNote("not_confirmed")).toContain("could not confirm");
-  });
-});
-
-describe("summaryPrice", () => {
-  const site = { total: 81, currency: "INR", priceLabel: "final" as const };
-
-  it("shows a final price plainly", () => {
-    expect(summaryPrice(site)).toBe("Rs 81");
-  });
-
-  it("carries the same caveat the report does", () => {
-    expect(summaryPrice({ ...site, priceLabel: "price_before_sign_in" })).toBe(
-      "Rs 81 before sign-in",
-    );
-    expect(summaryPrice({ ...site, priceLabel: "last_seen" })).toBe("Rs 81 last seen");
-  });
-
-  it("says nothing was priced rather than showing zero", () => {
-    expect(summaryPrice({ total: null, currency: null, priceLabel: "none" })).toBe("No total");
   });
 });
