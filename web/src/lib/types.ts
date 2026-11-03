@@ -23,15 +23,12 @@ export type AuditPublic = ReturnType<typeof sharedView>;
 export type AuditSummary = ReturnType<typeof summaryView>;
 export type SiteView = AuditPublic["sites"][number];
 
-export type SignInState = "setting_up" | "ready" | "in_use";
-
-export interface SignInView {
-  id: string;
-  url: string;
-  host: string;
-  state: SignInState;
-  expiresAt: string;
-}
+export type {
+  ManualReason,
+  SignInAction,
+  SignInView,
+  StepView,
+} from "../../../server/src/signin/views.ts";
 
 export interface ScreenFrame {
   /** A base64 JPEG. */

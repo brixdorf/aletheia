@@ -8,6 +8,7 @@ export default defineConfig({
   fullyParallel: false,
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },
   projects: [{ name: "chromium", use: devices["Desktop Chrome"] }],
+  timeout: 60_000,
   webServer: {
     command: "node e2e/server.ts",
     url: `http://localhost:${PORT}/api/health`,

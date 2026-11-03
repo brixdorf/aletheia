@@ -1,6 +1,13 @@
 import type { RemoteInput } from "./remoteInput.ts";
 import { browserPlace } from "./plan.ts";
-import type { AuditPublic, AuditSummary, AuditView, PlanView, SignInView } from "./types.ts";
+import type {
+  AuditPublic,
+  AuditSummary,
+  AuditView,
+  PlanView,
+  SignInAction,
+  SignInView,
+} from "./types.ts";
 
 export class ApiFailure extends Error {
   readonly code: string;
@@ -115,8 +122,12 @@ export function startSignIn(url: string, country: string | null): Promise<SignIn
   return post("/signin", { url, ...(country ? { country } : {}), ...browserPlace() });
 }
 
-export function finishSignIn(id: string): Promise<SignInView> {
-  return post(`/signin/${id}/done`);
+export function getSignIn(id: string): Promise<SignInView> {
+  return request(`/signin/${id}`);
+}
+
+export function actOnSignIn(id: string, action: SignInAction): Promise<SignInView> {
+  return post(`/signin/${id}/act`, action);
 }
 
 export function signOut(id: string): Promise<void> {

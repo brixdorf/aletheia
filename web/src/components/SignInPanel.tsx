@@ -1,83 +1,59 @@
-import type { ChangeEvent, KeyboardEvent, MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
-import {
-  ApiFailure,
-  finishSignIn,
-  sendSignInInput,
-  signInScreenUrl,
-  signOut,
-  startSignIn,
-} from "../lib/api.ts";
-import { InputRelay, keyToInput, toRemotePoint } from "../lib/remoteInput.ts";
+import { actOnSignIn, getSignIn, signOut, startSignIn } from "../lib/api.ts";
+import { errorLine, question, viewportForScreen } from "../lib/signInCopy.ts";
 import { siteName } from "../lib/sites.ts";
-import type { ScreenFrame, SignInView } from "../lib/types.ts";
+import type { SignInAction, SignInView, StepView } from "../lib/types.ts";
 import { Modal } from "./Modal.tsx";
+import type { FieldAnswer } from "./SignInFields.tsx";
+import { SignInField } from "./SignInFields.tsx";
+import { SignInScreen } from "./SignInScreen.tsx";
 
-const SCROLL_STEP = 400;
-const CODE_LENGTH = 6;
+const OPENING_POLL_MS = 1000;
+const CODE_POLL_MS = 6000;
 
-interface CodeBoxesProps {
-  name: string;
-  onText: (text: string) => void;
-  onKey: (event: KeyboardEvent<HTMLInputElement>) => void;
+function Waiting({ text }: { text: string }) {
+  return (
+    <p role="status" className="flex items-center justify-center gap-3 py-8 text-mute">
+      <span aria-hidden="true" className="spinner" />
+      {text}
+    </p>
+  );
 }
 
-/**
- * Sends each character on at once and keeps only a count, so a one-time code is never held here.
- * The site's own page shows the digits.
- */
-function CodeBoxes({ name, onText, onKey }: CodeBoxesProps) {
-  const [entered, setEntered] = useState(0);
-
-  function change(event: ChangeEvent<HTMLInputElement>) {
-    const { value } = event.target;
-    event.target.value = "";
-    if (!value) return;
-    onText(value);
-    setEntered((count) => Math.min(count + value.length, CODE_LENGTH));
-  }
-
-  function key(event: KeyboardEvent<HTMLInputElement>) {
-    onKey(event);
-    if (event.key === "Backspace") setEntered((count) => Math.max(count - 1, 0));
-  }
-
+function SiteOptions({
+  step,
+  busy,
+  onChoose,
+}: {
+  step: StepView;
+  busy: boolean;
+  onChoose: (id: string) => void;
+}) {
+  const options = step.options ?? [];
+  if (options.length === 0) return null;
   return (
-    <label className="flex flex-col items-center gap-2 text-sm text-body">
-      Type the code {name} sent you
-      <span className="relative inline-flex gap-1.5 rounded-xl has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[#2563eb]">
-        {Array.from({ length: CODE_LENGTH }, (_, index) => (
-          <span
-            key={index}
-            aria-hidden="true"
-            className="grid h-11 w-[38px] place-items-center rounded-[10px] border border-line text-lg text-ink"
+    <ul className="mt-3 flex flex-col gap-2">
+      {options.map(({ id, label }) => (
+        <li key={id}>
+          <button
+            type="button"
+            className={`btn w-full whitespace-normal ${step.kind === "choice" ? "btn-dark" : "btn-soft"}`}
+            disabled={busy}
+            onClick={() => onChoose(id)}
           >
-            {index < entered ? "•" : ""}
-          </span>
-        ))}
-        <input
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          spellCheck={false}
-          onChange={change}
-          onKeyDown={key}
-          aria-describedby="code-count"
-          className="absolute inset-0 opacity-0"
-        />
-      </span>
-      <span id="code-count" className="sr-only">
-        {entered} of {CODE_LENGTH} characters sent
-      </span>
-    </label>
+            {label}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
 interface SignInPanelProps {
   url: string;
   host: string;
-  /** Where the sign-in browser should appear to be. */
+  /** Where the sign-in browser should appear to be, and the default phone code. */
   country: string | null;
   onReady: (signIn: SignInView) => void;
   /** The panel closed with no sign-in left behind. */
@@ -85,19 +61,23 @@ interface SignInPanelProps {
 }
 
 export function SignInPanel({ url, host, country, onReady, onClosed }: SignInPanelProps) {
-  const image = useRef<HTMLImageElement>(null);
-  const screen = useRef<HTMLDivElement>(null);
-  const doneButton = useRef<HTMLButtonElement>(null);
-  const relay = useRef<InputRelay | null>(null);
   const opened = useRef(false);
   const abandoned = useRef(false);
-
   const [signIn, setSignIn] = useState<SignInView | null>(null);
-  const [frame, setFrame] = useState<ScreenFrame | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [ended, setEnded] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [typing, setTyping] = useState<"text" | "code">("text");
+  const [ended, setEnded] = useState(false);
+
+  const name = siteName(host);
+  const step = signIn?.step ?? null;
+
+  function show(view: SignInView) {
+    if (view.state === "ready") {
+      onReady(view);
+      return;
+    }
+    setSignIn(view);
+  }
 
   useEffect(() => {
     if (opened.current) return;
@@ -109,10 +89,6 @@ export function SignInPanel({ url, host, country, onReady, onClosed }: SignInPan
           void signOut(view.id).catch(() => undefined);
           return;
         }
-        relay.current = new InputRelay(
-          (input) => sendSignInInput(view.id, input),
-          () => setMessage("That key press did not reach the site. Please try it again."),
-        );
         setSignIn(view);
       },
       (error: unknown) => {
@@ -123,70 +99,50 @@ export function SignInPanel({ url, host, country, onReady, onClosed }: SignInPan
   }, [url]);
 
   const signInId = signIn?.id;
+  const kind = step?.kind;
+
   useEffect(() => {
+    if (!signInId || kind !== "opening") return;
+    const timer = setInterval(() => {
+      getSignIn(signInId).then(setSignIn, () => undefined);
+    }, OPENING_POLL_MS);
+    return () => clearInterval(timer);
+  }, [signInId, kind]);
+
+  // A site's resend button often stays off for a while, and the panel's should follow it.
+  useEffect(() => {
+    if (!signInId || kind !== "code") return;
+    const timer = setInterval(() => {
+      actOnSignIn(signInId, { kind: "refresh" }).then(show, () => undefined);
+    }, CODE_POLL_MS);
+    return () => clearInterval(timer);
+  }, [signInId, kind]);
+
+  async function act(action: SignInAction) {
     if (!signInId) return;
-    const events = new EventSource(signInScreenUrl(signInId));
-    events.addEventListener("frame", (event) => {
-      setFrame(JSON.parse((event as MessageEvent<string>).data) as ScreenFrame);
-    });
-    events.onerror = () => {
-      if (events.readyState !== EventSource.CLOSED) return;
-      setEnded(true);
-      setMessage("This sign-in window has closed. Close it and start the sign-in again.");
-    };
-    return () => events.close();
-  }, [signInId]);
-
-  useEffect(() => {
-    const target = screen.current;
-    if (!target || !frame) return;
-    function wheel(event: WheelEvent) {
-      event.preventDefault();
-      relay.current?.push({ kind: "scroll", dx: event.deltaX, dy: event.deltaY });
-    }
-    target.addEventListener("wheel", wheel, { passive: false });
-    return () => target.removeEventListener("wheel", wheel);
-  }, [frame !== null]);
-
-  function click(event: MouseEvent<HTMLImageElement>) {
-    if (!frame || !image.current) return;
-    const point = toRemotePoint(event, image.current.getBoundingClientRect(), frame);
-    relay.current?.push({ kind: "click", ...point });
-  }
-
-  function screenKey(event: KeyboardEvent<HTMLDivElement>) {
-    // Tab goes to the site, so Escape is the way out of the screen for keyboard users.
-    if (event.key === "Escape") {
-      event.preventDefault();
-      event.stopPropagation();
-      doneButton.current?.focus();
-      return;
-    }
-    const input = keyToInput(event.nativeEvent);
-    if (!input) return;
-    event.preventDefault();
-    relay.current?.push(input);
-  }
-
-  function fieldKey(event: KeyboardEvent<HTMLInputElement>) {
-    const input = keyToInput(event.nativeEvent);
-    if (input?.kind !== "key" || input.key === "Tab") return;
-    event.preventDefault();
-    relay.current?.push(input);
-  }
-
-  async function done() {
-    if (!signIn) return;
-    setSaving(true);
+    setBusy(true);
     setMessage(null);
     try {
-      onReady(await finishSignIn(signIn.id));
+      show(await actOnSignIn(signInId, action));
     } catch (error) {
-      setSaving(false);
-      if (error instanceof ApiFailure && error.code === "not_found") setEnded(true);
-      setMessage(error instanceof Error ? error.message : "The sign-in could not be saved.");
+      setMessage(error instanceof Error ? error.message : "That did not go through.");
+    } finally {
+      setBusy(false);
     }
   }
+
+  function answer(given: FieldAnswer) {
+    if (!step) return;
+    void act({ kind: "answer", stepId: step.id, ...given });
+  }
+
+  // The live page is laid out for the space the visitor has, then shown at that size.
+  const manual = kind === "manual";
+  useEffect(() => {
+    if (!signInId || !manual) return;
+    const size = viewportForScreen({ width: window.innerWidth, height: window.innerHeight });
+    actOnSignIn(signInId, { kind: "manual", ...size }).then(show, () => undefined);
+  }, [signInId, manual]);
 
   async function close() {
     abandoned.current = true;
@@ -194,152 +150,122 @@ export function SignInPanel({ url, host, country, onReady, onClosed }: SignInPan
     onClosed();
   }
 
-  const name = siteName(host);
+  if (signIn && step?.kind === "manual") {
+    return (
+      <SignInScreen
+        signInId={signIn.id}
+        name={name}
+        host={host}
+        reason={step.reason}
+        busy={busy}
+        message={message}
+        onDone={() => void act({ kind: "resume" })}
+        onCancel={() => void close()}
+      />
+    );
+  }
+
+  const asking = step?.kind === "identifier" || step?.kind === "password" || step?.kind === "code";
+  const heading = step ? question(step, name) : `Signing in to ${name}`;
+  const problem = step ? errorLine(step, name) : null;
 
   return (
     <Modal
       labelledBy="sign-in-title"
       onDismiss={() => void close()}
       dismissLabel={ended ? "Close" : "Cancel and sign out"}
-      className="max-w-[720px]"
-      footer="Runs in a TinyFish cloud browser. This window closes after about 15 minutes without activity."
+      footer={
+        <>
+          You&rsquo;re signing in to {name} itself. Aletheia never keeps your password or codes, and
+          it signs out and deletes the session after this one check. This window closes after about
+          15 minutes without activity.
+        </>
+      }
     >
       <div className="mt-1 text-center">
         <h2 id="sign-in-title" className="text-xl tracking-[-0.02em] wrap-anywhere">
-          Sign in to {name}
+          {heading}
         </h2>
-        <p className="mx-auto mt-1.5 max-w-[520px] text-body">
-          You sign in yourself, code included. What you type goes straight to the site, and Aletheia
-          keeps none of it. When this one check ends, we log out and delete the sign-in.
-        </p>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-[14px] border border-line bg-wash">
-        {frame ? (
-          <div
-            ref={screen}
-            role="application"
-            tabIndex={0}
-            aria-label={`Browser showing ${host}. Keys go to the site. Press Escape to leave.`}
-            onKeyDown={screenKey}
-            onPaste={(event) => {
-              const text = event.clipboardData.getData("text");
-              if (text) relay.current?.push({ kind: "text", text });
-            }}
-          >
-            <img
-              ref={image}
-              src={`data:image/jpeg;base64,${frame.data}`}
-              alt={`Live view of ${host}`}
-              width={frame.width}
-              height={frame.height}
-              draggable={false}
-              onClick={click}
-              className="h-auto w-full cursor-pointer select-none"
-            />
-          </div>
-        ) : (
-          <div
-            role="status"
-            className="flex aspect-[16/10] items-center justify-center gap-3 p-4 text-center text-mute"
-          >
-            {ended ? null : <span aria-hidden="true" className="spinner" />}
-            {ended ? "The sign-in window is closed." : `Opening ${host} in a private browser.`}
-          </div>
-        )}
-      </div>
+      <div className="mt-4">
+        {!ended && (!step || step.kind === "opening" || step.kind === "signed_in") ? (
+          <Waiting
+            text={step?.kind === "signed_in" ? `Saving your ${name} sign-in.` : `Opening ${name}.`}
+          />
+        ) : null}
 
-      {signIn && !ended ? (
-        <div className="mt-4 flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <div
-              role="group"
-              aria-label="What to type"
-              className="flex rounded-full bg-[#f3f4f6] p-1"
-            >
-              {(
-                [
-                  ["text", "Phone or email"],
-                  ["code", "Code"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={typing === value}
-                  onClick={() => setTyping(value)}
-                  className={`min-h-9 rounded-full px-4 text-sm font-medium transition-colors ${
-                    typing === value ? "bg-white text-ink shadow-sm" : "text-mute hover:text-ink"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+        {step?.kind === "failed" ? (
+          <p role="alert" className="py-4 text-center font-medium text-peach-ink">
+            {name} could not be opened. Your report is unchanged.
+          </p>
+        ) : null}
+
+        {step ? (
+          // A new question gets a new, empty field, so an answer never lingers on screen.
+          <fieldset key={step.id} disabled={busy}>
+            <SignInField step={step} busy={busy} country={country} onAnswer={answer} />
+          </fieldset>
+        ) : null}
+
+        {problem ? (
+          <p role="alert" className="mt-3 text-center font-medium text-peach-ink">
+            {problem}
+          </p>
+        ) : null}
+        {message ? (
+          <p role="alert" className="mt-3 text-center font-medium text-peach-ink">
+            {message}
+          </p>
+        ) : null}
+
+        {step ? (
+          <SiteOptions
+            step={step}
+            busy={busy}
+            onChoose={(optionId) => void act({ kind: "choose", optionId })}
+          />
+        ) : null}
+
+        {step?.kind === "code" && step.resend !== "none" ? (
+          <p className="mt-3 text-center text-sm text-body">
+            Did not get it?{" "}
             <button
               type="button"
-              className="btn btn-soft btn-sm"
-              onClick={() => relay.current?.push({ kind: "scroll", dx: 0, dy: -SCROLL_STEP })}
+              className="link inline-flex min-h-11 items-center font-medium sm:min-h-6"
+              disabled={busy || step.resend === "waiting"}
+              onClick={() => void act({ kind: "resend" })}
             >
-              Scroll up
+              {step.resend === "waiting" ? "You can ask again soon" : "Send the code again"}
+            </button>
+          </p>
+        ) : null}
+
+        {asking || step?.kind === "choice" ? (
+          <div className="mt-2 flex flex-wrap justify-center gap-x-5 text-sm text-body">
+            <button
+              type="button"
+              className="link inline-flex min-h-11 items-center sm:min-h-8"
+              disabled={busy}
+              onClick={() => void act({ kind: "restart" })}
+            >
+              Start again
             </button>
             <button
               type="button"
-              className="btn btn-soft btn-sm"
-              onClick={() => relay.current?.push({ kind: "scroll", dx: 0, dy: SCROLL_STEP })}
+              className="link inline-flex min-h-11 items-center sm:min-h-8"
+              disabled={busy}
+              onClick={() =>
+                void act({
+                  kind: "manual",
+                  ...viewportForScreen({ width: window.innerWidth, height: window.innerHeight }),
+                })
+              }
             >
-              Scroll down
+              Open {name}&rsquo;s page
             </button>
           </div>
-
-          {typing === "code" ? (
-            <CodeBoxes
-              name={name}
-              onText={(text) => relay.current?.push({ kind: "text", text })}
-              onKey={fieldKey}
-            />
-          ) : (
-            <label className="flex flex-col gap-1 text-sm text-body">
-              Type into the page (clears as you type)
-              <input
-                type="text"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                className="field"
-                onKeyDown={fieldKey}
-                onChange={(event) => {
-                  relay.current?.push({ kind: "text", text: event.target.value });
-                  event.target.value = "";
-                }}
-              />
-            </label>
-          )}
-        </div>
-      ) : null}
-
-      {message ? (
-        <p role="alert" className="mt-3 text-center font-medium text-peach-ink">
-          {message}
-        </p>
-      ) : null}
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <button type="button" className="btn btn-soft" onClick={() => void close()}>
-          {ended ? "Close" : "Cancel and sign out"}
-        </button>
-        {ended ? null : (
-          <button
-            ref={doneButton}
-            type="button"
-            className="btn btn-dark"
-            disabled={!signIn || saving}
-            onClick={() => void done()}
-          >
-            {saving ? "Saving" : "Done, I am signed in"}
-          </button>
-        )}
+        ) : null}
       </div>
     </Modal>
   );

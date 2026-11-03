@@ -40,13 +40,6 @@ export function SignInOffer({ label, report, task, country }: SignInOfferProps) 
       <button type="button" className="btn btn-dark" onClick={() => setOpen(true)}>
         {label}
       </button>
-      <p className="text-[13px] text-mute">
-        You sign in on the site itself, in a secure cloud browser.
-      </p>
-      <p className="text-[13px] text-mute">
-        Aletheia never stores your password or codes, and it signs out and deletes that browser
-        session after this one check.
-      </p>
       {message ? (
         <p role="alert" className="font-medium text-peach-ink">
           {message}
