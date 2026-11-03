@@ -12,7 +12,7 @@ import type { Config } from "./config.ts";
 import { loadConfig } from "./config.ts";
 import { RunQueue } from "./runner/queue.ts";
 import { SitePlanner } from "./plan/planner.ts";
-import { openRemoteScreen } from "./signin/remoteScreen.ts";
+import { openLoginBrowser } from "./signin/loginBrowser.ts";
 import { SignInService } from "./signin/service.ts";
 import { AuditStore } from "./store/auditStore.ts";
 import { TinyFishClient } from "./tinyfish/client.ts";
@@ -30,7 +30,7 @@ async function startApi(apiKey: string, { dataDir }: Config) {
   const queue = new RunQueue(CONCURRENT_RUNS);
   const signIns = new SignInService({
     client,
-    openScreen: openRemoteScreen,
+    openBrowser: openLoginBrowser,
     runLogout: logoutRunner(client, queue, DEFAULT_TIMING),
     dataDir,
   });

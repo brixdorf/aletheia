@@ -5,7 +5,11 @@ import { ApiError } from "../errors.ts";
 import { readJson, writeJson } from "../store/jsonFile.ts";
 import type { SetupSession } from "../tinyfish/client.ts";
 import { TinyFishError } from "../tinyfish/client.ts";
-import type { Frame, OpenScreen, RemoteScreen } from "./remoteScreen.ts";
+import type { GuidedOptions } from "./guided.ts";
+import { GuidedLogin } from "./guided.ts";
+import type { Frame, LoginBrowser, OpenBrowser } from "./loginBrowser.ts";
+import { overrideFor } from "./overrides.ts";
+import type { SignInAction, SignInState, SignInView, StepView } from "./views.ts";
 
 export interface SignInClient {
   createProfile(name: string, proxyCountry: string | null): Promise<string>;
@@ -15,9 +19,7 @@ export interface SignInClient {
   cancelSetup(profileId: string, sessionId: string): Promise<void>;
 }
 
-export type SignInState = "setting_up" | "ready" | "in_use";
-
-/** What goes to disk, so a restart can still clean up. Never the screen, the input or a CDP url. */
+/** What goes to disk, so a restart can still clean up. Never a step, input or a CDP url. */
 interface SignInRecord {
   id: string;
   visitorId: string;
@@ -31,8 +33,6 @@ interface SignInRecord {
   savedAt: number | null;
 }
 
-export type SignInView = Pick<SignInRecord, "id" | "url" | "host" | "state" | "expiresAt">;
-
 export type SignInInput =
   | { kind: "click"; x: number; y: number }
   | { kind: "key"; key: string }
@@ -41,14 +41,28 @@ export type SignInInput =
 
 export interface SignInDeps {
   client: SignInClient;
-  openScreen: OpenScreen;
+  openBrowser: OpenBrowser;
   /** Runs a short agent with the profile that logs out of the site. True if it logged out. */
   runLogout: (profileId: string, url: string, proxyCountry: string | null) => Promise<boolean>;
   dataDir: string;
   now?: () => number;
+  guided?: Pick<GuidedOptions, "wait" | "settlePolls">;
+}
+
+/** The parts of a sign-in that live only in memory, and go when it ends. */
+interface LiveSignIn {
+  browser: LoginBrowser | null;
+  guided: GuidedLogin | null;
+  step: StepView;
+  opened: Promise<void>;
+  /** The last action still running, so the next waits its turn. */
+  queue: Promise<unknown>;
+  busy: number;
 }
 
 const UNUSED_LIMIT_MS = 30 * 60 * 1000;
+const OPENING: StepView = { id: 0, kind: "opening", error: null };
+const FAILED: StepView = { id: 0, kind: "failed", error: null };
 
 function hostOf(url: string): string {
   return new URL(url).hostname.replace(/^www\./, "");
@@ -63,7 +77,7 @@ export class SignInService {
   readonly #now: () => number;
   readonly #path: string;
   readonly #records = new Map<string, SignInRecord>();
-  readonly #screens = new Map<string, RemoteScreen>();
+  readonly #live = new Map<string, LiveSignIn>();
   #stopCheck: (signInId: string) => Promise<void> = () => Promise.resolve();
 
   constructor(deps: SignInDeps) {
@@ -76,19 +90,19 @@ export class SignInService {
     this.#stopCheck = stopCheck;
   }
 
+  /** Returns as soon as the session exists. The page takes longer, and the panel waits on it. */
   async start(
     visitorId: string,
     url: string,
     proxyCountry: string | null = null,
   ): Promise<SignInView> {
-    const { client, openScreen } = this.#deps;
+    const { client } = this.#deps;
     const host = hostOf(url);
     const profileId = await client.createProfile(`Aletheia one check ${host}`, proxyCountry);
 
     let session: SetupSession | undefined;
     try {
       session = await client.startSetup(profileId, url);
-      const screen = await openScreen(session.cdpUrl, url);
       const record: SignInRecord = {
         id: randomUUID(),
         visitorId,
@@ -102,8 +116,18 @@ export class SignInService {
         savedAt: null,
       };
       this.#records.set(record.id, record);
-      this.#screens.set(record.id, screen);
       await this.#persist();
+
+      const live: LiveSignIn = {
+        browser: null,
+        guided: null,
+        step: OPENING,
+        opened: Promise.resolve(),
+        queue: Promise.resolve(),
+        busy: 0,
+      };
+      this.#live.set(record.id, live);
+      live.opened = this.#open(record, live, session.cdpUrl);
       return this.#view(record);
     } catch (error) {
       if (session) await client.cancelSetup(profileId, session.sessionId).catch(() => undefined);
@@ -112,51 +136,54 @@ export class SignInService {
     }
   }
 
+  /** Settles when the page has been read, or could not be. */
+  async opened(id: string): Promise<void> {
+    await this.#live.get(id)?.opened;
+  }
+
   view(visitorId: string, id: string): SignInView {
     return this.#view(this.#owned(visitorId, id));
   }
 
   watch(visitorId: string, id: string, listener: (frame: Frame) => void): () => void {
     this.#owned(visitorId, id);
-    const screen = this.#screens.get(id);
-    if (!screen) throw missing();
-    return screen.onFrame(listener);
+    const browser = this.#live.get(id)?.browser;
+    if (!browser) throw missing();
+    return browser.onFrame(listener);
   }
 
   async input(visitorId: string, id: string, input: SignInInput): Promise<void> {
     this.#owned(visitorId, id);
-    const screen = this.#screens.get(id);
-    if (!screen) throw missing();
+    const browser = this.#live.get(id)?.browser;
+    if (!browser) throw missing();
 
     switch (input.kind) {
       case "click":
-        return screen.click(input.x, input.y);
+        return browser.tap(input.x, input.y);
       case "key":
-        return screen.press(input.key);
+        return browser.press(input.key);
       case "text":
-        return screen.type(input.text);
+        return browser.type(input.text);
       case "scroll":
-        return screen.scroll(input.dx, input.dy);
+        return browser.scroll(input.dx, input.dy);
     }
   }
 
-  async done(visitorId: string, id: string): Promise<SignInView> {
+  /** One thing at a time on the page. A refresh never waits, as it only keeps the view current. */
+  async act(visitorId: string, id: string, action: SignInAction): Promise<SignInView> {
     const record = this.#owned(visitorId, id);
-    if (record.state !== "setting_up") return this.#view(record);
+    const live = this.#live.get(id);
+    if (!live?.guided || !live.browser) return this.#view(record);
+    if (action.kind === "refresh" && live.busy > 0) return this.#view(record);
 
+    live.busy += 1;
+    const turn = live.queue.then(() => this.#perform(record, live, action));
+    live.queue = turn.catch(() => undefined);
     try {
-      await this.#deps.client.saveSetup(record.profileId, record.sessionId, record.host);
-    } catch (error) {
-      if (error instanceof TinyFishError && error.status === 409) {
-        throw new ApiError("sign_in_not_ready", "Finish signing in, then press Done again.");
-      }
-      throw error;
+      return await turn;
+    } finally {
+      live.busy -= 1;
     }
-    await this.#closeScreen(id);
-    record.state = "ready";
-    record.savedAt = this.#now();
-    await this.#persist();
-    return this.#view(record);
   }
 
   /** Hands the profile to one check. A sign-in lasts for one check only. */
@@ -205,6 +232,92 @@ export class SignInService {
     await this.#persist();
   }
 
+  async #open(record: SignInRecord, live: LiveSignIn, cdpUrl: string): Promise<void> {
+    try {
+      const browser = await this.#deps.openBrowser(cdpUrl);
+      // The visitor may have cancelled while the browser was connecting.
+      if (!this.#live.has(record.id)) {
+        await browser.close();
+        return;
+      }
+      const guided = new GuidedLogin(browser, {
+        url: record.url,
+        loginUrl: overrideFor(record.host)?.loginUrl ?? null,
+        ...this.#deps.guided,
+      });
+      live.browser = browser;
+      live.guided = guided;
+      live.step = await guided.open();
+    } catch {
+      live.step = FAILED;
+    }
+  }
+
+  async #perform(
+    record: SignInRecord,
+    live: LiveSignIn,
+    action: SignInAction,
+  ): Promise<SignInView> {
+    const { guided, browser } = live;
+    if (!guided || !browser) throw missing();
+
+    try {
+      live.step = await this.#stepAfter(guided, browser, action);
+    } catch {
+      // The page died or moved under the action. A person can still finish it by hand.
+      live.step = guided.handOver("unreadable");
+    }
+
+    if (live.step.kind === "signed_in") await this.#save(record);
+    return this.#view(record);
+  }
+
+  async #stepAfter(
+    guided: GuidedLogin,
+    browser: LoginBrowser,
+    action: SignInAction,
+  ): Promise<StepView> {
+    switch (action.kind) {
+      case "answer":
+        return guided.answer(action.stepId, action);
+      case "choose":
+        return guided.choose(action.optionId);
+      case "resend":
+        return guided.resend();
+      case "refresh":
+        return guided.refresh();
+      case "restart":
+        await browser.hideScreen();
+        return guided.restart();
+      case "manual": {
+        const view = guided.view();
+        const shown = view.kind === "manual" ? view : guided.handOver();
+        await browser.showScreen({ width: action.width, height: action.height });
+        return shown;
+      }
+      case "resume": {
+        const view = await guided.resume();
+        if (view.kind !== "manual") await browser.hideScreen();
+        return view;
+      }
+    }
+  }
+
+  async #save(record: SignInRecord): Promise<void> {
+    try {
+      await this.#deps.client.saveSetup(record.profileId, record.sessionId, record.host);
+    } catch (error) {
+      if (error instanceof TinyFishError && error.status === 409) {
+        throw new ApiError("sign_in_not_ready", "That could not be saved yet. Please try again.");
+      }
+      throw error;
+    }
+    await this.#closeBrowser(record.id);
+    record.state = "ready";
+    record.savedAt = this.#now();
+    await this.#persist();
+  }
+
   #owned(visitorId: string, id: string): SignInRecord {
     const record = this.#records.get(id);
     if (record?.visitorId !== visitorId) throw missing();
@@ -212,19 +325,19 @@ export class SignInService {
   }
 
   #view({ id, url, host, state, expiresAt }: SignInRecord): SignInView {
-    return { id, url, host, state, expiresAt };
+    return { id, url, host, state, expiresAt, step: this.#live.get(id)?.step ?? null };
   }
 
-  async #closeScreen(id: string): Promise<void> {
-    const screen = this.#screens.get(id);
-    this.#screens.delete(id);
-    await screen?.close();
+  async #closeBrowser(id: string): Promise<void> {
+    const live = this.#live.get(id);
+    this.#live.delete(id);
+    await live?.browser?.close();
   }
 
   async #end(record: SignInRecord): Promise<boolean> {
     const { client, runLogout } = this.#deps;
     this.#records.delete(record.id);
-    await this.#closeScreen(record.id);
+    await this.#closeBrowser(record.id);
 
     let loggedOut = false;
     try {

@@ -11,7 +11,7 @@ import { proxyCountry, resolveCity, resolveCountry } from "../plan/country.ts";
 import { examplesFor } from "../plan/examples.ts";
 import type { SitePlanner } from "../plan/planner.ts";
 import type { RunQueue } from "../runner/queue.ts";
-import type { Frame } from "../signin/remoteScreen.ts";
+import type { Frame } from "../signin/loginBrowser.ts";
 import type { SignInService } from "../signin/service.ts";
 import type { AuditStore } from "../store/auditStore.ts";
 import { RateLimiter } from "./rateLimit.ts";
@@ -92,6 +92,26 @@ const signInInputSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("key"), key: z.string().min(1).max(32) }),
   z.object({ kind: z.literal("text"), text: z.string().min(1).max(256) }),
   z.object({ kind: z.literal("scroll"), dx: coordinate, dy: coordinate }),
+]);
+
+const viewportSide = z.number().int().min(240).max(2400);
+
+const signInActionSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("answer"),
+    stepId: z.number().int().min(0),
+    text: z.string().min(1).max(256),
+    dialCode: z
+      .string()
+      .regex(/^\+\d{1,4}$/)
+      .optional(),
+  }),
+  z.object({ kind: z.literal("choose"), optionId: z.string().min(1).max(80) }),
+  z.object({ kind: z.literal("resend") }),
+  z.object({ kind: z.literal("refresh") }),
+  z.object({ kind: z.literal("restart") }),
+  z.object({ kind: z.literal("manual"), width: viewportSide, height: viewportSide }),
+  z.object({ kind: z.literal("resume") }),
 ]);
 
 /** Lets a stream sleep until there is something new, so slow readers only get the latest state. */
@@ -339,9 +359,10 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
     return c.body(null, 204);
   });
 
-  api.post("/signin/:id/done", async (c) =>
-    c.json(await signIns.done(c.get("visitorId"), c.req.param("id"))),
-  );
+  api.post("/signin/:id/act", async (c) => {
+    const action = parsed(signInActionSchema, await jsonBody(c));
+    return c.json(await signIns.act(c.get("visitorId"), c.req.param("id"), action));
+  });
 
   api.post("/signin/:id/input", async (c) => {
     const input = parsed(signInInputSchema, await jsonBody(c));

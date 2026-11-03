@@ -5,10 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { AuditService } from "../audit/service.ts";
 import { RunQueue } from "../runner/queue.ts";
-import type { Frame, RemoteScreen } from "../signin/remoteScreen.ts";
 import { SignInService } from "../signin/service.ts";
 import { AuditStore } from "../store/auditStore.ts";
 import { SitePlanner } from "../plan/planner.ts";
+import { fakeBrowser } from "../testing/fakeBrowser.ts";
 import { loadRun, pageOf, withSavedPages } from "../testing/fixtures.ts";
 import type { RunEvent } from "../tinyfish/client.ts";
 import type { RunRecord } from "../tinyfish/types.ts";
@@ -20,28 +20,13 @@ const SECRET = "tf-secret-key";
 const readdirOrEmpty = (path: string) => readdir(path).catch(() => [] as string[]);
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff]);
 
-function fakeScreen() {
-  let listener: ((frame: Frame) => void) | undefined;
-  return {
-    onFrame: (fn: (frame: Frame) => void) => {
-      listener = fn;
-      return () => undefined;
-    },
-    emit: (frame: Frame) => listener?.(frame),
-    click: vi.fn(() => Promise.resolve()),
-    press: vi.fn(() => Promise.resolve()),
-    type: vi.fn(() => Promise.resolve()),
-    scroll: vi.fn(() => Promise.resolve()),
-    close: vi.fn(() => Promise.resolve()),
-  } satisfies RemoteScreen & { emit: (frame: Frame) => void };
-}
-
 describe("api", () => {
   let dataDir: string;
   let api: ReturnType<typeof createApi>;
   let run: RunRecord;
   let getScreenshot: ReturnType<typeof vi.fn<() => Promise<Uint8Array>>>;
-  let screen: ReturnType<typeof fakeScreen>;
+  let browser: ReturnType<typeof fakeBrowser>;
+  let signIns: SignInService;
   let limits: Partial<ApiLimits>;
 
   function build() {
@@ -74,11 +59,12 @@ describe("api", () => {
     const store = new AuditStore(dataDir);
     await store.load();
     const queue = new RunQueue(2);
-    const signIns = new SignInService({
+    signIns = new SignInService({
       client,
-      openScreen: () => Promise.resolve(screen),
+      openBrowser: () => Promise.resolve(browser),
       runLogout: () => Promise.resolve(true),
       dataDir,
+      guided: { wait: () => Promise.resolve(), settlePolls: 2 },
     });
     const audits = new AuditService({
       client,
@@ -95,7 +81,7 @@ describe("api", () => {
     dataDir = await mkdtemp(join(tmpdir(), "aletheia-api-"));
     run = withSavedPages(loadRun("blinkit-2"));
     getScreenshot = vi.fn(() => Promise.resolve(JPEG));
-    screen = fakeScreen();
+    browser = fakeBrowser();
     limits = {};
     await setup();
   });
@@ -545,6 +531,14 @@ describe("api", () => {
       return (await response.json()) as { id: string; state: string; expiresAt: string };
     }
 
+    /** Waits for the page to be read, which is what the panel polls for. */
+    async function readySignIn(as: ReturnType<typeof visitor>) {
+      const { id } = await startSignIn(as);
+      await signIns.opened(id);
+      const view = (await (await as(`/signin/${id}`)).json()) as { step: { id: number } };
+      return { id, step: view.step };
+    }
+
     it("starts a session and shows its time limit", async () => {
       const signIn = await startSignIn(alice());
 
@@ -552,36 +546,85 @@ describe("api", () => {
       expect(signIn.expiresAt).toBeTruthy();
     });
 
+    it("takes an answer and says what comes next, without echoing it", async () => {
+      const as = alice();
+      const { id, step } = await readySignIn(as);
+
+      const response = await as(
+        `/signin/${id}/act`,
+        post({ kind: "answer", stepId: step.id, text: "me@mail.test" }),
+      );
+      const body = await response.text();
+
+      expect(response.status).toBe(200);
+      expect(browser.enter).toHaveBeenCalledWith([{ frame: 0, ref: 1 }], "me@mail.test");
+      expect(body).toContain('"state":"ready"');
+      expect(body).not.toContain("me@mail.test");
+    });
+
+    it("refuses an action it does not know, without quoting it back", async () => {
+      const as = alice();
+      const { id, step } = await readySignIn(as);
+
+      const response = await as(
+        `/signin/${id}/act`,
+        post({ kind: "answer", stepId: step.id, text: "x".repeat(257) }),
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.text()).not.toContain("xxx");
+      expect(browser.enter).not.toHaveBeenCalled();
+    });
+
+    it("logs nothing of an answer when the page fails on it", async () => {
+      const failure = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const as = alice();
+      const { id, step } = await readySignIn(as);
+      browser.enter.mockRejectedValueOnce(new Error("fill('hunter2') failed"));
+
+      const response = await as(
+        `/signin/${id}/act`,
+        post({ kind: "answer", stepId: step.id, text: "hunter2" }),
+      );
+
+      expect(await response.text()).not.toContain("hunter2");
+      expect(failure).not.toHaveBeenCalled();
+      failure.mockRestore();
+    });
+
     it("relays input and validates it", async () => {
       const as = alice();
-      const { id } = await startSignIn(as);
+      const { id } = await readySignIn(as);
 
       const typed = await as(`/signin/${id}/input`, post({ kind: "text", text: "98765" }));
       const bad = await as(`/signin/${id}/input`, post({ kind: "explode" }));
 
       expect(typed.status).toBe(204);
-      expect(screen.type).toHaveBeenCalledWith("98765");
+      expect(browser.type).toHaveBeenCalledWith("98765");
       expect(bad.status).toBe(400);
     });
 
     it("sends screen frames as events", async () => {
       const as = alice();
-      const { id } = await startSignIn(as);
+      const { id } = await readySignIn(as);
 
       const response = await as(`/signin/${id}/screen`);
       const reader = response.body?.getReader();
-      screen.emit({ data: "abc", width: 1280, height: 720 });
+      browser.emit({ data: "abc", width: 1280, height: 720 });
       const { value } = (await reader?.read()) ?? {};
       await reader?.cancel();
 
       expect(new TextDecoder().decode(value)).toContain("abc");
     });
 
-    it("runs a signed-in check after Done", async () => {
+    it("runs a signed-in check after the sign-in saves", async () => {
       run = loadRun("zomato-signed-in-2");
       const as = alice();
-      const { id: signInId } = await startSignIn(as);
-      await as(`/signin/${signInId}/done`, { method: "POST" });
+      const { id: signInId, step } = await readySignIn(as);
+      await as(
+        `/signin/${signInId}/act`,
+        post({ kind: "answer", stepId: step.id, text: "me@mail.test" }),
+      );
 
       const response = await as(
         "/audits",
@@ -594,13 +637,16 @@ describe("api", () => {
 
     it("refuses a check before sign-in is done, and on a different site", async () => {
       const as = alice();
-      const { id: signInId } = await startSignIn(as);
+      const { id: signInId, step } = await readySignIn(as);
 
       const early = await as(
         "/audits",
         post({ task: "buy a laptop", sites: [{ url: "https://shop.test/", signInId }] }),
       );
-      await as(`/signin/${signInId}/done`, { method: "POST" });
+      await as(
+        `/signin/${signInId}/act`,
+        post({ kind: "answer", stepId: step.id, text: "me@mail.test" }),
+      );
       const elsewhere = await as(
         "/audits",
         post({ task: "buy a laptop", sites: [{ url: "https://other.test/", signInId }] }),
