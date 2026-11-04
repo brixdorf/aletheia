@@ -24,6 +24,10 @@ export interface SiteRun {
   streamingUrl: string | null;
   steps: SiteStep[];
   startedAt: string | null;
+  /** When the agent's own time limit runs out. Most runs end near it, some a little after. */
+  expectedBy?: string | null;
+  /** When the runner cancels the run at the latest, whatever the agent is doing. */
+  stopsBy?: string | null;
   finishedAt: string | null;
   report: SiteReport | null;
   error: string | null;

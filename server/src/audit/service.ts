@@ -129,6 +129,8 @@ export class AuditService {
         streamingUrl: null,
         steps: [],
         startedAt: null,
+        expectedBy: null,
+        stopsBy: null,
         finishedAt: null,
         report: null,
         error: null,
@@ -345,6 +347,10 @@ export class AuditService {
   async #walk(audit: Audit, site: SiteRun, signal: AbortSignal): Promise<void> {
     const signedIn = site.signInId !== null;
     const budget = budgetSeconds({ task: audit.task, signedIn });
+    const hardTimeoutMs = budget * 1000 + this.#timing.graceMs;
+    const now = this.#now().getTime();
+    site.expectedBy = new Date(now + budget * 1000).toISOString();
+    site.stopsBy = new Date(now + hardTimeoutMs).toISOString();
     const profileId = this.#profiles.get(site.id);
     const country = audit.country ?? null;
 
@@ -388,7 +394,7 @@ export class AuditService {
         },
       },
       {
-        hardTimeoutMs: budget * 1000 + this.#timing.graceMs,
+        hardTimeoutMs,
         pollMs: this.#timing.pollMs,
         quietMs: this.#timing.quietMs,
         resumeRunId: site.runId,

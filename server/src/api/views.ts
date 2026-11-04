@@ -44,9 +44,14 @@ export function summaryView(audit: Audit) {
     flow: audit.flow,
     createdAt: audit.createdAt,
     status: audit.status,
-    sites: audit.sites.map(({ host, state, report }) => ({
+    sites: audit.sites.map(({ host, state, report, steps, startedAt, expectedBy, stopsBy }) => ({
       host,
       state,
+      stepCount: steps.length,
+      latestStep: steps.at(-1)?.text ?? null,
+      startedAt,
+      expectedBy: expectedBy ?? null,
+      stopsBy: stopsBy ?? null,
       found: report?.patterns.filter((entry) => entry.status === "found").length ?? 0,
       notChecked: report?.patterns.filter((entry) => entry.status === "not_checked").length ?? 0,
       total: report?.bill.total ?? null,

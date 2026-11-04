@@ -458,6 +458,21 @@ describe("AuditService", () => {
     expect(seen[0]?.profileId).toBeUndefined();
   });
 
+  it("says when a run should finish and when it will be stopped at the latest", async () => {
+    const audits = service(clientFor(loadRun("blinkit-2")));
+
+    const { id } = await audits.create({
+      visitorId: "visitor",
+      task: "buy a laptop",
+      sites: [{ url: SITE }],
+    });
+    const [site] = (await finished(audits, id)).sites;
+
+    // Now is 6:30:00 AM, guests get 300 seconds, and the test grace is 5 seconds.
+    expect(site?.expectedBy).toBe("2026-11-01T06:35:00.000Z");
+    expect(site?.stopsBy).toBe("2026-11-01T06:35:05.000Z");
+  });
+
   it("drops the live browser link once a run ends", async () => {
     const audits = service(clientFor(loadRun("blinkit-2")));
 
