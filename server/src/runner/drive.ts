@@ -52,7 +52,10 @@ class QuietWatch {
 
   reset(): void {
     this.stop();
-    this.#timer = setTimeout(this.#onQuiet, this.#ms);
+    this.#timer = setTimeout(() => {
+      this.#onQuiet();
+      this.reset();
+    }, this.#ms);
   }
 
   stop(): void {

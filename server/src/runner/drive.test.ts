@@ -201,6 +201,21 @@ describe("driveRun", () => {
 
     await driveRun(client, request, on, { ...fast, quietMs: 5 });
 
-    expect(on.onQuiet).toHaveBeenCalledTimes(1);
+    expect(on.onQuiet).toHaveBeenCalled();
+  });
+
+  it("keeps saying so while the agent stays quiet, so a later check can still see it", async () => {
+    const on = handlers();
+    const client = fakeClient({
+      streamRun: async function* () {
+        yield { type: "started", runId: "run-1" };
+        await new Promise((resolve) => setTimeout(resolve, 60));
+        yield { type: "complete", runId: "run-1", status: "COMPLETED" };
+      },
+    });
+
+    await driveRun(client, request, on, { ...fast, quietMs: 10 });
+
+    expect(on.onQuiet.mock.calls.length).toBeGreaterThan(1);
   });
 });

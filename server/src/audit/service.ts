@@ -11,6 +11,7 @@ import { QueueCancelledError } from "../runner/queue.ts";
 import type { AuditStore } from "../store/auditStore.ts";
 import { budgetSeconds, buildGoal, detectFlow } from "./goals.ts";
 import { OUTPUT_SCHEMA } from "./outputSchema.ts";
+import { isWritingUp } from "./progress.ts";
 import { collectPageText } from "./pageCapture.ts";
 import { scrubPersonal } from "./scrub.ts";
 import type { RunRecord } from "../tinyfish/types.ts";
@@ -389,6 +390,8 @@ export class AuditService {
           this.#publish(audit);
         },
         onQuiet: () => {
+          if (site.state === "writing_up") return;
+          if (!isWritingUp(site.steps.at(-1)?.text, this.#now(), site.expectedBy ?? null)) return;
           site.state = "writing_up";
           this.#publish(audit);
         },
