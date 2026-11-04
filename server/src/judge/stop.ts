@@ -5,12 +5,26 @@ import type { Bill, Reach, StopPoint } from "./types.ts";
 
 const RAN_OUT = /budget|out of time|ran out|time limit|exhausted/i;
 const PAYMENT_PAGE = /payment|\bpay\b/i;
+const BOT_CHECK =
+  /\b(bots?|captcha|security|cloudflare|akamai|perimeterx|datadome|human verification)\b/i;
+const KEPT_OUT = /\b(block(ed|ing|s)?|denied|detect(ed|ion)|prevent(ed|ing|s)?)\b/i;
+
+/** An agent that spends its whole budget on bot checks calls that incomplete, not blocked. */
+function keptOutByBots(evidence: Evidence): boolean {
+  const note = evidence.stopNote ?? "";
+  const sawPrice =
+    evidence.listedPrice !== null ||
+    evidence.finalPrice !== null ||
+    evidence.pages.some(({ price }) => price !== null);
+  return !sawPrice && BOT_CHECK.test(note) && KEPT_OUT.test(note);
+}
 
 export function resolveStop(run: RunRecord, evidence: Evidence | null): StopPoint {
   if (run.status === "FAILED") return "error";
   if (!evidence) return "incomplete";
 
   const stop = evidence.stopPoint;
+  if (stop === "incomplete" && keptOutByBots(evidence)) return "blocked";
   if (stop !== "payment_page") return stop;
 
   const paymentPageSeen = evidence.pages.some((page) =>

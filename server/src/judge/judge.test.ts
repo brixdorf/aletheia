@@ -414,6 +414,50 @@ describe("the agent's claims", () => {
     }
   });
 
+  const stoppingWith = (fields: Record<string, unknown>) => (run: RunRecord) => {
+    if (run.result) Object.assign(run.result, fields);
+  };
+
+  it("reads a run that spent its time on bot checks before any price as blocked", () => {
+    const report = judge(
+      "blinkit-page-never-loaded",
+      "checkout",
+      stoppingWith({
+        stop_note:
+          "Reached step/time budget. Encountered repeated security/bot detection pages that blocked navigation to the event pages.",
+      }),
+    );
+
+    expect(report.stop.claimed).toBe("incomplete");
+    expect(report.stop.at).toBe("blocked");
+  });
+
+  it("keeps a run that saw a price before a check stopped it as incomplete", () => {
+    const report = judge(
+      "blinkit-page-never-loaded",
+      "checkout",
+      stoppingWith({
+        item_listed_price: 329,
+        stop_note: "Budget exhausted. A bot check blocked the basket page.",
+      }),
+    );
+
+    expect(report.stop.at).toBe("incomplete");
+  });
+
+  it("does not read a check the run got through as a block", () => {
+    const report = judge(
+      "blinkit-page-never-loaded",
+      "checkout",
+      stoppingWith({
+        stop_note:
+          "Budget exhausted. The site showed a Cloudflare verification on first visit, which passed automatically.",
+      }),
+    );
+
+    expect(report.stop.at).toBe("incomplete");
+  });
+
   it("does not believe a final price with no steps, fees or pages behind it", () => {
     const report = judge("zomato-signed-in");
 
