@@ -25,16 +25,25 @@ describe("detectFlow", () => {
     "a membership that renews yearly",
     "the one at Rs 199 per month",
     "sign up for a streaming service",
+    "a gym memebership",
+    "music subscribtion for the family",
+    "the premuim tier",
+    "get the game pass",
+    "their delivery pass",
   ])("treats %s as a subscription", (task) => {
     expect(detectFlow(task)).toBe("subscription");
   });
 
-  it.each(["buy one pair of headphones", "one USB-C cable", "flight from Mumbai to Delhi"])(
-    "treats %s as a checkout",
-    (task) => {
-      expect(detectFlow(task)).toBe("checkout");
-    },
-  );
+  it.each([
+    "buy one pair of headphones",
+    "one USB-C cable",
+    "flight from Mumbai to Delhi",
+    "a day pass for the zoo",
+    "train to Paris, print the boarding pass",
+    "a premier league shirt",
+  ])("treats %s as a checkout", (task) => {
+    expect(detectFlow(task)).toBe("checkout");
+  });
 });
 
 describe("delivery location", () => {

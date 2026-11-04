@@ -1,8 +1,14 @@
 import type { Flow } from "../judge/types.ts";
+import { isTypoOf } from "../plan/fuzzy.ts";
 import { sitesFor } from "../plan/sites/index.ts";
 
 const SUBSCRIPTION_TASK =
   /\b(subscri\w+|plan|plans|premium|membership|trial|renew\w*|monthly|annual|pro version|per (month|year)|a (month|year)|unsubscribe|sign(ing)?[- ]?up)\b|(?<!noise[- ])\bcancel(l?ing|l?ation)?\b/i;
+/** A pass sold as a product renews, unlike one that gets a person through a gate. */
+const SUBSCRIPTION_PASS =
+  /\b(?<!(boarding|day|bus|train|rail|metro|travel|transit|ski|park|museum|festival|weekend|week|visitor) )pass(es)?\b/i;
+/** Long enough that a slip in one is still clear. */
+const SUBSCRIPTION_WORDS = ["subscription", "subscribe", "membership", "premium"];
 const TRAVEL_TASK =
   /\b(flights?|flite|fly|airfare|trains?|bus tickets?|hot[ae]ls? (in|near|at|for)|book a hot[ae]l|weekend hot[ae]l|one[- ]way|flug|vuelos?|voos?)\b/i;
 
@@ -12,7 +18,13 @@ const TRAVEL_BUDGET_SECONDS = 600;
 const TASK_MAX_LENGTH = 300;
 
 export function detectFlow(task: string): Flow {
-  return SUBSCRIPTION_TASK.test(task) ? "subscription" : "checkout";
+  const misspelt = task
+    .toLowerCase()
+    .split(/[^\p{L}]+/u)
+    .some((word) => SUBSCRIPTION_WORDS.some((name) => isTypoOf(word, name)));
+  return SUBSCRIPTION_TASK.test(task) || SUBSCRIPTION_PASS.test(task) || misspelt
+    ? "subscription"
+    : "checkout";
 }
 
 export function isTravelTask(task: string): boolean {
