@@ -94,6 +94,7 @@ const SOCIAL = new RegExp(
   `^(continue|sign ?in|log ?in|login|sign ?up)( in| up)? (with|using|via) .*(${SOCIAL_NAME.source})|^(${SOCIAL_NAME.source})$`,
   "i",
 );
+const BARE_SOCIAL_NAME = new RegExp(`^(${SOCIAL_NAME.source})$`, "i");
 const METHOD =
   /^(continue|sign ?in|log ?in|login|proceed) (with|using|via) |^use (a |an |my |your )?(password|e-?mail|phone|mobile|code|otp|sms|text|authenticator|different|another|passkey|security key)|^(text|email|call|sms|whatsapp) me|^send (me )?(a |an )?(code|otp|link|text|sms)|^get (a |an )?(code|otp|link)|try another way|other (ways|options)|instead$/i;
 const PASSKEY = /passkey|security key|face id|touch id|windows hello/i;
@@ -217,6 +218,11 @@ function submitOf({ frame, controls }: LoginForm): Target | null {
   return best ? target(frame, best) : null;
 }
 
+/** A bare brand name only signs in from a button; as a link it is the footer's follow link. */
+function isSocial({ text, kind }: ScannedControl): boolean {
+  return SOCIAL.test(text) && !(kind === "link" && BARE_SOCIAL_NAME.test(text));
+}
+
 function optionId(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
@@ -227,7 +233,7 @@ function methodOptions(scan: PageScan, home: ScannedFrame | null, skip: Target |
     for (const control of frame.controls) {
       if (control.kind === "checkbox" || control.disabled) continue;
       if (skip?.frame === frame.index && skip.ref === control.ref) continue;
-      const social = SOCIAL.test(control.text);
+      const social = isSocial(control);
       const method = (!home || frame === home) && METHOD.test(control.text);
       if (!social && !method) continue;
       if (NOT_SUBMIT.test(control.text) || RESEND.test(control.text)) continue;

@@ -401,6 +401,24 @@ describe("readStep", () => {
       expect(step(scan(page))).toEqual({ kind: "manual", reason: "social" });
     });
 
+    it("counts a bare brand button as a social way in", () => {
+      const page = frame({ controls: [control("Google")] });
+
+      expect(step(scan(page))).toEqual({ kind: "manual", reason: "social" });
+    });
+
+    it("does not take a footer's follow links for a social sign-in", () => {
+      const page = frame({
+        url: "https://shop.test/missing",
+        controls: [
+          control("facebook", { kind: "link", form: null }),
+          control("LinkedIn", { kind: "link", form: null }),
+        ],
+      });
+
+      expect(step(scan(page))).toEqual({ kind: "no_form", loginControl: null });
+    });
+
     it("hands over a passkey prompt", () => {
       const page = frame({ text: "Use your passkey to sign in" });
 
