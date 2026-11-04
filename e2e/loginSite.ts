@@ -23,7 +23,24 @@ const SIGNED_IN: Screen = {
   html: `<h1>Your orders</h1><button>Log out</button>`,
 };
 
-const FLOWS: Record<string, { start: string; flow: Flow; rules: string }> = {
+interface Site {
+  start: string;
+  flow: Flow;
+  rules: string;
+  /** Where the flow lives on the site, when that is not its home page. */
+  at?: string;
+  /** Plain pages at other addresses, the way a site has more than its login. */
+  pages?: Record<string, string>;
+}
+
+const FOLLOW_LINKS = `<footer><a href="https://facebook.test/">facebook</a> <a href="https://linkedin.test/">LinkedIn</a></footer>`;
+
+const EMAIL_IN: Flow = {
+  email: { html: `<label>Email <input type="email" name="email"></label>${SUBMIT("Continue")}` },
+  in: SIGNED_IN,
+};
+
+const FLOWS: Record<string, Site> = {
   "email-password": {
     start: "email",
     rules: `email: () => "password", password: (v) => v === "right-password" ? "in" : err("Invalid password.")`,
@@ -160,6 +177,36 @@ const FLOWS: Record<string, { start: string; flow: Flow; rules: string }> = {
       in: SIGNED_IN,
     },
   },
+  "blocked-home": {
+    start: "email",
+    rules: `email: () => "in"`,
+    flow: EMAIL_IN,
+    at: "/login",
+    pages: {
+      "/": "<h1>Sorry, you have been blocked</h1><p>You are unable to access this site.</p>",
+    },
+  },
+  "footer-login": {
+    start: "home",
+    rules: `email: () => "in"`,
+    flow: {
+      home: {
+        html: `<h1>Plans for every team</h1><label>Search <input name="q"></label>
+          <a href="#plans">Plans</a>
+          <a href="#" data-go="email">Log into your account</a>${FOLLOW_LINKS}`,
+      },
+      ...EMAIL_IN,
+    },
+  },
+  "missing-page": {
+    start: "email",
+    rules: `email: () => "in"`,
+    flow: EMAIL_IN,
+    at: "/login",
+    pages: {
+      "/": `<h1>Sorry, we couldn't find that page.</h1><a href="/">Home</a>${FOLLOW_LINKS}`,
+    },
+  },
 };
 
 function phoneCode(length: number, right: string) {
@@ -177,9 +224,12 @@ function phoneCode(length: number, right: string) {
   };
 }
 
-function pageFor(name: string): string | null {
+function pageFor(name: string, path: string): string | null {
   const site = FLOWS[name];
   if (!site) return null;
+  const other = site.pages?.[path];
+  if (other !== undefined) return `<!doctype html><title>${name}</title>${STYLE}${other}`;
+  if (path !== (site.at ?? "/")) return null;
   return `<!doctype html><title>${name}</title>${STYLE}<main id="page"></main><script>
     const FLOW = ${JSON.stringify(site.flow)};
     const err = (message) => ({ error: message });
@@ -210,8 +260,9 @@ function pageFor(name: string): string | null {
 
 export function serveLoginSite(port: number): void {
   createServer((request, response) => {
-    const name = new URL(request.url ?? "/", "http://site").pathname.split("/")[1] ?? "";
-    const page = pageFor(name);
+    const [, name = "", ...rest] = new URL(request.url ?? "/", "http://site").pathname.split("/");
+    const path = `/${rest.filter(Boolean).join("/")}`;
+    const page = pageFor(name, path);
     response.writeHead(page ? 200 : 404, { "Content-Type": "text/html" });
     response.end(page ?? "Not found");
   }).listen(port);

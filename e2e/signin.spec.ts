@@ -249,6 +249,24 @@ for (const { name, viewport } of SIZES) {
       await expect(dialog).toContainText("wants your email");
     });
 
+    test("moves past a page that blocks visitors to the usual login address", async ({ page }) => {
+      const dialog = await openSignIn(page, "blocked-home");
+
+      await expect(dialog).toContainText("wants your email");
+    });
+
+    test("follows a footer link into the account, past the follow links", async ({ page }) => {
+      const dialog = await openSignIn(page, "footer-login");
+
+      await expect(dialog).toContainText("wants your email");
+    });
+
+    test("a missing page with follow links is not a social sign-in", async ({ page }) => {
+      const dialog = await openSignIn(page, "missing-page");
+
+      await expect(dialog).toContainText("wants your email");
+    });
+
     test("the panel fits the screen with no sideways scroll", async ({ page }) => {
       const dialog = await openSignIn(page, "phone-code-6");
       await expect(dialog).toContainText("wants your phone number");

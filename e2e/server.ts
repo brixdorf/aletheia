@@ -21,7 +21,7 @@ import { serveLoginSite } from "./loginSite.ts";
 /**
  * The real app with TinyFish replaced by saved runs, so the test costs nothing and is repeatable.
  * Sign-in runs for real: a local Chromium stands in for the setup browser, reached over CDP as the
- * real one is, and each `<flow>.test` site maps to a page of the pretend login site.
+ * real one is, and each `<flow>.test` address maps to the same path on the pretend login site.
  */
 const SAVED_RUNS: Record<string, string> = {
   "adobe.com": "adobe-subscription",
@@ -41,8 +41,8 @@ function savedRun(url: string) {
 }
 
 function localLoginUrl(url: string): string {
-  const flow = new URL(url).hostname.replace(/\.test$/, "");
-  return `http://localhost:${LOGIN_SITE_PORT}/${flow}/`;
+  const { hostname, pathname } = new URL(url);
+  return `http://localhost:${LOGIN_SITE_PORT}/${hostname.replace(/\.test$/, "")}${pathname}`;
 }
 
 const runsById = new Map(
