@@ -2,6 +2,7 @@ import type { FormEvent, KeyboardEvent } from "react";
 import { useState } from "react";
 
 import { Cross } from "../components/icons.tsx";
+import { SampleReport } from "../components/SampleReport.tsx";
 import { SiteAvatar, usePageTitle } from "../components/ui.tsx";
 import { startAudit } from "../lib/api.ts";
 import { pickedSites, planNote } from "../lib/plan.ts";
@@ -292,6 +293,8 @@ export function Home({ prefill }: HomeProps) {
           </p>
         ) : null}
       </form>
+
+      <SampleReport />
     </div>
   );
 }
