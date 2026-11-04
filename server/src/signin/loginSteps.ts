@@ -99,7 +99,7 @@ const METHOD =
 const PASSKEY = /passkey|security key|face id|touch id|windows hello/i;
 
 const LOG_IN_EXACT =
-  /^(log ?in|login|sign ?in|signin)$|^(log ?in|sign ?in)( or | ?\/ ?| and | & )(sign ?up|join|register|create)|^(hello|hi),? sign ?in|already have an account/i;
+  /^(log ?in|login|sign ?in|signin)$|^(log ?in|sign ?in)( or | ?\/ ?| and | & )(sign ?up|join|register|create)|^(hello|hi),? sign ?in|already have an account|^(log|sign) ?in ?to (your |my )?(account|profile)$/i;
 const LOG_IN_LOOSE = /^(my )?(account|profile)$|^log ?in\b|^sign ?in\b/i;
 const SIGNED_IN_CONTROL = /^(log ?out|logout|sign ?out|signout)\b|^my (account|profile|orders)$/i;
 

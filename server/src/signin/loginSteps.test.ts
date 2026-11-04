@@ -483,6 +483,16 @@ describe("readStep", () => {
       },
     );
 
+    it.each(["Log into your account", "Sign in to your account", "Sign into my account"])(
+      "follows a link that names the account, like %s",
+      (text) => {
+        const login = control(text, { kind: "link", form: null });
+        const page = frame({ url: "https://shop.test/", controls: [control("Plans"), login] });
+
+        expect(expectKind(step(scan(page)), "no_form").loginControl?.ref).toBe(login.ref);
+      },
+    );
+
     it("prefers log in over a vaguer account link", () => {
       const account = control("My account", { form: null });
       const login = control("Sign in", { form: null });
