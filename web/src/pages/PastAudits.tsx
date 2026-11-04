@@ -14,6 +14,7 @@ import {
 } from "../components/ui.tsx";
 import { deleteAudit, listAudits } from "../lib/api.ts";
 import { dateTime, plural } from "../lib/format.ts";
+import { stepLine, timeEstimate } from "../lib/live.ts";
 import { tallyLine } from "../lib/report.ts";
 import { siteName } from "../lib/sites.ts";
 import { priceChange, rowPills } from "../lib/story.ts";
@@ -47,6 +48,24 @@ function Change({ report }: { report: SiteReport | null }) {
         </span>
         <Money amount={to} currency={currency} suffix={suffix} plain />
       </span>
+    </span>
+  );
+}
+
+/** While a site runs, the step it is on and how long is left. The list refreshes every few seconds. */
+function LiveLine({ site }: { site: SummarySite }) {
+  const step =
+    site.state === "writing_up"
+      ? "Writing up the report"
+      : site.state === "running"
+        ? stepLine(site.stepCount, site.latestStep)
+        : null;
+  const estimate = timeEstimate(site, Date.now());
+  if (!step && !estimate) return null;
+  return (
+    <span className="w-full text-[13px]">
+      {step ? <span className="block font-medium wrap-anywhere text-ink">{step}</span> : null}
+      {estimate ? <span className="num block text-mute">{estimate}</span> : null}
     </span>
   );
 }
@@ -91,6 +110,7 @@ function SiteRow({ audit, site, detail, controls, showTask }: SiteRowProps) {
         {site.state === "done" ? (
           <span className="num w-full text-[13px] text-mute">{tallyLine(site)}</span>
         ) : null}
+        <LiveLine site={site} />
       </div>
       <Change report={report} />
       <div className="row-delete">{controls ? <DeleteRow {...controls} /> : null}</div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { signOut } from "../lib/api.ts";
 import { ago } from "../lib/format.ts";
-import { siteStatus } from "../lib/live.ts";
+import { progressShare, siteStatus, stepLine, timeEstimate } from "../lib/live.ts";
 import { logoutNote } from "../lib/report.ts";
 import { newAuditHref } from "../lib/route.ts";
 import { recallSignIn } from "../lib/signInMemory.ts";
@@ -31,8 +31,7 @@ function useNow(ticking: boolean): number {
   return now;
 }
 
-function Timeline({ site, active }: { site: SiteView; active: boolean }) {
-  const now = useNow(active);
+function Timeline({ site, active, now }: { site: SiteView; active: boolean; now: number }) {
   const stepCount = site.steps.length;
 
   if (stepCount === 0 && site.state === "queued") {
@@ -67,7 +66,10 @@ function Timeline({ site, active }: { site: SiteView; active: boolean }) {
       {newestFirst.map((step) => {
         const newest = active && site.state === "running" && step.number === stepCount;
         return (
-          <li key={`${step.at}-${step.number}`} className="flex items-baseline gap-2.5 py-2.5">
+          <li
+            key={`${step.at}-${step.number}`}
+            className={`flex items-baseline gap-2.5 py-2.5 ${newest ? "rise -mx-2 rounded-xl border-transparent bg-sky px-2" : ""}`}
+          >
             <span className="w-5 shrink-0 font-mono text-[13px] text-mute">{step.number}</span>
             <span className={`min-w-0 flex-1 ${newest ? "font-medium text-ink" : "text-text"}`}>
               {step.text}
@@ -77,6 +79,43 @@ function Timeline({ site, active }: { site: SiteView; active: boolean }) {
         );
       })}
     </ol>
+  );
+}
+
+/** The step happening now, how long so far and how long to go, above everything else. */
+function NowCard({ site, now }: { site: SiteView; now: number }) {
+  const writing = site.state === "writing_up";
+  const step = writing
+    ? "Writing up the report"
+    : stepLine(site.steps.length, site.steps.at(-1)?.text ?? null);
+  const estimate = timeEstimate(site, now);
+  const share = progressShare(site, now);
+
+  return (
+    <section aria-label={`Now on ${site.host}`} className="card overflow-hidden">
+      <div className="flex flex-col gap-2 px-[18px] pt-4 pb-3.5 sm:flex-row sm:items-center sm:gap-4">
+        <span className="pill pill-live w-fit">
+          <span aria-hidden="true" className="dot" />
+          Now
+        </span>
+        <p
+          key={step ?? "opening"}
+          aria-live="polite"
+          className="rise min-w-0 flex-1 text-[17px]/[1.35] font-medium tracking-[-0.01em] text-ink"
+        >
+          {step ?? "Opening the site"}
+        </p>
+        {estimate ? <p className="num shrink-0 text-[13px] text-mute">{estimate}</p> : null}
+      </div>
+      {share === null ? null : (
+        <div aria-hidden="true" className="h-1 bg-wash">
+          <div
+            className={`h-full bg-peach-ink/70 duration-1000 ease-linear motion-safe:transition-[width] ${writing ? "motion-safe:animate-pulse" : ""}`}
+            style={{ width: `${Math.round(share * 100)}%` }}
+          />
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -166,6 +205,7 @@ interface LiveSiteProps {
 export function LiveSite({ site, task, auditId }: LiveSiteProps) {
   const status = siteStatus(site);
   const active = status.tone === "live";
+  const now = useNow(active);
   const logout = logoutNote(site.logout);
 
   return (
@@ -180,6 +220,8 @@ export function LiveSite({ site, task, auditId }: LiveSiteProps) {
         </div>
       </header>
 
+      {active ? <NowCard site={site} now={now} /> : null}
+
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <LiveBrowser site={site} />
 
@@ -188,7 +230,7 @@ export function LiveSite({ site, task, auditId }: LiveSiteProps) {
             <h3 className="text-sm tracking-normal">Agent steps</h3>
             {active ? <LivePill /> : null}
           </div>
-          <Timeline site={site} active={active} />
+          <Timeline site={site} active={active} now={now} />
         </section>
       </div>
 
