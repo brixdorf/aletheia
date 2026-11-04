@@ -1,6 +1,7 @@
 import type { Audit, SiteRun } from "../audit/types.ts";
 import { compareReports } from "../judge/compare.ts";
 import { countryName } from "../plan/country.ts";
+import { severitySummary } from "../judge/severity.ts";
 import type { SiteReport } from "../judge/types.ts";
 
 function reportsOf(audit: Audit): SiteReport[] {
@@ -12,8 +13,13 @@ function comparisonOf(audit: Audit) {
   return reports.length >= 2 ? compareReports(audit.task, reports) : null;
 }
 
-function publicSite({ signInId, ...site }: SiteRun) {
-  return { ...site, signedIn: signInId !== null };
+/** Worked out on every read, so reports saved before it existed get one too. */
+function reportView(report: SiteReport) {
+  return { ...report, severity: severitySummary(report) };
+}
+
+function publicSite({ signInId, report, ...site }: SiteRun) {
+  return { ...site, report: report && reportView(report), signedIn: signInId !== null };
 }
 
 export function ownerView({ visitorId: _visitorId, ...audit }: Audit) {

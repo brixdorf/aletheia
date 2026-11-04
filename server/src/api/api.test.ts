@@ -164,6 +164,22 @@ describe("api", () => {
     expect(audit).not.toHaveProperty("visitorId");
   });
 
+  it("sums up each report by severity, worst first", async () => {
+    const as = alice();
+    const id = await createAudit(as);
+
+    const audit = (await (await as(`/audits/${id}`)).json()) as {
+      sites: { report: { severity: unknown } }[];
+    };
+
+    expect(audit.sites[0]?.report.severity).toEqual({
+      high: 1,
+      medium: 0,
+      low: 0,
+      line: "1 high: fees added after the first price",
+    });
+  });
+
   it("reads the visitor's city from Cloudflare and never shares it", async () => {
     const as = alice();
     const headers = {
