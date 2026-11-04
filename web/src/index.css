@@ -227,6 +227,46 @@
     @apply size-[7px] shrink-0 rounded-full bg-current;
   }
 
+  .severity {
+    @apply inline-flex items-center gap-1.5 text-[13px]/[1.4] font-semibold whitespace-nowrap;
+  }
+
+  .severity-high {
+    @apply text-peach-ink;
+  }
+
+  .severity-medium {
+    @apply text-ink;
+  }
+
+  .severity-low {
+    @apply text-body;
+  }
+
+  .severity-meter {
+    @apply inline-flex items-end gap-[2px];
+  }
+
+  .severity-meter > span {
+    @apply w-[3px] rounded-full bg-current opacity-25;
+  }
+
+  .severity-meter > span:nth-child(1) {
+    height: 5px;
+  }
+
+  .severity-meter > span:nth-child(2) {
+    height: 8px;
+  }
+
+  .severity-meter > span:nth-child(3) {
+    height: 11px;
+  }
+
+  .severity-meter > .on {
+    @apply opacity-100;
+  }
+
   .card {
     @apply rounded-card border border-line bg-white shadow-card;
   }

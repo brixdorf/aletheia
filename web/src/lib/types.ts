@@ -9,7 +9,7 @@ export type {
   PatternId,
   PatternStatus,
   Screenshot,
-  SiteReport,
+  Severity,
   SubscriptionSummary,
 } from "../../../server/src/judge/types.ts";
 
@@ -22,6 +22,8 @@ export type AuditView = ReturnType<typeof ownerView>;
 export type AuditPublic = ReturnType<typeof sharedView>;
 export type AuditSummary = ReturnType<typeof summaryView>;
 export type SiteView = AuditPublic["sites"][number];
+/** A report as served, with its severity summary worked out on the server. */
+export type SiteReport = NonNullable<SiteView["report"]>;
 
 export type {
   ManualReason,

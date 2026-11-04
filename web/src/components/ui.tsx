@@ -2,9 +2,10 @@ import type { AnchorHTMLAttributes, CSSProperties, MouseEvent, ReactNode } from 
 import { useEffect } from "react";
 
 import { moneyParts } from "../lib/format.ts";
+import { severityLevel } from "../lib/report.ts";
 import { avatarTone, siteName } from "../lib/sites.ts";
 import type { Pill as PillValue } from "../lib/story.ts";
-import type { PatternStatus } from "../lib/types.ts";
+import type { PatternStatus, Severity } from "../lib/types.ts";
 import { navigate } from "../lib/useRoute.ts";
 import { Check } from "./icons.tsx";
 
@@ -52,6 +53,22 @@ export function StatusPill({ status, popOrder, label }: StatusPillProps) {
   return (
     <span className={`pill ${tone} ${popping ? "pop-in" : ""}`} style={style}>
       {label ? `${label}, ${text.toLowerCase()}` : text}
+    </span>
+  );
+}
+
+/** The level in words, with a three-bar meter for scanning a list. */
+export function SeverityTag({ severity }: { severity: Severity }) {
+  const { text, bars } = severityLevel(severity);
+  return (
+    <span className={`severity severity-${severity}`}>
+      <span aria-hidden="true" className="severity-meter">
+        {[1, 2, 3].map((bar) => (
+          <span key={bar} className={bar <= bars ? "on" : undefined} />
+        ))}
+      </span>
+      {text}
+      <span className="sr-only"> severity</span>
     </span>
   );
 }

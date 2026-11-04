@@ -6,6 +6,8 @@ import {
   counts,
   logoutNote,
   orderedPatterns,
+  severityLevel,
+  severityLine,
   signInOffer,
   stopSummary,
   olderAuditNote,
@@ -50,6 +52,34 @@ describe("orderedPatterns", () => {
       "trick_question",
     ]);
     expect(rows.at(-1)?.status).toBe("not_found");
+  });
+});
+
+describe("severityLevel", () => {
+  it("names each level in words, beside a meter of the same weight", () => {
+    expect(severityLevel("high")).toEqual({ text: "High", bars: 3 });
+    expect(severityLevel("medium")).toEqual({ text: "Medium", bars: 2 });
+    expect(severityLevel("low")).toEqual({ text: "Low", bars: 1 });
+  });
+});
+
+describe("severityLine", () => {
+  it("leads with the worst findings named", () => {
+    const line = severityLine(
+      report({
+        patterns: [
+          finding({ id: "drip_pricing", label: "Drip pricing", severity: "high", status: "found" }),
+          finding({ id: "countdown", status: "found" }),
+        ],
+      }),
+    );
+    expect(line).toBe(
+      "1 high, 1 medium: fees added after the first price and a countdown or deadline",
+    );
+  });
+
+  it("is empty when nothing was found", () => {
+    expect(severityLine(report())).toBeNull();
   });
 });
 

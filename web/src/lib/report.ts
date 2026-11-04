@@ -1,5 +1,13 @@
+import { bySeverity } from "../../../server/src/judge/severity.ts";
 import { money } from "./format.ts";
-import type { Bill, PatternFinding, SiteReport, SiteView, SubscriptionSummary } from "./types.ts";
+import type {
+  Bill,
+  PatternFinding,
+  Severity,
+  SiteReport,
+  SiteView,
+  SubscriptionSummary,
+} from "./types.ts";
 
 type Term = SubscriptionSummary["terms"][number];
 
@@ -50,8 +58,6 @@ export const SHOWN_WHERE_LABEL: Record<Term["shownWhere"], string> = {
   not_shown: "Not shown at all",
 };
 
-const SEVERITY_RANK: Record<PatternFinding["severity"], number> = { high: 0, medium: 1, low: 2 };
-
 const STATUS_RANK: Record<PatternFinding["status"], number> = {
   found: 0,
   not_checked: 1,
@@ -61,10 +67,23 @@ const STATUS_RANK: Record<PatternFinding["status"], number> = {
 /** Found first, worst first, because that is the question the report answers. Clean rows last. */
 export function orderedPatterns({ patterns }: SiteReport): PatternFinding[] {
   return patterns.toSorted(
-    (a, b) =>
-      STATUS_RANK[a.status] - STATUS_RANK[b.status] ||
-      SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
+    (a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || bySeverity(a, b),
   );
+}
+
+const LEVEL: Record<Severity, { text: string; bars: number }> = {
+  high: { text: "High", bars: 3 },
+  medium: { text: "Medium", bars: 2 },
+  low: { text: "Low", bars: 1 },
+};
+
+export function severityLevel(severity: Severity): { text: string; bars: number } {
+  return LEVEL[severity];
+}
+
+/** The line at the top of a report, such as "1 high, 2 medium: a cancellation fee and ...". */
+export function severityLine({ severity }: SiteReport): string | null {
+  return severity.line;
 }
 
 export function counts({ patterns }: SiteReport) {

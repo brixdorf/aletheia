@@ -1,13 +1,13 @@
 import type { ReportScope } from "../lib/api.ts";
 import { screenshotUrl } from "../lib/api.ts";
 import { money } from "../lib/format.ts";
-import { counts, tallyLine } from "../lib/report.ts";
+import { counts, severityLine, tallyLine } from "../lib/report.ts";
 import { billNote, foundPatterns, showsBill, story } from "../lib/story.ts";
 import type { Story } from "../lib/story.ts";
 import type { PatternFinding, SiteReport } from "../lib/types.ts";
 import { Receipt } from "./Receipt.tsx";
 import { Screenshot } from "./Screenshot.tsx";
-import { Pill, StatusPill } from "./ui.tsx";
+import { Pill, SeverityTag, StatusPill } from "./ui.tsx";
 
 export function findingAnchor(siteId: string, id: PatternFinding["id"]): string {
   return `finding-${siteId}-${id}`;
@@ -19,29 +19,39 @@ const PANEL: Record<Story["tone"], string> = {
   clear: "from-[#e4faec] to-[#f2fdf6]",
 };
 
-/** The white card in the report's pastel panel: the count, then each pattern found and its step. */
+/**
+ * The white card in the report's pastel panel: how bad in one line, the count, then each pattern
+ * found, worst first, with its level and step.
+ */
 export function FindingsSummary({ report, siteId }: { report: SiteReport; siteId: string }) {
   const findings = foundPatterns(report);
+  const line = severityLine(report);
   return (
     <div
       className={`overflow-hidden rounded-panel bg-linear-to-b p-4 sm:p-10 ${PANEL[story(report).tone]}`}
     >
       <div className="card px-4 py-5 sm:px-6 sm:py-6">
+        {line ? (
+          <p className="num mb-1.5 text-[17px]/[1.35] font-semibold tracking-[-0.01em] text-ink">
+            {line}
+          </p>
+        ) : null}
         <p className="num text-[13px] text-mute">{tallyLine(counts(report))}</p>
         {findings.length > 0 ? (
           <ul className="mt-2">
-            {findings.map(({ id, label, step }) => (
+            {findings.map(({ id, label, step, severity }) => (
               <li key={id}>
                 <a
                   href={`#${findingAnchor(siteId, id)}`}
-                  className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-xl bg-peach px-3.5 py-2 font-medium text-ink transition-colors hover:bg-peach-line"
+                  className="mt-2 flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-xl bg-peach px-3.5 py-2 font-medium text-ink transition-colors hover:bg-peach-line"
                 >
                   <span className="min-w-0">{label}</span>
-                  {step === null ? null : (
-                    <span className="num shrink-0 text-[13px] font-normal text-body">
-                      Step {step}
-                    </span>
-                  )}
+                  <span className="flex shrink-0 items-center gap-3">
+                    <SeverityTag severity={severity} />
+                    {step === null ? null : (
+                      <span className="num text-[13px] font-normal text-body">Step {step}</span>
+                    )}
+                  </span>
                 </a>
               </li>
             ))}
@@ -66,12 +76,13 @@ interface FindingDetailProps {
 }
 
 function FindingDetail({ finding, currency, screenshot, showAmounts }: FindingDetailProps) {
-  const { quote, amounts, note, step, label } = finding;
+  const { quote, amounts, note, step, label, severity } = finding;
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:gap-8">
       <div className="flex min-w-0 flex-col gap-3">
-        <div className="w-fit">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <StatusPill status="found" label={label} />
+          <SeverityTag severity={severity} />
         </div>
         {quote ? (
           <blockquote className="max-w-prose border-l-2 border-found py-0.5 pl-3.5 font-serif text-[22px]/[1.3] text-ink italic">

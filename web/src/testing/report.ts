@@ -1,3 +1,4 @@
+import { severitySummary } from "../../../server/src/judge/severity.ts";
 import { PATTERN_IDS } from "../lib/types.ts";
 import type { Bill, PatternFinding, SiteReport, SubscriptionSummary } from "../lib/types.ts";
 
@@ -60,12 +61,14 @@ export function subscription(overrides: Partial<SubscriptionSummary> = {}): Subs
   };
 }
 
-/** Every report lists every pattern, so overrides replace rows by id. */
+/** Every report lists every pattern, so overrides replace rows by id. Severity follows them. */
 export function report(
-  overrides: Partial<Omit<SiteReport, "patterns">> & { patterns?: PatternFinding[] } = {},
+  overrides: Partial<Omit<SiteReport, "patterns" | "severity">> & {
+    patterns?: PatternFinding[];
+  } = {},
 ): SiteReport {
   const { patterns = [], ...rest } = overrides;
-  return {
+  const built: Omit<SiteReport, "severity"> = {
     older: false,
     rules: 3,
     url: "https://shop.test",
@@ -91,4 +94,5 @@ export function report(
         finding({ id, label: id, status: "not_found", note: "Not seen." }),
     ),
   };
+  return { ...built, severity: severitySummary(built) };
 }
