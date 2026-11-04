@@ -44,7 +44,7 @@ vp run dev
 
 ## Licence
 
-Source available under [PolyForm Noncommercial 1.0.0](LICENSE.md). Commercial use needs written permission from the authors.
+Open source under the [MIT licence](LICENSE).
 
 ## Team
 
