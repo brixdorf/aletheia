@@ -1,7 +1,5 @@
-import { randomUUID } from "node:crypto";
 import type { Context } from "hono";
 import { Hono } from "hono";
-import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 
@@ -15,16 +13,14 @@ import type { Frame } from "../signin/loginBrowser.ts";
 import type { SignInService } from "../signin/service.ts";
 import type { AuditStore } from "../store/auditStore.ts";
 import { RateLimiter } from "./rateLimit.ts";
+import { visitorOf } from "./visitor.ts";
 import { ownerView, sharedView, summaryView } from "./views.ts";
 
-const VISITOR_COOKIE = "aletheia_visitor";
-const VISITOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const STEP_ID = /^[A-Za-z0-9_-]+$/;
 const LOCAL_HOST =
   /^(localhost|.*\.local|.*\.internal|0\.0\.0\.0|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|169\.254\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|\[.*\])$/i;
 const KEEP_ALIVE_MS = 20_000;
 const HOUR_MS = 60 * 60 * 1000;
-const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 export interface ApiLimits {
   perVisitor: number;
@@ -197,18 +193,7 @@ export function createApi(deps: ApiDeps): Hono<ApiEnv> {
   });
 
   api.use("*", async (c, next) => {
-    let visitorId = getCookie(c, VISITOR_COOKIE);
-    if (!visitorId || !VISITOR_ID.test(visitorId)) {
-      visitorId = randomUUID();
-      setCookie(c, VISITOR_COOKIE, visitorId, {
-        httpOnly: true,
-        sameSite: "Lax",
-        secure: c.req.header("x-forwarded-proto") === "https",
-        path: "/",
-        maxAge: COOKIE_MAX_AGE_SECONDS,
-      });
-    }
-    c.set("visitorId", visitorId);
+    c.set("visitorId", visitorOf(c));
     await next();
   });
 

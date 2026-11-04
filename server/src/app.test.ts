@@ -67,6 +67,23 @@ describe("createApp", () => {
     expect(response.status).toBe(404);
   });
 
+  it("hands a new visitor their id with the page, so the page's first calls share one", async () => {
+    const app = createApp({ webRoot });
+
+    for (const path of ["/", "/audits/42"]) {
+      const response = await app.request(path);
+      expect(response.headers.get("set-cookie")).toMatch(/^aletheia_visitor=[0-9a-f-]{36};/);
+    }
+  });
+
+  it("keeps a visitor's id and sets no cookie on assets a cache may keep", async () => {
+    const app = createApp({ webRoot });
+    const known = { Cookie: "aletheia_visitor=3f9a77c2-1b2c-4d5e-8f90-a1b2c3d4e5f6" };
+
+    expect((await app.request("/", { headers: known })).headers.get("set-cookie")).toBeNull();
+    expect((await app.request("/assets/app.js")).headers.get("set-cookie")).toBeNull();
+  });
+
   it("falls back to the app shell for client routes", async () => {
     const response = await createApp({ webRoot }).request("/audits/42");
 
