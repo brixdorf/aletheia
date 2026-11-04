@@ -97,6 +97,9 @@ const SOCIAL = new RegExp(
 const BARE_SOCIAL_NAME = new RegExp(`^(${SOCIAL_NAME.source})$`, "i");
 const METHOD =
   /^(continue|sign ?in|log ?in|login|proceed) (with|using|via) |^use (a |an |my |your )?(password|e-?mail|phone|mobile|code|otp|sms|text|authenticator|different|another|passkey|security key)|^(text|email|call|sms|whatsapp) me|^send (me )?(a |an )?(code|otp|link|text|sms)|^get (a |an )?(code|otp|link)|try another way|other (ways|options)|instead$/i;
+/** Pages that will never show a login, so waiting for one to draw is time lost. */
+const DEAD_END =
+  /you have been blocked|access denied|page (was )?not found|(couldn'?t|could not|can'?t|cannot) find (that|this|the) page/i;
 const PASSKEY = /passkey|security key|face id|touch id|windows hello/i;
 
 const LOG_IN_EXACT =
@@ -354,6 +357,10 @@ function trustPrompt(scan: PageScan): Target | null {
     if (decline) return target(frame, decline);
   }
   return null;
+}
+
+export function isDeadEnd(scan: PageScan): boolean {
+  return DEAD_END.test(scan.frames.find(({ index }) => index === 0)?.text ?? "");
 }
 
 export interface ReadContext {

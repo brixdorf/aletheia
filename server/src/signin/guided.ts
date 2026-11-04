@@ -1,5 +1,5 @@
 import type { Dial, LoginStep, ManualReason, Target } from "./loginSteps.ts";
-import { readStep } from "./loginSteps.ts";
+import { isDeadEnd, readStep } from "./loginSteps.ts";
 import type { PageScan } from "./pageScan.ts";
 import type { StepView } from "./views.ts";
 
@@ -227,11 +227,11 @@ export class GuidedLogin {
 
   /** A page can take a moment to draw its form, and a login dialog longer. */
   async #settleOnForm(): Promise<LoginStep> {
-    let { step } = await this.#read();
+    let { step, scan } = await this.#read();
     for (let poll = 0; poll < this.#settlePolls && step.kind === "no_form"; poll += 1) {
-      if (step.loginControl) break;
+      if (step.loginControl || isDeadEnd(scan)) break;
       await this.#wait(POLL_MS);
-      ({ step } = await this.#read());
+      ({ step, scan } = await this.#read());
     }
     return step;
   }

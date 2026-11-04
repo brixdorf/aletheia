@@ -160,6 +160,32 @@ describe("GuidedLogin", () => {
       expect(view.kind).toBe("identifier");
     });
 
+    it.each([
+      "Sorry, you have been blocked. You are unable to access shop.test",
+      "Access Denied. You don't have permission to access this server.",
+      "404. Page not found",
+      "Sorry, we couldn't find that page.",
+    ])("moves on at once from a dead end that says %s", async (text) => {
+      const fake = fakePage([page({ url: "https://shop.test/", text })]);
+      fake.goto.mockImplementation((url) => {
+        if (url.endsWith(COMMON_LOGIN_PATHS[0] ?? "")) fake.scan.mockResolvedValue(EMAIL_PAGE);
+        return Promise.resolve();
+      });
+      const wait = vi.fn(() => Promise.resolve());
+      const login = new GuidedLogin(fake, {
+        url: "https://shop.test/",
+        loginUrl: null,
+        wait,
+        now: () => 0,
+        settlePolls: 3,
+      });
+
+      const view = await login.open();
+
+      expect(view.kind).toBe("identifier");
+      expect(wait).not.toHaveBeenCalled();
+    });
+
     it("hands over when no login can be found", async () => {
       const view = await guided(fakePage([page({ url: "https://shop.test/" })])).open();
 
