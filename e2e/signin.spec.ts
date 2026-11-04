@@ -7,7 +7,7 @@ const TASK = "sign up for the pro plan";
 
 const SIZES = [
   { name: "laptop", viewport: { width: 1280, height: 800 } },
-  { name: "phone", viewport: { width: 390, height: 844 } },
+  { name: "phone", viewport: { width: 375, height: 812 } },
 ];
 
 /** A guest report with a sign-in offer, which is the only way into the panel. */
