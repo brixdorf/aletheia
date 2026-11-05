@@ -64,7 +64,10 @@ const client = {
       runId: run.run_id,
       streamingUrl: `http://localhost:${LOGIN_SITE_PORT}/live/`,
     };
-    await new Promise((resolve) => setTimeout(resolve, RUN_HOLD_MS));
+    // Sign-in checks need no live browser, so their runs end at once and the suite stays quick.
+    if (!new URL(url).hostname.endsWith(".test")) {
+      await new Promise((resolve) => setTimeout(resolve, RUN_HOLD_MS));
+    }
     for (const step of run.steps.slice(0, 3)) {
       yield { type: "progress", runId: run.run_id, text: step.action ?? "", at: step.timestamp };
     }
