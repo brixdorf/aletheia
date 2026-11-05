@@ -34,6 +34,7 @@ const STATUS: Record<PatternStatus, { text: string; tone: string }> = {
   found: { text: "Found", tone: "pill-found" },
   not_found: { text: "Not found", tone: "pill-clean" },
   not_checked: { text: "Not checked", tone: "pill-unchecked" },
+  not_applicable: { text: "Doesn't apply", tone: "pill-na" },
 };
 
 interface StatusPillProps {

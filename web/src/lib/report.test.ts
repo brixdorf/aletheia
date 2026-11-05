@@ -6,6 +6,7 @@ import {
   counts,
   logoutNote,
   orderedPatterns,
+  patternGroups,
   severityLevel,
   severityLine,
   signInOffer,
@@ -83,6 +84,37 @@ describe("severityLine", () => {
   });
 });
 
+describe("patternGroups", () => {
+  const mixed = (flow: "checkout" | "subscription") =>
+    report({
+      flow,
+      patterns: [
+        finding({ id: "nagging", status: "found" }),
+        finding({ id: "hard_to_cancel", status: "not_applicable" }),
+        finding({ id: "cancellation_fee", status: "not_applicable" }),
+        finding({ id: "drip_pricing", status: "not_checked" }),
+      ],
+    });
+
+  it("keeps the patterns that cannot apply out of the main list", () => {
+    const { checked, notApplicable } = patternGroups(mixed("checkout"));
+
+    expect(checked.map((row) => row.status)).not.toContain("not_applicable");
+    expect(checked[0]?.id).toBe("nagging");
+    expect(notApplicable.map((row) => row.id).toSorted()).toEqual([
+      "cancellation_fee",
+      "hard_to_cancel",
+    ]);
+  });
+
+  it("names the flow they cannot apply to", () => {
+    expect(patternGroups(mixed("checkout")).heading).toBe("Doesn't apply to a one-off purchase");
+    expect(patternGroups(mixed("subscription")).heading).toBe(
+      "Doesn't apply to a subscription sign-up",
+    );
+  });
+});
+
 describe("counts", () => {
   it("adds up each status", () => {
     const summary = counts(
@@ -90,10 +122,16 @@ describe("counts", () => {
         patterns: [
           finding({ id: "nagging", status: "found" }),
           finding({ id: "drip_pricing", status: "not_checked" }),
+          finding({ id: "hard_to_cancel", status: "not_applicable" }),
         ],
       }),
     );
-    expect(summary).toEqual({ found: 1, notChecked: 1, notFound: PATTERN_IDS.length - 2 });
+    expect(summary).toEqual({
+      found: 1,
+      notChecked: 1,
+      notFound: PATTERN_IDS.length - 3,
+      notApplicable: 1,
+    });
   });
 });
 

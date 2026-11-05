@@ -62,6 +62,7 @@ const STATUS_RANK: Record<PatternFinding["status"], number> = {
   found: 0,
   not_checked: 1,
   not_found: 2,
+  not_applicable: 3,
 };
 
 /** Found first, worst first, because that is the question the report answers. Clean rows last. */
@@ -69,6 +70,21 @@ export function orderedPatterns({ patterns }: SiteReport): PatternFinding[] {
   return patterns.toSorted(
     (a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || bySeverity(a, b),
   );
+}
+
+const NOT_APPLICABLE_HEADING: Record<SiteReport["flow"], string> = {
+  checkout: "Doesn't apply to a one-off purchase",
+  subscription: "Doesn't apply to a subscription sign-up",
+};
+
+/** Patterns that cannot occur in this flow sit apart, so the main list holds only real checks. */
+export function patternGroups(report: SiteReport) {
+  const rows = orderedPatterns(report);
+  return {
+    checked: rows.filter(({ status }) => status !== "not_applicable"),
+    notApplicable: rows.filter(({ status }) => status === "not_applicable"),
+    heading: NOT_APPLICABLE_HEADING[report.flow],
+  };
 }
 
 const LEVEL: Record<Severity, { text: string; bars: number }> = {
@@ -89,7 +105,12 @@ export function severityLine({ severity }: SiteReport): string | null {
 export function counts({ patterns }: SiteReport) {
   const of = (status: PatternFinding["status"]) =>
     patterns.filter((entry) => entry.status === status).length;
-  return { found: of("found"), notChecked: of("not_checked"), notFound: of("not_found") };
+  return {
+    found: of("found"),
+    notChecked: of("not_checked"),
+    notFound: of("not_found"),
+    notApplicable: of("not_applicable"),
+  };
 }
 
 /** The one plain line that sums up a run, beside the patterns named in pills or rows. */

@@ -215,6 +215,10 @@
     @apply border-dashed border-dash bg-white text-mute;
   }
 
+  .pill-na {
+    @apply border-line bg-wash text-mute;
+  }
+
   .pill-info {
     @apply border-sky-line bg-sky text-sky-ink;
   }
