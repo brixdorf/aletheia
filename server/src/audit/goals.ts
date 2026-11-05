@@ -31,9 +31,24 @@ export function isTravelTask(task: string): boolean {
   return TRAVEL_TASK.test(task);
 }
 
-export function budgetSeconds({ task, signedIn }: { task: string; signedIn: boolean }): number {
-  if (isTravelTask(task)) return TRAVEL_BUDGET_SECONDS;
-  return signedIn ? SIGNED_IN_BUDGET_SECONDS : SHOP_BUDGET_SECONDS;
+/** What a slow site gets on its one retry, after running short of time with the product found. */
+const EXTRA_SECONDS = 150;
+
+export function budgetSeconds({
+  task,
+  signedIn,
+  extended = false,
+}: {
+  task: string;
+  signedIn: boolean;
+  extended?: boolean;
+}): number {
+  const base = isTravelTask(task)
+    ? TRAVEL_BUDGET_SECONDS
+    : signedIn
+      ? SIGNED_IN_BUDGET_SECONDS
+      : SHOP_BUDGET_SECONDS;
+  return extended ? base + EXTRA_SECONDS : base;
 }
 
 export interface GoalInput {

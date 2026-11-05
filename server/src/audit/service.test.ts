@@ -282,11 +282,13 @@ describe("AuditService", () => {
     /** Plays one saved run per start, the way TinyFish hands out a fresh run each time. */
     function playing(runs: RunRecord[], overrides: Partial<AuditClient> = {}) {
       const starts: string[] = [];
+      const budgets: number[] = [];
       const client = clientFor(loadRun("blinkit-2"), {
-        streamRun: async function* (): AsyncGenerator<RunEvent> {
+        streamRun: async function* (request: RunRequest): AsyncGenerator<RunEvent> {
           const run = runs[starts.length];
           if (!run) throw new RunStartError("No more saved runs");
           starts.push(run.run_id);
+          budgets.push(request.maxDurationSeconds);
           yield { type: "started", runId: run.run_id };
           yield { type: "progress", runId: run.run_id, text: "Open the site", at: "t1" };
           yield { type: "complete", runId: run.run_id, status: run.status };
@@ -297,7 +299,7 @@ describe("AuditService", () => {
         },
         ...overrides,
       });
-      return { client, starts };
+      return { client, starts, budgets };
     }
 
     async function audit(client: AuditClient) {
@@ -351,6 +353,47 @@ describe("AuditService", () => {
       expect(site?.state).toBe("done");
       expect(site?.error).toBeNull();
       expect(site?.report?.stop.at).toBe("blocked");
+    });
+
+    describe("a run that runs out of time after finding the product", () => {
+      const ranOut = (runId: string, price: number | null): RunRecord => {
+        const run = { ...loadRun("blinkit-page-never-loaded"), run_id: runId };
+        run.result = {
+          ...run.result,
+          item_listed_price: price,
+          stop_note: "Budget exhausted while opening the product page.",
+        };
+        return run;
+      };
+
+      it("runs once more with longer to go, and says why", async () => {
+        const good = loadRun("blinkit-2");
+        const { client, starts, budgets } = playing([ranOut("run-short", 499), good]);
+
+        const site = await audit(client);
+
+        expect(starts).toEqual(["run-short", good.run_id]);
+        expect(budgets[1]).toBeGreaterThan(budgets[0] ?? Infinity);
+        expect(site?.report?.bill.total).toBe(81);
+        expect(site?.report?.flags.map((flag) => flag.kind)).toContain("retried_for_time");
+      });
+
+      it("tries for time only once", async () => {
+        const { client, starts } = playing([ranOut("run-1", 499), ranOut("run-2", 499)]);
+
+        const site = await audit(client);
+
+        expect(starts).toEqual(["run-1", "run-2"]);
+        expect(site?.report?.stop.at).toBe("incomplete");
+      });
+
+      it("gives a run that never found a price no second try, since more time would not help", async () => {
+        const { client, starts } = playing([ranOut("run-1", null), loadRun("blinkit-2")]);
+
+        await audit(client);
+
+        expect(starts).toEqual(["run-1"]);
+      });
     });
 
     it("does not retry a site that was not blocked", async () => {

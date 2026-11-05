@@ -19,6 +19,8 @@ export interface SiteRun {
   runId: string | null;
   /** The site blocked a run and this one fresh run followed. Saved so a restart adds no third. */
   retried?: boolean;
+  /** Ran once more with a longer limit, after the first run ran short of time. */
+  extended?: boolean;
   /** The country's browser would not start, so this run came from elsewhere. */
   unproxied?: boolean;
   streamingUrl: string | null;

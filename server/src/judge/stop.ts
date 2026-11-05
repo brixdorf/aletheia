@@ -19,6 +19,15 @@ function keptOutByBots(evidence: Evidence): boolean {
   return !sawPrice && BOT_CHECK.test(note) && KEPT_OUT.test(note);
 }
 
+/** Ran out of time after finding the product and its price, short of the cart. */
+export function ranShortOfTime({
+  stop,
+}: {
+  stop: { at: StopPoint; note: string | null; reach: Reach };
+}): boolean {
+  return stop.at === "incomplete" && stop.reach === "offer" && RAN_OUT.test(stop.note ?? "");
+}
+
 export function resolveStop(run: RunRecord, evidence: Evidence | null): StopPoint {
   if (run.status === "FAILED") return "error";
   if (!evidence) return "incomplete";

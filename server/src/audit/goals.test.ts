@@ -79,6 +79,12 @@ describe("budgets", () => {
     expect(budgetSeconds({ task: "flight from Mumbai to Delhi", signedIn: true })).toBe(600);
   });
 
+  it("gives a run that ran short of time one longer try", () => {
+    expect(budgetSeconds({ task: "buy a laptop", signedIn: false, extended: true })).toBe(450);
+    expect(budgetSeconds({ task: "buy a laptop", signedIn: true, extended: true })).toBe(600);
+    expect(budgetSeconds({ task: "flight to Delhi", signedIn: false, extended: true })).toBe(750);
+  });
+
   it("spots travel tasks", () => {
     expect(isTravelTask("one-way flight to Delhi")).toBe(true);
     expect(isTravelTask("buy a hotel towel")).toBe(false);

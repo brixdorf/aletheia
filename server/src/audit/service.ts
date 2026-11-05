@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 
 import { ApiError } from "../errors.ts";
 import { judgeRun, judgeSavedReport, RULES_VERSION } from "../judge/judge.ts";
+import { ranShortOfTime } from "../judge/stop.ts";
 import type { Flow, SafetyFlag, SiteReport } from "../judge/types.ts";
 import { countryName, proxyCountry } from "../plan/country.ts";
 import type { DriveClient, DriveOutcome } from "../runner/drive.ts";
@@ -58,6 +59,12 @@ export interface NewAudit {
 type Listener = (audit: Audit) => void;
 
 const RETRY_STEP = "The site blocked the first try, so this is a fresh run.";
+const TIME_RETRY_STEP =
+  "The first try ran out of time after finding the product, so this run has longer.";
+const KEPT_FLAGS: ReadonlySet<SafetyFlag["kind"]> = new Set([
+  "retried_after_block",
+  "retried_for_time",
+]);
 
 function retryFlag({ stop }: SiteReport): SafetyFlag {
   return {
@@ -66,6 +73,16 @@ function retryFlag({ stop }: SiteReport): SafetyFlag {
       stop.at === "blocked"
         ? "The site blocked the first run, and the one fresh retry did not get through."
         : "The site blocked the first run, so Aletheia retried once with a fresh run. This report comes from the second run.",
+    stepId: null,
+  };
+}
+
+function timeFlag(report: SiteReport): SafetyFlag {
+  return {
+    kind: "retried_for_time",
+    detail: ranShortOfTime(report)
+      ? "The first run ran out of time after finding the product, and the one longer run did not finish either."
+      : "The first run ran out of time after finding the product, so Aletheia ran it once more with longer to go. This report comes from the second run.",
     stepId: null,
   };
 }
@@ -176,10 +193,7 @@ export class AuditService {
       const report = await this.#report(audit, site, run);
       site.report = {
         ...report,
-        flags: [
-          ...report.flags,
-          ...saved.flags.filter((flag) => flag.kind === "retried_after_block"),
-        ],
+        flags: [...report.flags, ...saved.flags.filter((flag) => KEPT_FLAGS.has(flag.kind))],
       };
     } catch (error) {
       // Only a run TinyFish no longer has drops to an older audit. A passing failure must not
@@ -321,19 +335,33 @@ export class AuditService {
       await this.#walk(audit, site, signal);
     });
     await this.#retryIfBlocked(audit, site, signal);
+    await this.#retryIfShortOfTime(audit, site, signal);
     if (site.retried && site.report) site.report.flags.push(retryFlag(site.report));
+    if (site.extended && site.report) site.report.flags.push(timeFlag(site.report));
   }
 
-  /** The retry keeps the queue slot it already holds, and a visitor pays for it once. */
   async #retryIfBlocked(audit: Audit, site: SiteRun, signal: AbortSignal): Promise<void> {
-    const blocked = site.report;
-    if (blocked?.stop.at !== "blocked" || site.retried || signal.aborted) return;
-
+    if (site.report?.stop.at !== "blocked" || site.retried || signal.aborted) return;
     site.retried = true;
+    await this.#runAgain(audit, site, signal, RETRY_STEP);
+  }
+
+  /** A slow site that got as far as the product gets one longer run. One that never did would not. */
+  async #retryIfShortOfTime(audit: Audit, site: SiteRun, signal: AbortSignal): Promise<void> {
+    const { report } = site;
+    if (!report || !ranShortOfTime(report) || site.retried || site.extended) return;
+    if (signal.aborted) return;
+    site.extended = true;
+    await this.#runAgain(audit, site, signal, TIME_RETRY_STEP);
+  }
+
+  /** A retry keeps the queue slot it already holds, and a visitor pays for it once. */
+  async #runAgain(audit: Audit, site: SiteRun, signal: AbortSignal, note: string): Promise<void> {
+    const previous = site.report;
     site.report = null;
     site.runId = null;
     site.streamingUrl = null;
-    site.steps = [{ text: RETRY_STEP, at: this.#now().toISOString() }];
+    site.steps = [{ text: note, at: this.#now().toISOString() }];
     site.state = "running";
     this.#publish(audit);
     await this.#save(audit);
@@ -341,9 +369,9 @@ export class AuditService {
     await this.#walk(audit, site, signal).catch((error: unknown) => {
       if (signal.aborted) throw error;
     });
-    site.steps = site.steps.filter(({ text }) => text !== RETRY_STEP);
+    site.steps = site.steps.filter(({ text }) => text !== note);
     if (!site.report && !signal.aborted) {
-      site.report = blocked;
+      site.report = previous;
       site.state = "done";
       site.error = null;
     }
@@ -351,7 +379,7 @@ export class AuditService {
 
   async #walk(audit: Audit, site: SiteRun, signal: AbortSignal): Promise<void> {
     const signedIn = site.signInId !== null;
-    const budget = budgetSeconds({ task: audit.task, signedIn });
+    const budget = budgetSeconds({ task: audit.task, signedIn, extended: site.extended === true });
     const hardTimeoutMs = budget * 1000 + this.#timing.graceMs;
     const now = this.#now().getTime();
     site.expectedBy = new Date(now + budget * 1000).toISOString();

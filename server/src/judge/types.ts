@@ -175,7 +175,8 @@ export type FlagKind =
   | "contact_entered"
   | "payment_click"
   | "browser_changed"
-  | "retried_after_block";
+  | "retried_after_block"
+  | "retried_for_time";
 
 export interface SafetyFlag {
   kind: FlagKind;
