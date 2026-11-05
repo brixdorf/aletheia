@@ -35,6 +35,8 @@ export interface SignInView {
   id: string;
   url: string;
   host: string;
+  /** The brand's own name for the site, when the brand data knows it. */
+  name: string | null;
   state: SignInState;
   expiresAt: string;
   /** What the sign-in panel should ask next. Null once the sign-in is saved. */

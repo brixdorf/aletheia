@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { Audit, SiteRun } from "../audit/types.ts";
-import { summaryView } from "./views.ts";
+import { ownerView, summaryView } from "./views.ts";
 
 function site(overrides: Partial<SiteRun>): SiteRun {
   return {
@@ -60,5 +60,18 @@ describe("summaryView", () => {
     const [row] = summaryView(audit([older])).sites;
 
     expect(row).toMatchObject({ stepCount: 0, latestStep: null, expectedBy: null, stopsBy: null });
+  });
+});
+
+describe("site names", () => {
+  const known = site({ url: "https://www.bestbuy.ca/", host: "bestbuy.ca" });
+
+  it("names a known site the way the brand does, on every view", () => {
+    expect(summaryView(audit([known])).sites[0]?.name).toBe("Best Buy");
+    expect(ownerView(audit([known])).sites[0]?.name).toBe("Best Buy");
+  });
+
+  it("leaves the name empty for a site the brand data does not know", () => {
+    expect(ownerView(audit([site({})])).sites[0]?.name).toBeNull();
   });
 });

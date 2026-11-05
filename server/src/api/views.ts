@@ -1,6 +1,7 @@
 import type { Audit, SiteRun } from "../audit/types.ts";
 import { compareReports } from "../judge/compare.ts";
 import { countryName } from "../plan/country.ts";
+import { brandName } from "../plan/names.ts";
 import { severitySummary } from "../judge/severity.ts";
 import type { SiteReport } from "../judge/types.ts";
 
@@ -15,11 +16,16 @@ function comparisonOf(audit: Audit) {
 
 /** Worked out on every read, so reports saved before it existed get one too. */
 function reportView(report: SiteReport) {
-  return { ...report, severity: severitySummary(report) };
+  return { ...report, name: brandName(report.host), severity: severitySummary(report) };
 }
 
 function publicSite({ signInId, report, ...site }: SiteRun) {
-  return { ...site, report: report && reportView(report), signedIn: signInId !== null };
+  return {
+    ...site,
+    name: brandName(site.host),
+    report: report && reportView(report),
+    signedIn: signInId !== null,
+  };
 }
 
 export function ownerView({ visitorId: _visitorId, ...audit }: Audit) {
@@ -46,6 +52,7 @@ export function summaryView(audit: Audit) {
     status: audit.status,
     sites: audit.sites.map(({ host, state, report, steps, startedAt, expectedBy, stopsBy }) => ({
       host,
+      name: brandName(host),
       state,
       stepCount: steps.length,
       latestStep: steps.at(-1)?.text ?? null,

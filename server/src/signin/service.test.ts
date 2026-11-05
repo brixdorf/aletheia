@@ -89,6 +89,14 @@ describe("SignInService", () => {
     });
   });
 
+  it("names a known site the way the brand does", async () => {
+    const known = await service().start("visitor", "https://www.bestbuy.com/", "US");
+    const unknown = await service().start("visitor", URL_LOGIN, "IN");
+
+    expect(known.name).toBe("Best Buy");
+    expect(unknown.name).toBeNull();
+  });
+
   it("removes the profile when the setup browser cannot be opened", async () => {
     client.startSetup.mockRejectedValueOnce(new Error("no browser"));
 

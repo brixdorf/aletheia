@@ -8,6 +8,7 @@ import { TinyFishError } from "../tinyfish/client.ts";
 import type { GuidedOptions } from "./guided.ts";
 import { GuidedLogin } from "./guided.ts";
 import type { Frame, LoginBrowser, OpenBrowser } from "./loginBrowser.ts";
+import { brandName } from "../plan/names.ts";
 import { overrideFor } from "./overrides.ts";
 import type { SignInAction, SignInState, SignInView, StepView } from "./views.ts";
 
@@ -325,7 +326,8 @@ export class SignInService {
   }
 
   #view({ id, url, host, state, expiresAt }: SignInRecord): SignInView {
-    return { id, url, host, state, expiresAt, step: this.#live.get(id)?.step ?? null };
+    const step = this.#live.get(id)?.step ?? null;
+    return { id, url, host, name: brandName(host), state, expiresAt, step };
   }
 
   async #closeBrowser(id: string): Promise<void> {
