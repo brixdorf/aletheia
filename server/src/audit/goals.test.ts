@@ -90,6 +90,38 @@ describe("buildGoal", () => {
     expect(goal()).toMatch(/^If the cart already has items, remove them first/);
   });
 
+  it("empties the cart once, at the start, and never touches the item it chose", () => {
+    const text = goal();
+
+    expect(text).toMatch(
+      /^If the cart already has items, remove them first, before you look for anything/,
+    );
+    expect(text).toMatch(/never remove the item you chose/i);
+  });
+
+  it("goes straight to one product through the site's search", () => {
+    const text = goal();
+
+    expect(text).toMatch(/site's search/i);
+    expect(text).toMatch(/first in-stock result/i);
+    expect(text).toMatch(/do not browse categories, apply filters or collect lists/i);
+  });
+
+  it("moves on from the add without retrying in a loop", () => {
+    const text = goal();
+
+    expect(text).toMatch(/"Go to cart", "View basket" or "Checkout"/);
+    expect(text).toMatch(/next in-stock result, once/i);
+    expect(text).toMatch(/cart address directly/i);
+  });
+
+  it("closes only the popups in the way, and goes on as a guest past a sign-in popup", () => {
+    const text = goal();
+
+    expect(text).toMatch(/only when it covers what you need/i);
+    expect(text).toMatch(/sign-in popup keeps coming back/i);
+  });
+
   it("keeps the agent on one site and waits for the cart count", () => {
     const text = goal();
 
