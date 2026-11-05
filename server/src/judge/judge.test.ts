@@ -49,6 +49,47 @@ describe("every report", () => {
   });
 });
 
+describe("patterns a flow cannot have", () => {
+  const SUBSCRIPTION_ONLY: PatternId[] = [
+    "preselected_plan",
+    "trial_needs_card",
+    "renewal_small_print",
+    "intro_price_jump",
+    "cancellation_fee",
+    "hard_to_cancel",
+    "cancellation_terms_missing",
+  ];
+
+  it("says the subscription patterns do not apply to a one-off purchase", () => {
+    const report = judge("croma");
+
+    for (const id of SUBSCRIPTION_ONLY) {
+      expect(pattern(report, id).status).toBe("not_applicable");
+      expect(pattern(report, id).note).toMatch(/one-off purchase/);
+    }
+    expect(pattern(report, "hidden_subscription").status).not.toBe("not_applicable");
+  });
+
+  it("says a price behind sign-in does not apply to a sign-up, which needs the account", () => {
+    const report = judge("adobe-subscription", "subscription");
+
+    expect(pattern(report, "price_behind_signin").status).toBe("not_applicable");
+    expect(pattern(report, "price_behind_signin").note).toMatch(/subscription sign-up/);
+    for (const id of SUBSCRIPTION_ONLY) {
+      expect(pattern(report, id).status).not.toBe("not_applicable");
+    }
+  });
+
+  it("says so even for a run that brought back nothing", () => {
+    const report = judge("blinkit-page-never-loaded", "checkout", (run) => {
+      run.result = null;
+    });
+
+    expect(pattern(report, "hard_to_cancel").status).toBe("not_applicable");
+    expect(pattern(report, "drip_pricing").status).toBe("not_checked");
+  });
+});
+
 describe("drip pricing on checkouts", () => {
   it("proves the Blinkit jump by arithmetic and does not count Items total as a fee", () => {
     const report = judge("blinkit-2");
@@ -464,7 +505,11 @@ describe("the agent's claims", () => {
     expect(report.stop.at).toBe("incomplete");
     expect(report.bill.total).toBeNull();
     expect(report.missing.join(" ")).toMatch(/497\.18/);
-    expect(report.patterns.every((entry) => entry.status === "not_checked")).toBe(true);
+    expect(
+      report.patterns.every(
+        ({ status }) => status === "not_checked" || status === "not_applicable",
+      ),
+    ).toBe(true);
   });
 
   it("drops an item from basket sneaking when the agent added it itself", () => {
@@ -812,7 +857,7 @@ describe("a checkout that hides its price behind sign-in", () => {
   it("never counts the account a subscription needs", () => {
     const report = judge("zomato", "subscription", wall);
 
-    expect(pattern(report, "price_behind_signin").status).toBe("not_found");
+    expect(pattern(report, "price_behind_signin").status).toBe("not_applicable");
   });
 });
 
@@ -1641,7 +1686,11 @@ describe("blocked and failed runs", () => {
     });
 
     expect(report.stop.at).toBe("incomplete");
-    expect(report.patterns.every((entry) => entry.status === "not_checked")).toBe(true);
+    expect(
+      report.patterns.every(
+        ({ status }) => status === "not_checked" || status === "not_applicable",
+      ),
+    ).toBe(true);
     expect(report.missing.join(" ")).toMatch(/stopped/i);
   });
 

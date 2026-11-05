@@ -45,7 +45,7 @@ export type StopPoint =
 /** How far into the flow the run really got, from the evidence and not the agent's word. */
 export type Reach = "none" | "pages" | "offer" | "order" | "payment";
 
-export type PatternStatus = "found" | "not_found" | "not_checked";
+export type PatternStatus = "found" | "not_found" | "not_checked" | "not_applicable";
 
 export type Severity = "high" | "medium" | "low";
 

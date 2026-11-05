@@ -52,6 +52,8 @@ interface Definition {
   needs: Reach;
   /** The result field the agent fills for this pattern. A run without it never looked. */
   signal: string;
+  /** The flows this pattern can occur in, when it cannot occur in both. */
+  flows?: readonly Flow[];
   rule: (context: JudgedContext) => Draft | null;
 }
 
@@ -619,6 +621,7 @@ export const PATTERNS: readonly Definition[] = [
   },
   {
     id: "preselected_plan",
+    flows: ["subscription"],
     label: "Longer plan pre-selected",
     group: "sneaking",
     severity: "medium",
@@ -637,6 +640,7 @@ export const PATTERNS: readonly Definition[] = [
   },
   {
     id: "trial_needs_card",
+    flows: ["subscription"],
     label: "Card needed for a free trial",
     group: "subscriptions",
     severity: "medium",
@@ -646,6 +650,7 @@ export const PATTERNS: readonly Definition[] = [
   },
   {
     id: "renewal_small_print",
+    flows: ["subscription"],
     label: "Renewal in the small print",
     group: "subscriptions",
     severity: "medium",
@@ -655,6 +660,7 @@ export const PATTERNS: readonly Definition[] = [
   },
   {
     id: "intro_price_jump",
+    flows: ["subscription"],
     label: "Intro price that jumps",
     group: "subscriptions",
     severity: "medium",
@@ -664,6 +670,7 @@ export const PATTERNS: readonly Definition[] = [
   },
   {
     id: "cancellation_fee",
+    flows: ["subscription"],
     label: "Cancellation fee",
     group: "subscriptions",
     severity: "high",
@@ -673,6 +680,7 @@ export const PATTERNS: readonly Definition[] = [
   },
   {
     id: "hard_to_cancel",
+    flows: ["subscription"],
     label: "Hard to cancel",
     group: "subscriptions",
     severity: "high",
@@ -682,6 +690,7 @@ export const PATTERNS: readonly Definition[] = [
   },
   {
     id: "cancellation_terms_missing",
+    flows: ["subscription"],
     label: "No cancellation terms",
     group: "subscriptions",
     severity: "medium",
@@ -691,6 +700,7 @@ export const PATTERNS: readonly Definition[] = [
   },
   {
     id: "price_behind_signin",
+    flows: ["checkout"],
     label: "Price behind sign-in",
     group: "obstruction",
     severity: "medium",
@@ -794,12 +804,23 @@ function unreachedNote(context: PatternContext, needs: Reach): string {
 }
 
 /** The reach rule guards a clean answer. Words already seen on the way count wherever the run stopped. */
+const DOES_NOT_APPLY: Record<Flow, string> = {
+  checkout: "This belongs to subscriptions, not a one-off purchase.",
+  subscription: "This belongs to a one-off purchase, not a subscription sign-up.",
+};
+
 export function judgePattern(definition: Definition, context: PatternContext): Draft {
-  const { evidence, bill } = context;
-  if (!evidence || !bill) return draft("not_checked", unreachedNote(context, definition.needs));
+  const { evidence, bill, flow } = context;
+  const applies = definition.flows?.includes(flow) ?? true;
+  if (!evidence || !bill) {
+    return applies
+      ? draft("not_checked", unreachedNote(context, definition.needs))
+      : draft("not_applicable", DOES_NOT_APPLY[flow]);
+  }
 
   const judged = definition.rule({ ...context, evidence, bill });
   if (judged?.status === "found") return judged;
+  if (!applies) return draft("not_applicable", DOES_NOT_APPLY[flow]);
   if (!reached(context.reach, definition.needs)) {
     return draft("not_checked", unreachedNote(context, definition.needs));
   }
