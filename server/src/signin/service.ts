@@ -8,7 +8,9 @@ import { TinyFishError } from "../tinyfish/client.ts";
 import type { GuidedOptions } from "./guided.ts";
 import { GuidedLogin } from "./guided.ts";
 import type { Frame, LoginBrowser, OpenBrowser } from "./loginBrowser.ts";
+import { countryName } from "../plan/country.ts";
 import { brandName } from "../plan/names.ts";
+import { isProxyFailure } from "./loginSteps.ts";
 import { overrideFor } from "./overrides.ts";
 import type { SignInAction, SignInState, SignInView, StepView } from "./views.ts";
 
@@ -32,6 +34,8 @@ interface SignInRecord {
   state: SignInState;
   expiresAt: string;
   savedAt: number | null;
+  /** Said once, when the sign-in had to leave the country's connection behind. */
+  notice?: string | null;
 }
 
 export type SignInInput =
@@ -249,9 +253,33 @@ export class SignInService {
       live.browser = browser;
       live.guided = guided;
       live.step = await guided.open();
+      if (record.proxyCountry && isProxyFailure(await browser.scan())) {
+        await this.#reopenWithoutProxy(record, live);
+      }
     } catch {
       live.step = FAILED;
     }
+  }
+
+  /** Some sites will not load through a country's connection at all, so this tries once direct. */
+  async #reopenWithoutProxy(record: SignInRecord, live: LiveSignIn): Promise<void> {
+    const { client } = this.#deps;
+    const country = record.proxyCountry;
+    await live.browser?.close().catch(() => undefined);
+    live.browser = null;
+    live.guided = null;
+    live.step = OPENING;
+    await client.cancelSetup(record.profileId, record.sessionId).catch(() => undefined);
+    await client.deleteProfile(record.profileId).catch(() => undefined);
+
+    record.profileId = await client.createProfile(`Aletheia one check ${record.host}`, null);
+    const session = await client.startSetup(record.profileId, record.url);
+    record.sessionId = session.sessionId;
+    record.expiresAt = session.expiresAt;
+    record.proxyCountry = null;
+    record.notice = `${brandName(record.host) ?? record.host} would not open from ${countryName(country)}, so this sign-in connects from another country.`;
+    await this.#persist();
+    await this.#open(record, live, session.cdpUrl);
   }
 
   async #perform(
@@ -325,9 +353,9 @@ export class SignInService {
     return record;
   }
 
-  #view({ id, url, host, state, expiresAt }: SignInRecord): SignInView {
+  #view({ id, url, host, state, expiresAt, notice }: SignInRecord): SignInView {
     const step = this.#live.get(id)?.step ?? null;
-    return { id, url, host, name: brandName(host), state, expiresAt, step };
+    return { id, url, host, name: brandName(host), state, expiresAt, notice: notice ?? null, step };
   }
 
   async #closeBrowser(id: string): Promise<void> {

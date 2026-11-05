@@ -359,6 +359,14 @@ function trustPrompt(scan: PageScan): Target | null {
   return null;
 }
 
+/** The browser's own error page when its country connection cannot reach the site. */
+const PROXY_FAILURE = /ERR_(TUNNEL|PROXY)_CONNECTION_FAILED/;
+
+export function isProxyFailure(scan: PageScan): boolean {
+  const top = scan.frames.find(({ index }) => index === 0);
+  return scan.url.startsWith("chrome-error://") && PROXY_FAILURE.test(top?.text ?? "");
+}
+
 export function isDeadEnd(scan: PageScan): boolean {
   return DEAD_END.test(scan.frames.find(({ index }) => index === 0)?.text ?? "");
 }

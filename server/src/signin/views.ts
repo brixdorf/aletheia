@@ -38,6 +38,8 @@ export interface SignInView {
   /** The brand's own name for the site, when the brand data knows it. */
   name: string | null;
   state: SignInState;
+  /** One line on how the sign-in had to connect, or null. */
+  notice: string | null;
   expiresAt: string;
   /** What the sign-in panel should ask next. Null once the sign-in is saved. */
   step: StepView | null;

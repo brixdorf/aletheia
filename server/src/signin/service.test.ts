@@ -97,6 +97,57 @@ describe("SignInService", () => {
     expect(unknown.name).toBeNull();
   });
 
+  describe("a site that will not load through the country's connection", () => {
+    const TUNNEL = scanPage({
+      url: "chrome-error://chromewebdata/",
+      text: "This site can't be reached ERR_TUNNEL_CONNECTION_FAILED",
+    });
+
+    function signInsOpening(...browsers: ReturnType<typeof fakeBrowser>[]) {
+      const queue = [...browsers];
+      return new SignInService({
+        client,
+        openBrowser: () => Promise.resolve(queue.shift() ?? fakeBrowser()),
+        runLogout,
+        dataDir,
+        now: () => time,
+        guided: { wait: () => Promise.resolve(), settlePolls: 2 },
+      });
+    }
+
+    it("tries once more with no country connection and says so in one line", async () => {
+      const blocked = fakeBrowser([TUNNEL]);
+      client.createProfile.mockResolvedValueOnce("prof_1").mockResolvedValueOnce("prof_2");
+      client.startSetup
+        .mockResolvedValueOnce(SESSION)
+        .mockResolvedValueOnce({ ...SESSION, sessionId: "sess_2", cdpUrl: "wss://cdp.test/2" });
+      const signIns = signInsOpening(blocked, fakeBrowser());
+
+      const { id } = await signIns.start("visitor", URL_LOGIN, "IN");
+      await signIns.opened(id);
+      const view = signIns.view("visitor", id);
+
+      expect(client.createProfile).toHaveBeenLastCalledWith("Aletheia one check shop.test", null);
+      expect(client.cancelSetup).toHaveBeenCalledWith("prof_1", "sess_1");
+      expect(client.deleteProfile).toHaveBeenCalledWith("prof_1");
+      expect(blocked.close).toHaveBeenCalled();
+      expect(view.step?.kind).toBe("identifier");
+      expect(view.notice).toBe(
+        "shop.test would not open from India, so this sign-in connects from another country.",
+      );
+    });
+
+    it("does not try again when no country connection was used", async () => {
+      const signIns = signInsOpening(fakeBrowser([TUNNEL]));
+
+      const { id } = await signIns.start("visitor", URL_LOGIN);
+      await signIns.opened(id);
+
+      expect(client.createProfile).toHaveBeenCalledTimes(1);
+      expect(signIns.view("visitor", id).notice).toBeNull();
+    });
+  });
+
   it("removes the profile when the setup browser cannot be opened", async () => {
     client.startSetup.mockRejectedValueOnce(new Error("no browser"));
 
