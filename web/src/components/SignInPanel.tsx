@@ -186,6 +186,7 @@ export function SignInPanel({ url, host, country, onReady, onClosed }: SignInPan
         <h2 id="sign-in-title" className="text-xl tracking-[-0.02em] wrap-anywhere">
           {heading}
         </h2>
+        {signIn?.notice ? <p className="mt-1.5 text-[13px] text-mute">{signIn.notice}</p> : null}
       </div>
 
       <div className="mt-4">
