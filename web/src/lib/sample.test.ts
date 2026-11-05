@@ -13,6 +13,7 @@ function site(patterns: PatternFinding[]): SiteView {
     id: "s1",
     url: "https://plans.test/",
     host: "plans.test",
+    name: null,
     signedIn: false,
     state: "done",
     queuePosition: null,
@@ -57,6 +58,7 @@ describe("sampleCard", () => {
   it("names the site, the task and the worst findings, and links to the shared report", () => {
     expect(sampleCard(audit([site(found)]), "tok")).toEqual({
       host: "plans.test",
+      name: null,
       task: "Sign up for a design plan",
       pills: ["Cancellation fee", "Longer plan pre-selected", "Forced marketing consent"],
       more: 1,

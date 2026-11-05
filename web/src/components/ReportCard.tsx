@@ -146,7 +146,7 @@ export function ReportCard({ site, report, task, country, scope, press, solo }: 
           <SiteAvatar host={site.host} />
           <div className="min-w-0">
             <h2 id={`site-title-${site.id}`} className="text-2xl wrap-anywhere">
-              {siteName(report.host)}
+              {siteName(report.host, report.name)}
             </h2>
             <p className="text-mute">{detail}</p>
           </div>

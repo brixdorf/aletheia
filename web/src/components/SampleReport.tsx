@@ -21,7 +21,7 @@ export function SampleReport() {
         <SiteAvatar host={card.host} small />
         <div className="min-w-0 flex-1">
           <h2 id="sample-title" className="text-base tracking-[-0.01em]">
-            {siteName(card.host)}
+            {siteName(card.host, card.name)}
           </h2>
           <p className="text-[13px] text-mute">{card.task}</p>
         </div>

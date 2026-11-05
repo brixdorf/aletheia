@@ -68,7 +68,7 @@ export function SignInPanel({ url, host, country, onReady, onClosed }: SignInPan
   const [message, setMessage] = useState<string | null>(null);
   const [ended, setEnded] = useState(false);
 
-  const name = siteName(host);
+  const name = siteName(host, signIn?.name);
   const step = signIn?.step ?? null;
 
   function show(view: SignInView) {

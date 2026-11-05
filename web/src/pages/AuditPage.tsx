@@ -193,7 +193,7 @@ function DeleteReport({
       </button>
       {confirming ? (
         <ConfirmDialog
-          title={`Delete the ${siteName(site.host)} report?`}
+          title={`Delete the ${siteName(site.host, site.name)} report?`}
           confirmLabel="Delete report"
           onClose={() => setConfirming(false)}
           onConfirm={async () => {
@@ -277,7 +277,7 @@ function AuditBody({
             /
           </span>
           <h1 className="min-w-0 text-[15px] font-semibold tracking-normal wrap-anywhere">
-            {only ? siteName(only.host) : audit.task}
+            {only ? siteName(only.host, only.name) : audit.task}
           </h1>
           <RunPill audit={audit} />
         </div>

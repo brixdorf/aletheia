@@ -71,7 +71,7 @@ export function ComparisonTable({
                         className="inline-flex min-h-6 items-center text-base font-semibold text-ink hover:underline hover:underline-offset-4"
                         href={linkFor(column)}
                       >
-                        {siteName(column.host)}
+                        {siteName(column.host, column.report.name)}
                       </Link>
                       <p className="num text-[13px] font-normal text-mute">
                         {tallyLine(counts(column.report))}

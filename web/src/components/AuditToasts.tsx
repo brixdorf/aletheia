@@ -6,9 +6,9 @@ import { Cross } from "./icons.tsx";
 
 const READY_MS = 7000;
 
-function readyLine({ host, report }: SiteView): string {
+function readyLine({ host, name: known, report }: SiteView): string {
   const found = report?.patterns.filter((entry) => entry.status === "found").length ?? 0;
-  const name = siteName(host);
+  const name = siteName(host, known);
   if (found === 0) return `No dark pattern found on ${name} so far.`;
   return `${found} ${found === 1 ? "pattern" : "patterns"} found on ${name}.`;
 }

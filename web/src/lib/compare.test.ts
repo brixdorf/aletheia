@@ -10,6 +10,7 @@ function site(host: string, reportOverrides: Parameters<typeof report>[0] = {}):
     id: `site-${host}`,
     url: `https://${host}`,
     host,
+    name: null,
     signedIn: false,
     state: "done",
     queuePosition: null,

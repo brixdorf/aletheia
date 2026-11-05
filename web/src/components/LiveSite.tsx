@@ -213,7 +213,7 @@ export function LiveSite({ site, task, auditId }: LiveSiteProps) {
       <header className="flex items-center gap-3">
         <SiteAvatar host={site.host} />
         <div className="min-w-0">
-          <h2 className="text-2xl wrap-anywhere">{siteName(site.host)}</h2>
+          <h2 className="text-2xl wrap-anywhere">{siteName(site.host, site.name)}</h2>
           <p role="status" className="text-mute">
             {status.label}
           </p>

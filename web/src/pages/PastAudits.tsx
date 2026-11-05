@@ -99,7 +99,7 @@ function SiteRow({ audit, site, detail, controls, showTask }: SiteRowProps) {
           href={href}
           className="text-base font-semibold text-ink after:absolute after:inset-0 after:rounded-2xl"
         >
-          {siteName(site.host)}
+          {siteName(site.host, site.name)}
         </Link>
         <p className="text-[13px] wrap-anywhere text-mute">{line.filter(Boolean).join(" · ")}</p>
       </div>

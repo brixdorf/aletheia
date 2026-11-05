@@ -17,6 +17,12 @@ describe("siteName", () => {
   it("keeps a two-letter name that is the site itself", () => {
     expect(siteName("go.dev")).toBe("Go");
   });
+
+  it("uses the brand's own name when the server knows it", () => {
+    expect(siteName("in.bookmyshow.com", "BookMyShow")).toBe("BookMyShow");
+    expect(siteName("bestbuy.ca", "Best Buy")).toBe("Best Buy");
+    expect(siteName("bestbuy.ca", null)).toBe("Bestbuy");
+  });
 });
 
 describe("avatarTone", () => {

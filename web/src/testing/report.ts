@@ -73,6 +73,7 @@ export function report(
     rules: 3,
     url: "https://shop.test",
     host: "shop.test",
+    name: null,
     flow: "checkout",
     signedIn: false,
     runId: "run_1",
