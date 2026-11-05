@@ -9,6 +9,7 @@ import { RunQueue } from "../runner/queue.ts";
 import { AuditStore } from "../store/auditStore.ts";
 import { loadRun } from "../testing/fixtures.ts";
 import type { RunEvent, RunRequest } from "../tinyfish/client.ts";
+import { TinyFishError } from "../tinyfish/client.ts";
 import type { RunRecord } from "../tinyfish/types.ts";
 import type { AuditClient, AuditSignIns } from "./service.ts";
 import { AuditService } from "./service.ts";
@@ -194,17 +195,17 @@ describe("AuditService", () => {
   describe("reports saved under older rules", () => {
     const FEE = "half your remaining annual commitment";
 
-    let runGone = false;
+    let failure: Error | null = null;
 
     async function saved() {
-      runGone = false;
+      failure = null;
       const run = loadRun("adobe-subscription");
       const terms = (run.result?.["terms"] ?? []) as { term: string; quote: string }[];
       const fee = terms.find(({ term }) => term === "cancellation_fee");
       run.steps[5] = { ...(run.steps[5] as RunRecord["steps"][number]), html: "url" };
       const audits = service(
         clientFor(run, {
-          getRun: () => (runGone ? Promise.reject(new Error("gone")) : Promise.resolve(run)),
+          getRun: () => (failure ? Promise.reject(failure) : Promise.resolve(run)),
           getStepHtml: () => Promise.resolve(`<p>${fee?.quote}</p>`),
         }),
       );
@@ -217,9 +218,12 @@ describe("AuditService", () => {
       const site = audit.sites[0];
       if (!site?.report) throw new Error("no report");
       site.report.rules = 1;
-      site.report.patterns = [];
       await store.save(audit);
-      return { audits, id };
+      return {
+        audits,
+        id,
+        findings: site.report.patterns.filter(({ status }) => status === "found"),
+      };
     }
 
     it("judges them again from the saved run", async () => {
@@ -244,9 +248,22 @@ describe("AuditService", () => {
       expect(audits.get("visitor", id).sites[0]?.report).toBe(first);
     });
 
+    it("keeps every finding when TinyFish fails for a moment, and tries again next start", async () => {
+      const { audits, id, findings } = await saved();
+      failure = new TinyFishError("Upstream timed out", 504);
+
+      await audits.rejudgeSaved();
+      const report = audits.get("visitor", id).sites[0]?.report;
+
+      expect(findings.length).toBeGreaterThan(0);
+      expect(report?.patterns.filter(({ status }) => status === "found")).toEqual(findings);
+      expect(report?.rules).toBe(1);
+      expect(report?.older).not.toBe(true);
+    });
+
     it("marks the report as an older audit and claims no quote when the run is gone", async () => {
       const { audits, id } = await saved();
-      runGone = true;
+      failure = new TinyFishError("Run not found", 404, "NOT_FOUND");
 
       await audits.rejudgeSaved();
       const report = audits.get("visitor", id).sites[0]?.report;

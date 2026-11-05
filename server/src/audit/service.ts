@@ -14,6 +14,7 @@ import { OUTPUT_SCHEMA } from "./outputSchema.ts";
 import { isWritingUp } from "./progress.ts";
 import { collectPageText } from "./pageCapture.ts";
 import { scrubPersonal } from "./scrub.ts";
+import { TinyFishError } from "../tinyfish/client.ts";
 import type { RunRecord } from "../tinyfish/types.ts";
 import type { Audit, SiteRun } from "./types.ts";
 
@@ -180,7 +181,10 @@ export class AuditService {
           ...saved.flags.filter((flag) => flag.kind === "retried_after_block"),
         ],
       };
-    } catch {
+    } catch (error) {
+      // Only a run TinyFish no longer has drops to an older audit. A passing failure must not
+      // cost a report its findings, so it keeps the old rules and is tried again next start.
+      if (!(error instanceof TinyFishError && error.status === 404)) return;
       site.report = judgeSavedReport(saved);
     }
     this.#publish(audit);
