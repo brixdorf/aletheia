@@ -1725,9 +1725,48 @@ describe("safety scan", () => {
     expect(withAction("Type phone number 9999999999").flags[0]?.kind).toBe("contact_entered");
   });
 
-  it("flags a payment click", () => {
-    expect(withAction("Click Place Order to finish").flags[0]?.kind).toBe("payment_click");
-    expect(withAction("Select Cash on Delivery as payment").flags[0]?.kind).toBe("payment_click");
+  function clickedThenReached(action: string, page: Record<string, unknown>) {
+    return judge("blinkit-2", "checkout", (run) => {
+      run.steps.push({
+        id: "clicked",
+        timestamp: "2026-10-31T08:27:50Z",
+        status: "RUNNING",
+        action,
+        screenshot: null,
+        duration: null,
+      });
+      const pages = (run.result?.["steps"] ?? []) as Record<string, unknown>[];
+      pages.push({ step: pages.length + 1, price_shown: null, url: null, note: null, ...page });
+    });
+  }
+
+  it("flags a payment click once a payment step was reached", () => {
+    const methods = clickedThenReached("Click Place Order to finish", {
+      page: "Payment method",
+      note: "Card, UPI, wallet and cash on delivery offered.",
+    });
+    const provider = clickedThenReached("Click Pay now", {
+      page: "Checkout",
+      url: "https://checkout.stripe.com/c/pay/cs_live_a1",
+    });
+    const fields = clickedThenReached("Select Cash on Delivery as payment", {
+      page: "Order",
+      note: "Fields for card number, expiry date and CVV.",
+    });
+
+    for (const report of [methods, provider, fields]) {
+      expect(report.flags.map(({ kind }) => kind)).toContain("payment_click");
+    }
+  });
+
+  it("does not warn about a Pay button that only opened an order summary", () => {
+    const report = clickedThenReached("Click Pay to proceed to checkout", {
+      page: "Contact Details Page",
+      url: "https://tickets.test/order-summary/ET1",
+      note: "Contact Details popup requires email and mobile number. Price shown as 600 on Pay button.",
+    });
+
+    expect(report.flags.map(({ kind }) => kind)).not.toContain("payment_click");
   });
 
   it("leaves location entry and reading a form alone", () => {

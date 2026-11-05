@@ -33,7 +33,7 @@ import type {
 import { TERM_NAMES } from "./types.ts";
 
 /** Raised when the rules change, so reports saved under older ones are judged again. */
-export const RULES_VERSION = 9;
+export const RULES_VERSION = 10;
 
 export interface JudgeInput {
   flow: Flow;
@@ -391,7 +391,7 @@ export function judgeRun({
       ...page,
       screenshot: screenshotFor(page.step),
     })),
-    flags: scanSafety(run.steps, evidence),
+    flags: scanSafety(run.steps, evidence, captures),
     missing: describeMissing(run, stop, evidence, bill, hidesFees),
     login: {
       wallAt: wall ? (evidence?.loginWallAt ?? null) : null,
