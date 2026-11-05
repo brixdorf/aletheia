@@ -125,18 +125,28 @@ function LiveBrowser({ site }: { site: SiteView }) {
     state === "queued"
       ? "The live browser opens when an agent is free."
       : state === "running"
-        ? "Connecting to the live browser."
+        ? "Connecting to the live browser..."
         : "The browser has closed.";
 
   return (
     <figure className="card min-w-0 p-2">
       {streamingUrl ? (
-        <iframe
-          src={streamingUrl}
-          title={`Live browser on ${host}`}
-          referrerPolicy="no-referrer"
-          className="aspect-[16/10] w-full rounded-[14px] bg-wash"
-        />
+        // The live view cannot report its first frame across origins, so the line sits beneath
+        // a see-through frame and the browser covers it once it draws.
+        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[14px] bg-wash">
+          <p
+            aria-hidden="true"
+            className="absolute inset-0 flex items-center justify-center p-4 text-center text-mute"
+          >
+            Connecting to the live browser...
+          </p>
+          <iframe
+            src={streamingUrl}
+            title={`Live browser on ${host}`}
+            referrerPolicy="no-referrer"
+            className="relative size-full bg-transparent"
+          />
+        </div>
       ) : (
         <div className="flex aspect-[16/10] items-center justify-center rounded-[14px] bg-wash p-4 text-center text-mute">
           {waiting}
