@@ -262,6 +262,11 @@ export function serveLoginSite(port: number): void {
   createServer((request, response) => {
     const [, name = "", ...rest] = new URL(request.url ?? "/", "http://site").pathname.split("/");
     const path = `/${rest.filter(Boolean).join("/")}`;
+    if (name === "live") {
+      response.writeHead(200, { "Content-Type": "text/html" });
+      response.end("<!doctype html><title>live</title>");
+      return;
+    }
     const page = pageFor(name, path);
     response.writeHead(page ? 200 : 404, { "Content-Type": "text/html" });
     response.end(page ?? "Not found");

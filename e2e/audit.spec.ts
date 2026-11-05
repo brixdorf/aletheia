@@ -81,3 +81,24 @@ test("the flow follows the words and stays off the home page, and old links stil
   await expect(page.getByLabel("Flow")).toHaveCount(0);
   await expect(page.getByLabel("Country")).toHaveCount(0);
 });
+
+test("the live browser says it is connecting until the site draws", async ({ page }) => {
+  await page.goto("/");
+  const audit = await page.evaluate(async () => {
+    const response = await fetch("/api/audits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        task: "Sign up for Adobe Creative Cloud",
+        flow: "subscription",
+        sites: [{ url: "https://www.adobe.com/" }],
+      }),
+    });
+    return (await response.json()) as { id: string };
+  });
+  await page.goto(`/audits/${audit.id}`);
+
+  const frame = page.getByRole("figure");
+  await expect(frame.locator("iframe")).toHaveCount(1);
+  await expect(frame).toContainText("Connecting to the live browser...");
+});

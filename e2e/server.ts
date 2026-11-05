@@ -28,6 +28,8 @@ const SAVED_RUNS: Record<string, string> = {
   "linkedin.com": "linkedin-subscription",
 };
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+/** Long enough to see a running audit, short enough to keep the suite quick. */
+const RUN_HOLD_MS = 3000;
 const PORT = Number(process.env["E2E_PORT"] ?? 4173);
 const LOGIN_SITE_PORT = PORT + 1;
 const BROWSER_PORT = PORT + 2;
@@ -56,6 +58,13 @@ const client = {
   async *streamRun({ url }: RunRequest): AsyncGenerator<RunEvent> {
     const run = savedRun(url);
     yield { type: "started", runId: run.run_id };
+    // A blank page, as the real live browser is before its first frame.
+    yield {
+      type: "live",
+      runId: run.run_id,
+      streamingUrl: `http://localhost:${LOGIN_SITE_PORT}/live/`,
+    };
+    await new Promise((resolve) => setTimeout(resolve, RUN_HOLD_MS));
     for (const step of run.steps.slice(0, 3)) {
       yield { type: "progress", runId: run.run_id, text: step.action ?? "", at: step.timestamp };
     }
